@@ -12,3 +12,7 @@ cdk.out
 
 # Rust crap
 target
+
+# DynamoDB Local
+dynamodb/
+dynamodb-local-metadata.json

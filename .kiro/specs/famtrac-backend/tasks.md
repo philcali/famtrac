@@ -69,7 +69,7 @@ The plan prioritizes incremental validation through property-based tests using p
   - Configure GSI-1 for owner_id lookups
   - _Requirements: 1.1, 1.3, 1.4, 2.1, 2.3, 2.4, 2.5, 3.1, 4.1, 4.2, 4.3, 5.1, 6.1, 6.3_
 
-- [ ]* 3.1 Write property test for resource creation round-trip
+- [x] 3.1 Write property test for resource creation round-trip
   - **Property 1: Resource Creation Round-Trip**
   - **Validates: Requirements 1.1, 1.3, 2.1, 2.3, 3.1**
   - Use DynamoDB Local for integration testing
@@ -123,6 +123,18 @@ The plan prioritizes incremental validation through property-based tests using p
   - **Validates: Requirements 5.4**
   - Use DynamoDB Local for integration testing
   - Create activity, update it, verify created_at unchanged
+
+- [x] 3.9 Implement DynamoDB Local test utilities and setup script
+  - Create `scripts/setup-dynamodb-local.sh` bash script that downloads and validates DynamoDB Local JAR with SHA256 checksum
+  - Create test utilities module in `famtrac-backend/tests/common/mod.rs` with:
+    - Function to check for `dynamodb/DynamoDBLocal.jar` presence
+    - Function to spawn DynamoDB Local process on random available port
+    - Function to create test table with proper schema (PK, SK, GSI-1)
+    - Setup and teardown helpers for property tests
+    - Process cleanup on test completion
+  - Update property test in `property_resource_creation_roundtrip.rs` to use test utilities
+  - Remove `#[ignore]` attribute from tests once utilities are working
+  - Add `dynamodb/` directory to `.gitignore`
 
 - [ ] 4. Checkpoint - Ensure repository layer tests pass
   - Ensure all tests pass, ask the user if questions arise.
