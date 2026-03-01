@@ -616,6 +616,7 @@ dependencies = [
  "proptest",
  "serde",
  "serde_json",
+ "tokio",
  "tokio-test",
  "uuid",
 ]

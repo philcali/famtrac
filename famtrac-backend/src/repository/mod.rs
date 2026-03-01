@@ -1,1 +1,7 @@
-// Repository traits and implementations will be added in task 3
+mod dynamodb;
+mod traits;
+
+pub use dynamodb::{
+    DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
+};
+pub use traits::{ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository};

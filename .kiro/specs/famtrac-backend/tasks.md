@@ -59,7 +59,7 @@ The plan prioritizes incremental validation through property-based tests using p
   - Test pumping validation (volume_ml required and > 0)
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 3. Implement DynamoDB repository layer
+- [x] 3. Implement DynamoDB repository layer
   - Define repository traits: FamilyRepository, DependentRepository, ActivityRepository
   - Implement DynamoDB single-table design with PK/SK structure
   - Implement FamilyRepository: create, get, update, get_by_owner
