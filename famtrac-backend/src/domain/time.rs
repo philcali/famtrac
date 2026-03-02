@@ -13,6 +13,10 @@ impl Timestamp {
     pub fn from_datetime(dt: DateTime<Utc>) -> Self {
         Self(dt)
     }
+
+    pub fn to_iso8601(&self) -> String {
+        self.0.to_rfc3339()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]

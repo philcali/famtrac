@@ -173,7 +173,7 @@ The plan prioritizes incremental validation through property-based tests using p
   - Verify unauthorized access returns 403 Forbidden
 
 - [ ] 7. Implement Family handlers
-  - [ ] 7.1 Implement POST /families handler
+  - [x] 7.1 Implement POST /families handler
     - Parse CreateFamilyRequest from JSON body
     - Extract identity from request context
     - Validate family name
@@ -181,7 +181,7 @@ The plan prioritizes incremental validation through property-based tests using p
     - Return 201 Created with Family JSON
     - _Requirements: 1.1, 1.2, 8.1, 10.1_
   
-  - [ ] 7.2 Implement GET /families/{family_id} handler
+  - [x] 7.2 Implement GET /families/{family_id} handler
     - Extract family_id from path parameters
     - Extract identity from request context
     - Retrieve Family from repository
@@ -189,7 +189,7 @@ The plan prioritizes incremental validation through property-based tests using p
     - Return 200 OK with Family JSON or 404 Not Found
     - _Requirements: 1.3, 1.5, 10.3_
   
-  - [ ] 7.3 Implement PUT /families/{family_id} handler
+  - [x] 7.3 Implement PUT /families/{family_id} handler
     - Extract family_id from path parameters
     - Parse UpdateFamilyRequest from JSON body
     - Extract identity from request context
