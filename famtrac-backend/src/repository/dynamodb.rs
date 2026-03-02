@@ -50,7 +50,7 @@ impl DynamoDbFamilyRepository {
     }
 
     /// Convert DynamoDB item to Family
-    fn from_item(&self, item: &HashMap<String, AttributeValue>) -> Result<Family, StoreError> {
+    fn parse_item(&self, item: &HashMap<String, AttributeValue>) -> Result<Family, StoreError> {
         let id = item
             .get("id")
             .and_then(|v| v.as_s().ok())
@@ -123,7 +123,7 @@ impl FamilyRepository for DynamoDbFamilyRepository {
             .map_err(|e| StoreError::QueryError(format!("Failed to get family: {}", e)))?;
 
         match result.item {
-            Some(item) => Ok(Some(self.from_item(&item)?)),
+            Some(item) => Ok(Some(self.parse_item(&item)?)),
             None => Ok(None),
         }
     }
@@ -165,7 +165,7 @@ impl FamilyRepository for DynamoDbFamilyRepository {
             .items
             .unwrap_or_default()
             .iter()
-            .map(|item| self.from_item(item))
+            .map(|item| self.parse_item(item))
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(families)
@@ -226,7 +226,7 @@ impl DynamoDbDependentRepository {
     }
 
     /// Convert DynamoDB item to Dependent
-    fn from_item(&self, item: &HashMap<String, AttributeValue>) -> Result<Dependent, StoreError> {
+    fn parse_item(&self, item: &HashMap<String, AttributeValue>) -> Result<Dependent, StoreError> {
         let id = item
             .get("id")
             .and_then(|v| v.as_s().ok())
@@ -321,7 +321,7 @@ impl DependentRepository for DynamoDbDependentRepository {
         match result.items {
             Some(items) if !items.is_empty() => {
                 let item = &items[0];
-                Ok(Some(self.from_item(item)?))
+                Ok(Some(self.parse_item(item)?))
             }
             _ => Ok(None),
         }
@@ -370,7 +370,7 @@ impl DependentRepository for DynamoDbDependentRepository {
             .items
             .unwrap_or_default()
             .iter()
-            .map(|item| self.from_item(item))
+            .map(|item| self.parse_item(item))
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(dependents)
@@ -452,7 +452,7 @@ impl DynamoDbActivityRepository {
     }
 
     /// Convert DynamoDB item to Activity
-    fn from_item(&self, item: &HashMap<String, AttributeValue>) -> Result<Activity, StoreError> {
+    fn parse_item(&self, item: &HashMap<String, AttributeValue>) -> Result<Activity, StoreError> {
         let id = item
             .get("id")
             .and_then(|v| v.as_s().ok())
@@ -539,7 +539,7 @@ impl ActivityRepository for DynamoDbActivityRepository {
         match result.items {
             Some(items) if !items.is_empty() => {
                 let item = &items[0];
-                Ok(Some(self.from_item(item)?))
+                Ok(Some(self.parse_item(item)?))
             }
             _ => Ok(None),
         }
@@ -594,15 +594,8 @@ impl ActivityRepository for DynamoDbActivityRepository {
     }
 
     fn query(&self, params: ActivityQueryParams) -> Result<Vec<Activity>, StoreError> {
-        let mut key_condition = "PK = :pk".to_string();
+        let key_condition = "PK = :pk AND begins_with(SK, :sk_prefix".to_string();
         let mut filter_expressions = Vec::new();
-
-        // Build key condition for SK (timestamp range)
-        if params.start_date.is_some() || params.end_date.is_some() {
-            key_condition.push_str(" AND begins_with(SK, :sk_prefix)");
-        } else {
-            key_condition.push_str(" AND begins_with(SK, :sk_prefix)");
-        }
 
         // Build filter expression for date range
         if params.start_date.is_some() && params.end_date.is_some() {
@@ -680,7 +673,7 @@ impl ActivityRepository for DynamoDbActivityRepository {
             .items
             .unwrap_or_default()
             .iter()
-            .map(|item| self.from_item(item))
+            .map(|item| self.parse_item(item))
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(activities)

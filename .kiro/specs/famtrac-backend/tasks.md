@@ -157,7 +157,7 @@ The plan prioritizes incremental validation through property-based tests using p
   - Generate requests without identity in context
   - Verify 401 Unauthorized is returned
 
-- [ ] 6. Implement authorization logic
+- [x] 6. Implement authorization logic
   - Define Authorizable trait for hierarchical authorization
   - Implement authorization for Family access (verify owner_id matches identity)
   - Implement authorization for Dependent access (verify identity owns parent Family)
