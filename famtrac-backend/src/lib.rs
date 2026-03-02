@@ -1,3 +1,4 @@
+pub mod context;
 pub mod domain;
 pub mod errors;
 pub mod handlers;

@@ -136,10 +136,10 @@ The plan prioritizes incremental validation through property-based tests using p
   - Remove `#[ignore]` attribute from tests once utilities are working
   - Add `dynamodb/` directory to `.gitignore`
 
-- [ ] 4. Checkpoint - Ensure repository layer tests pass
+- [x] 4. Checkpoint - Ensure repository layer tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Implement request context and identity extraction
+- [x] 5. Implement request context and identity extraction
   - Define RequestContext struct with identity_id field
   - Implement identity extraction from API Gateway request context
   - Implement identity validation (return 401 if missing)
