@@ -1,6 +1,5 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use famtrac_backend::domain::*;
-use serde_json;
 
 #[test]
 fn test_timestamp_iso8601_serialization() {

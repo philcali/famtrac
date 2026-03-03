@@ -273,6 +273,7 @@ pub fn delete_activity<F: FamilyRepository, D: DependentRepository, A: ActivityR
 /// - 4.5: Return descriptive error message when date range is invalid
 /// - 4.6: Verify the Identity has access to the associated Dependent's Family
 /// - 10.3: Serialize response data into valid JSON format
+#[allow(clippy::too_many_arguments)]
 pub fn query_activities<F: FamilyRepository, D: DependentRepository, A: ActivityRepository>(
     dependent_id: DependentId,
     start_date: Option<Date>,
