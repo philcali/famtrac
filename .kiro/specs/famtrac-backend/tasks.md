@@ -346,10 +346,10 @@ The plan prioritizes incremental validation through property-based tests using p
   - Test authorization failures return 403
   - _Requirements: 3.1, 3.2, 4.1, 4.2, 4.3, 4.4, 5.1, 5.4, 6.1_
 
-- [ ] 10. Checkpoint - Ensure handler tests pass
+- [x] 10. Checkpoint - Ensure handler tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 11. Implement CORS support
+- [x] 11. Implement CORS support
   - Add CORS headers to all responses: Access-Control-Allow-Origin, Access-Control-Allow-Methods, Access-Control-Allow-Headers
   - Implement OPTIONS handler for preflight requests
   - _Requirements: 11.1, 11.2, 11.3, 11.4_
