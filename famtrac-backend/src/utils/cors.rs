@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 /// CORS configuration for the API
 /// Requirements: 11.1, 11.2, 11.3, 11.4
+#[derive(Clone)]
 pub struct CorsConfig {
     pub allow_origin: String,
     pub allow_methods: String,

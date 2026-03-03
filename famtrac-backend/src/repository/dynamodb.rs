@@ -13,6 +13,7 @@ use super::traits::{
 };
 
 /// DynamoDB implementation of FamilyRepository
+#[derive(Clone)]
 pub struct DynamoDbFamilyRepository {
     client: Client,
     table_name: String,
@@ -173,6 +174,7 @@ impl FamilyRepository for DynamoDbFamilyRepository {
 }
 
 /// DynamoDB implementation of DependentRepository
+#[derive(Clone)]
 pub struct DynamoDbDependentRepository {
     client: Client,
     table_name: String,
@@ -378,6 +380,7 @@ impl DependentRepository for DynamoDbDependentRepository {
 }
 
 /// DynamoDB implementation of ActivityRepository
+#[derive(Clone)]
 pub struct DynamoDbActivityRepository {
     client: Client,
     table_name: String,
