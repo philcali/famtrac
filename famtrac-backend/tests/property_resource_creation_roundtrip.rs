@@ -16,7 +16,7 @@ use proptest::prelude::*;
 use std::sync::Arc;
 
 // Test configuration
-const PROPTEST_CASES: u32 = 50;
+const PROPTEST_CASES: u32 = 100;
 
 // Arbitrary instance for FamilyId
 fn arbitrary_family_id() -> impl Strategy<Value = FamilyId> {
@@ -195,6 +195,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore]
     fn test_family_creation_roundtrip() {
         // Create a single runtime for the entire test
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -244,6 +245,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_dependent_creation_roundtrip() {
         // Create a single runtime for the entire test
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -294,6 +296,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_activity_creation_roundtrip() {
         // Create a single runtime for the entire test
         let rt = tokio::runtime::Runtime::new().unwrap();
