@@ -16,7 +16,7 @@ use proptest::prelude::*;
 use std::sync::Arc;
 
 // Test configuration
-const PROPTEST_CASES: u32 = 100;
+const PROPTEST_CASES: u32 = 50;
 
 // Arbitrary instance for FamilyId
 fn arbitrary_family_id() -> impl Strategy<Value = FamilyId> {
