@@ -207,8 +207,8 @@ The plan prioritizes incremental validation through property-based tests using p
   - Test authorization failures return 403
   - _Requirements: 1.1, 1.3, 1.4, 1.5_
 
-- [ ] 8. Implement Dependent handlers
-  - [ ] 8.1 Implement POST /dependents handler
+- [x] 8. Implement Dependent handlers
+  - [x] 8.1 Implement POST /dependents handler
     - Parse CreateDependentRequest from JSON body
     - Extract identity from request context
     - Validate dependent name and date_of_birth
@@ -217,7 +217,7 @@ The plan prioritizes incremental validation through property-based tests using p
     - Return 201 Created with Dependent JSON
     - _Requirements: 2.1, 2.2, 2.6, 8.1, 10.1_
   
-  - [ ] 8.2 Implement GET /dependents/{dependent_id} handler
+  - [x] 8.2 Implement GET /dependents/{dependent_id} handler
     - Extract dependent_id from path parameters
     - Extract identity from request context
     - Retrieve Dependent from repository
@@ -225,7 +225,7 @@ The plan prioritizes incremental validation through property-based tests using p
     - Return 200 OK with Dependent JSON or 404 Not Found
     - _Requirements: 2.3, 2.6, 10.3_
   
-  - [ ] 8.3 Implement PUT /dependents/{dependent_id} handler
+  - [x] 8.3 Implement PUT /dependents/{dependent_id} handler
     - Extract dependent_id from path parameters
     - Parse UpdateDependentRequest from JSON body
     - Extract identity from request context
@@ -236,7 +236,7 @@ The plan prioritizes incremental validation through property-based tests using p
     - Return 200 OK with updated Dependent JSON
     - _Requirements: 2.4, 2.6, 8.1, 10.1_
   
-  - [ ] 8.4 Implement GET /families/{family_id}/dependents handler
+  - [x] 8.4 Implement GET /families/{family_id}/dependents handler
     - Extract family_id from path parameters
     - Extract identity from request context
     - Retrieve Family and authorize access
@@ -252,8 +252,8 @@ The plan prioritizes incremental validation through property-based tests using p
   - Test authorization failures return 403
   - _Requirements: 2.1, 2.3, 2.4, 2.5, 2.6_
 
-- [ ] 9. Implement Activity handlers
-  - [ ] 9.1 Implement POST /activities handler
+- [x] 9. Implement Activity handlers
+  - [x] 9.1 Implement POST /activities handler
     - Parse CreateActivityRequest from JSON body
     - Extract identity from request context
     - Validate activity timestamp (not in future)
@@ -263,7 +263,7 @@ The plan prioritizes incremental validation through property-based tests using p
     - Return 201 Created with Activity JSON
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 7.1, 7.2, 7.3, 7.4, 8.1, 10.1_
   
-  - [ ] 9.2 Implement GET /activities/{activity_id} handler
+  - [x] 9.2 Implement GET /activities/{activity_id} handler
     - Extract activity_id from path parameters
     - Extract identity from request context
     - Retrieve Activity from repository
@@ -271,7 +271,7 @@ The plan prioritizes incremental validation through property-based tests using p
     - Return 200 OK with Activity JSON or 404 Not Found
     - _Requirements: 3.1, 10.3_
   
-  - [ ] 9.3 Implement PUT /activities/{activity_id} handler
+  - [x] 9.3 Implement PUT /activities/{activity_id} handler
     - Extract activity_id from path parameters
     - Parse UpdateActivityRequest from JSON body
     - Extract identity from request context
@@ -282,7 +282,7 @@ The plan prioritizes incremental validation through property-based tests using p
     - Return 200 OK with updated Activity JSON
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 8.1, 10.1_
   
-  - [ ] 9.4 Implement DELETE /activities/{activity_id} handler
+  - [x] 9.4 Implement DELETE /activities/{activity_id} handler
     - Extract activity_id from path parameters
     - Extract identity from request context
     - Retrieve Activity and authorize access to parent Family via Dependent
@@ -290,7 +290,7 @@ The plan prioritizes incremental validation through property-based tests using p
     - Return 204 No Content or 404 Not Found
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
   
-  - [ ] 9.5 Implement GET /dependents/{dependent_id}/activities handler
+  - [x] 9.5 Implement GET /dependents/{dependent_id}/activities handler
     - Extract dependent_id from path parameters
     - Parse query parameters: start_date, end_date, activity_type
     - Extract identity from request context
