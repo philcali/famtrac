@@ -1,81 +1,12 @@
 /// Integration tests for CORS support
 /// Requirements: 11.1, 11.2, 11.3, 11.4
+mod common;
+
+use common::mocks::{MockDependentRepository, MockFamilyRepository};
 use famtrac_backend::context::RequestContext;
-use famtrac_backend::domain::{Family, FamilyId, IdentityId};
-use famtrac_backend::errors::StoreError;
+use famtrac_backend::domain::{FamilyId, IdentityId};
 use famtrac_backend::handlers::{create_family, get_family};
-use famtrac_backend::repository::{DependentRepository, FamilyRepository};
 use famtrac_backend::utils::{handle_options, CorsConfig, HttpResponse};
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-
-// Mock repository for testing
-struct MockFamilyRepository {
-    families: Arc<Mutex<HashMap<FamilyId, Family>>>,
-}
-
-impl MockFamilyRepository {
-    fn new() -> Self {
-        MockFamilyRepository {
-            families: Arc::new(Mutex::new(HashMap::new())),
-        }
-    }
-}
-
-impl FamilyRepository for MockFamilyRepository {
-    fn create(&self, family: Family) -> Result<Family, StoreError> {
-        let mut families = self.families.lock().unwrap();
-        families.insert(family.id, family.clone());
-        Ok(family)
-    }
-
-    fn get(&self, id: FamilyId) -> Result<Option<Family>, StoreError> {
-        let families = self.families.lock().unwrap();
-        Ok(families.get(&id).cloned())
-    }
-
-    fn update(&self, family: Family) -> Result<Family, StoreError> {
-        let mut families = self.families.lock().unwrap();
-        families.insert(family.id, family.clone());
-        Ok(family)
-    }
-
-    fn get_by_owner(&self, _owner_id: IdentityId) -> Result<Vec<Family>, StoreError> {
-        Ok(vec![])
-    }
-}
-
-struct MockDependentRepository;
-
-impl DependentRepository for MockDependentRepository {
-    fn create(
-        &self,
-        _dependent: famtrac_backend::domain::Dependent,
-    ) -> Result<famtrac_backend::domain::Dependent, StoreError> {
-        unimplemented!()
-    }
-
-    fn get(
-        &self,
-        _id: famtrac_backend::domain::DependentId,
-    ) -> Result<Option<famtrac_backend::domain::Dependent>, StoreError> {
-        unimplemented!()
-    }
-
-    fn update(
-        &self,
-        _dependent: famtrac_backend::domain::Dependent,
-    ) -> Result<famtrac_backend::domain::Dependent, StoreError> {
-        unimplemented!()
-    }
-
-    fn list_by_family(
-        &self,
-        _family_id: FamilyId,
-    ) -> Result<Vec<famtrac_backend::domain::Dependent>, StoreError> {
-        Ok(vec![])
-    }
-}
 
 #[test]
 fn test_options_handler_returns_cors_headers() {
@@ -169,13 +100,17 @@ fn test_error_response_includes_cors_headers() {
 fn test_not_found_response_includes_cors_headers() {
     // Test that 404 responses include CORS headers
     let repository = MockFamilyRepository::new();
-    let dependent_repo = MockDependentRepository;
     let context = RequestContext {
         identity_id: IdentityId("test-user".to_string()),
     };
 
     let non_existent_id = FamilyId::new();
-    let result = get_family(non_existent_id, &context, &repository, &dependent_repo);
+    let result = get_family(
+        non_existent_id,
+        &context,
+        &repository,
+        &MockDependentRepository::new(),
+    );
 
     // Convert handler result to HttpResponse with CORS
     let cors_config = CorsConfig::default();

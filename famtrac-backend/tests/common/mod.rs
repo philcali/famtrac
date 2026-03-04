@@ -1,5 +1,7 @@
 // Common test utilities for integration testing with DynamoDB Local
 
+pub mod mocks;
+
 use aws_sdk_dynamodb::config::Credentials;
 use aws_sdk_dynamodb::types::{
     AttributeDefinition, BillingMode, GlobalSecondaryIndex, KeySchemaElement, KeyType, Projection,

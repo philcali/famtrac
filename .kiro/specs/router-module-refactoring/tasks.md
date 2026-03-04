@@ -6,33 +6,33 @@ This plan refactors the routing logic from `src/main.rs` into a dedicated `src/r
 
 ## Tasks
 
-- [ ] 1. Create router module structure
+- [x] 1. Create router module structure
   - Create `src/router/` directory
   - Create `src/router/mod.rs` with module declarations for family, dependent, activity, and extractors submodules
   - Create empty submodules: `family.rs`, `dependent.rs`, `activity.rs`, `extractors.rs`
   - Add `pub mod router;` to `src/lib.rs` or appropriate location
   - _Requirements: 1.1, 1.2, 1.3, 1.5_
 
-- [ ] 2. Implement path parameter extractors
-  - [ ] 2.1 Implement extract_path_param function
+- [x] 2. Implement path parameter extractors
+  - [x] 2.1 Implement extract_path_param function
     - Copy `extract_path_param()` from main.rs to `router/extractors.rs`
     - Make function public and add documentation
     - _Requirements: 6.1, 6.4_
   
-  - [ ] 2.2 Implement extract_uuid_param function
+  - [x] 2.2 Implement extract_uuid_param function
     - Implement `extract_uuid_param()` that uses `extract_path_param()` and parses UUID
     - Return `HandlerError::Validation` with field name if UUID parsing fails
     - Add documentation explaining error handling
     - _Requirements: 6.2, 6.3_
   
-  - [ ]* 2.3 Write unit tests for extractors
+  - [x] 2.3 Write unit tests for extractors
     - Test `extract_path_param()` with various path/prefix combinations
     - Test `extract_uuid_param()` with valid and invalid UUIDs
     - Test error messages for invalid UUIDs
     - _Requirements: 6.4, 9.4_
 
-- [ ] 3. Implement family route handlers
-  - [ ] 3.1 Create route_family function
+- [x] 3. Implement family route handlers
+  - [x] 3.1 Create route_family function
     - Implement `router/family.rs::route_family()` with signature from design
     - Handle POST /families → call `handlers::create_family()`
     - Handle GET /families/{id} → extract UUID and call `handlers::get_family()`
@@ -42,14 +42,14 @@ This plan refactors the routing logic from `src/main.rs` into a dedicated `src/r
     - Return appropriate errors for invalid UUIDs and unknown routes
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 6.5_
   
-  - [ ]* 3.2 Write unit tests for family routes
+  - [x] 3.2 Write unit tests for family routes
     - Test each route with valid inputs
     - Test UUID validation errors
     - Verify correct handler functions are called
     - _Requirements: 3.2, 3.3, 3.4, 3.5, 3.6_
 
-- [ ] 4. Implement dependent route handlers
-  - [ ] 4.1 Create route_dependent function
+- [x] 4. Implement dependent route handlers
+  - [x] 4.1 Create route_dependent function
     - Implement `router/dependent.rs::route_dependent()` with signature from design
     - Handle POST /dependents → call `handlers::create_dependent()`
     - Handle GET /dependents/{id} → extract UUID and call `handlers::get_dependent()`
@@ -58,14 +58,14 @@ This plan refactors the routing logic from `src/main.rs` into a dedicated `src/r
     - Return appropriate errors for invalid UUIDs
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.6, 6.5_
   
-  - [ ]* 4.2 Write unit tests for dependent routes
+  - [x] 4.2 Write unit tests for dependent routes
     - Test each route with valid inputs
     - Test UUID validation errors
     - Verify correct handler functions are called
     - _Requirements: 4.2, 4.3, 4.4, 4.6_
 
-- [ ] 5. Implement activity route handlers
-  - [ ] 5.1 Create route_activity function
+- [x] 5. Implement activity route handlers
+  - [x] 5.1 Create route_activity function
     - Implement `router/activity.rs::route_activity()` with signature from design
     - Handle POST /activities → call `handlers::create_activity()`
     - Handle GET /activities/{id} → extract UUID and call `handlers::get_activity()`
@@ -76,15 +76,15 @@ This plan refactors the routing logic from `src/main.rs` into a dedicated `src/r
     - Return appropriate errors for invalid UUIDs
     - _Requirements: 4.5, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 6.5_
   
-  - [ ]* 5.2 Write unit tests for activity routes
+  - [x] 5.2 Write unit tests for activity routes
     - Test each route with valid inputs
     - Test UUID validation errors
     - Test query parameter extraction for activities query
     - Verify correct handler functions are called
     - _Requirements: 5.2, 5.3, 5.4, 5.5, 5.6_
 
-- [ ] 6. Implement main router function
-  - [ ] 6.1 Create route_request function in router/mod.rs
+- [x] 6. Implement main router function
+  - [x] 6.1 Create route_request function in router/mod.rs
     - Implement `router::route_request()` with signature from design
     - Extract HTTP method, path, and body from ApiGatewayProxyRequest
     - Add logging statement: "Routing: {method} {path}"
@@ -93,7 +93,7 @@ This plan refactors the routing logic from `src/main.rs` into a dedicated `src/r
     - Convert handler results to HttpResponse using `HttpResponse::from_handler_result()` with CORS config
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 7.4, 7.5_
   
-  - [ ] 6.2 Export route_request and submodules from router/mod.rs
+  - [x] 6.2 Export route_request and submodules from router/mod.rs
     - Add `pub use` statements for route_request function
     - Re-export public functions from submodules as needed
     - _Requirements: 1.4_
@@ -105,19 +105,19 @@ This plan refactors the routing logic from `src/main.rs` into a dedicated `src/r
     - Test CORS header application
     - _Requirements: 2.4, 2.5, 7.4, 7.5_
 
-- [ ] 7. Checkpoint - Verify router module compiles and tests pass
+- [x] 7. Checkpoint - Verify router module compiles and tests pass
   - Ensure all router module code compiles without errors
   - Ensure all unit tests pass
   - Ask the user if questions arise
 
-- [ ] 8. Update main.rs to use router module
-  - [ ] 8.1 Import and use router::route_request
+- [x] 8. Update main.rs to use router module
+  - [x] 8.1 Import and use router::route_request
     - Add `use crate::router;` or appropriate import in main.rs
     - Replace the call to inline `route_request()` with `router::route_request()`
     - Pass all required parameters (request, context, repositories, cors_config)
     - _Requirements: 2.6, 8.1_
   
-  - [ ] 8.2 Remove old routing code from main.rs
+  - [x] 8.2 Remove old routing code from main.rs
     - Delete the old `route_request()` function from main.rs
     - Delete the old `extract_path_param()` function from main.rs
     - Verify main.rs only contains Lambda setup code: main(), handle_request(), create_options_response(), to_api_gateway_response()
