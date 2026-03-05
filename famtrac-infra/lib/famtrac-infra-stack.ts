@@ -1,16 +1,51 @@
-import * as cdk from 'aws-cdk-lib/core';
+import { AssetOptions, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+import { FamtracApi, IFamtracApi } from './backend/FamtracApi';
+import { AssetCode } from 'aws-cdk-lib/aws-lambda';
+import * as child from 'child_process';
+import * as p from 'path';
 
-export class FamtracInfraStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-    super(scope, id, props);
+interface LocalModuleAssetOptions extends AssetOptions {
+    readonly buildCommand: string;
+    readonly buildOutput: string;
+}
 
-    // The code that defines your stack goes here
+class LocalModuleAsset extends AssetCode {
+    constructor(path: string, options: LocalModuleAssetOptions) {
+        child.execSync(options.buildCommand, {
+            cwd: path,
+        });
+        super(p.join(path, options.buildOutput), {
+            ...options,
+        });
+    }
+}
 
-    // example resource
-    // const queue = new sqs.Queue(this, 'FamtracInfraQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
-  }
+class FamtracBackendStack extends Stack {
+    readonly api: IFamtracApi;
+
+    constructor(scope: Construct, id: string, props?: StackProps) {
+        super(scope, id, props);
+
+        let api = new FamtracApi(this, 'Api', {
+            apiName: 'famtrac-api',
+            enableDevelopmentOrigin: true,
+            backendCode: new LocalModuleAsset(p.join(__dirname, '..', '..', 'famtrac-backend'), {
+                buildCommand: './dev.make-zip.sh',
+                buildOutput: 'build_famtrac_function.zip',
+            }),
+        });
+        this.api = api;
+    }
+}
+
+export class FamtracInfraStack extends Stack {
+    constructor(scope: Construct, id: string, props?: StackProps) {
+        super(scope, id, props);
+
+
+        new FamtracBackendStack(this, 'BackendStack', {
+            stackName: 'FamtracBackendStack',
+        });
+    }
 }

@@ -16,3 +16,7 @@ target
 # DynamoDB Local
 dynamodb/
 dynamodb-local-metadata.json
+
+# Asset
+build_*_function.zip
+bootstrap
