@@ -27,8 +27,8 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 55: Configuration Validation at Startup**
     - **Validates: Requirements 20.1, 20.2, 20.4**
 
-- [ ] 2. Core utilities and validation
-  - [ ] 2.1 Implement validation utilities
+- [x] 2. Core utilities and validation
+  - [x] 2.1 Implement validation utilities
     - Create `src/utils/validation.ts` with validation functions
     - Implement rules: required, minLength, maxLength, pattern, pastDate, notFutureDate, positiveInteger, dateRange
     - _Requirements: 2.2, 4.2, 6.2, 6.3, 8.2, 8.3, 10.4, 10.5, 10.6, 10.7, 10.8, 18.1_
@@ -40,7 +40,7 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 29: Pumping Volume Validation**
     - **Validates: Requirements 2.2, 4.2, 6.2, 6.3, 8.2, 8.3, 10.4, 10.8**
   
-  - [ ] 2.3 Implement date utilities
+  - [x] 2.3 Implement date utilities
     - Create `src/utils/dateUtils.ts` with date formatting and age calculation
     - Implement age calculation based on date of birth
     - _Requirements: 7.4_
@@ -49,13 +49,13 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 22: Age Calculation Accuracy**
     - **Validates: Requirements 7.4**
   
-  - [ ] 2.5 Implement error handling utilities
+  - [x] 2.5 Implement error handling utilities
     - Create `src/utils/errorHandling.ts` with error parsing functions
     - Implement parseApiError and parseHttpError functions
     - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6, 15.7_
 
-- [ ] 3. API client implementation
-  - [ ] 3.1 Create API client core
+- [x] 3. API client implementation
+  - [x] 3.1 Create API client core
     - Create `src/api/client.ts` with ApiClient class
     - Implement HTTP methods: get, post, put, delete
     - Implement request timeout handling with AbortController
@@ -71,12 +71,12 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 42: Request Timeout Handling**
     - **Validates: Requirements 1.4, 16.1, 16.2, 16.3, 16.4, 16.5, 16.6**
   
-  - [ ] 3.3 Implement API type definitions
+  - [x] 3.3 Implement API type definitions
     - Create `src/api/types.ts` with request/response interfaces
     - Define types for Family, Dependent, and Activity endpoints
     - _Requirements: 2.3, 3.2, 4.3, 5.3, 6.5, 7.2, 8.4, 9.3, 10.9, 11.2, 12.3, 13.3_
   
-  - [ ] 3.4 Implement domain type definitions
+  - [x] 3.4 Implement domain type definitions
     - Create `src/types/domain.ts` with domain model interfaces
     - Define Family, Dependent, Activity types and enums
     - _Requirements: 2.4, 3.3, 6.6, 7.3, 10.10, 11.4_
