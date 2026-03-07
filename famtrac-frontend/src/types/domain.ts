@@ -55,8 +55,4 @@ export interface PumpingActivity extends BaseActivity {
 }
 
 // Union type for all activities
-export type Activity =
-  | FeedingActivity
-  | DiaperActivity
-  | SleepActivity
-  | PumpingActivity;
+export type Activity = FeedingActivity | DiaperActivity | SleepActivity | PumpingActivity;

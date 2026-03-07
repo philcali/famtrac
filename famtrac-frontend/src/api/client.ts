@@ -14,10 +14,7 @@ export class ApiClient {
   private config: ApiClientConfig;
   private getAuthToken: () => Promise<string | null>;
 
-  constructor(
-    clientConfig: ApiClientConfig,
-    getAuthToken: () => Promise<string | null>
-  ) {
+  constructor(clientConfig: ApiClientConfig, getAuthToken: () => Promise<string | null>) {
     this.config = clientConfig;
     this.getAuthToken = getAuthToken;
   }
@@ -38,11 +35,7 @@ export class ApiClient {
     return this.request<T>('DELETE', path);
   }
 
-  private async request<T>(
-    method: string,
-    path: string,
-    body?: unknown
-  ): Promise<ApiResponse<T>> {
+  private async request<T>(method: string, path: string, body?: unknown): Promise<ApiResponse<T>> {
     try {
       // Set up timeout handling with AbortController
       const controller = new AbortController();
@@ -124,9 +117,7 @@ export class ApiClient {
 const DEFAULT_TIMEOUT = 30000;
 
 // Factory function to create API client with default configuration
-export function createApiClient(
-  getAuthToken: () => Promise<string | null>
-): ApiClient {
+export function createApiClient(getAuthToken: () => Promise<string | null>): ApiClient {
   return new ApiClient(
     {
       baseURL: config.apiBaseUrl,

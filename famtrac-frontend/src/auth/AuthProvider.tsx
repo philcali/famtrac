@@ -1,4 +1,4 @@
-import React, { createContext, useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   parseTokensFromUrl,
   storeTokens,
@@ -10,26 +10,8 @@ import {
   getIdToken,
 } from './tokenService';
 import { buildLoginUrl } from '../config/cognito';
-
-interface CognitoUser {
-  sub: string;
-  email?: string;
-  email_verified?: boolean;
-  [key: string]: unknown;
-}
-
-export interface AuthContextValue {
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  user: CognitoUser | null;
-  login: () => void;
-  logout: () => void;
-  getToken: () => Promise<string | null>;
-}
-
-export const AuthContext = createContext<AuthContextValue | undefined>(
-  undefined
-);
+import { AuthContext } from './AuthContext';
+import type { AuthContextValue, CognitoUser } from './types';
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -67,11 +49,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (tokensFromUrl) {
           storeTokens(tokensFromUrl);
           // Clear the hash from URL
-          window.history.replaceState(
-            null,
-            '',
-            window.location.pathname + window.location.search
-          );
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
         }
 
         // Check for existing valid token
@@ -117,6 +95,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     initAuth();
   }, [parseUserFromIdToken]);
 
+  const login = useCallback(() => {
+    // Save current URL for post-login redirect
+    sessionStorage.setItem('auth_redirect_url', window.location.pathname);
+    // Redirect to Cognito hosted UI
+    window.location.href = buildLoginUrl();
+  }, []);
+
   // Listen for auth expiration events
   useEffect(() => {
     const handleAuthExpired = () => {
@@ -131,14 +116,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => {
       window.removeEventListener('auth:expired', handleAuthExpired);
     };
-  }, []);
-
-  const login = useCallback(() => {
-    // Save current URL for post-login redirect
-    sessionStorage.setItem('auth_redirect_url', window.location.pathname);
-    // Redirect to Cognito hosted UI
-    window.location.href = buildLoginUrl();
-  }, []);
+  }, [login]);
 
   const logout = useCallback(() => {
     clearTokens();
@@ -150,7 +128,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const getToken = useCallback(async (): Promise<string | null> => {
     const token = getAccessToken();
-    
+
     if (!token) {
       return null;
     }

@@ -27,44 +27,44 @@ function isHttpError(error: unknown): error is HttpError {
 
 export function parseHttpError(error: HttpError): ErrorInfo {
   const statusCode = error.response.status;
-  
+
   switch (statusCode) {
     case 400:
       return {
         message: error.response.data.error || 'Invalid request',
         type: 'validation',
         statusCode,
-        details: error.response.data.details
+        details: error.response.data.details,
       };
     case 401:
       return {
         message: 'Authentication required',
         type: 'http',
-        statusCode
+        statusCode,
       };
     case 403:
       return {
         message: "Access denied. You don't have permission to perform this action.",
         type: 'http',
-        statusCode
+        statusCode,
       };
     case 404:
       return {
         message: 'Resource not found',
         type: 'http',
-        statusCode
+        statusCode,
       };
     case 500:
       return {
         message: 'Server error. Please try again later.',
         type: 'http',
-        statusCode
+        statusCode,
       };
     default:
       return {
         message: error.response.data.error || 'An error occurred',
         type: 'http',
-        statusCode
+        statusCode,
       };
   }
 }
@@ -74,26 +74,26 @@ export function parseApiError(error: unknown): ErrorInfo {
   if (error instanceof TypeError && error.message.includes('fetch')) {
     return {
       message: 'Connection failed. Please check your network and try again.',
-      type: 'network'
+      type: 'network',
     };
   }
-  
+
   // Timeout error
   if (error instanceof Error && error.name === 'AbortError') {
     return {
       message: 'Request timed out. Please try again.',
-      type: 'network'
+      type: 'network',
     };
   }
-  
+
   // HTTP error with response
   if (isHttpError(error)) {
     return parseHttpError(error);
   }
-  
+
   // Unknown error
   return {
     message: 'An unexpected error occurred. Please try again.',
-    type: 'application'
+    type: 'application',
   };
 }
