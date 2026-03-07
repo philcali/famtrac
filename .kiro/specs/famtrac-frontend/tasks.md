@@ -81,8 +81,8 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - Define Family, Dependent, Activity types and enums
     - _Requirements: 2.4, 3.3, 6.6, 7.3, 10.10, 11.4_
 
-- [ ] 4. Authentication system
-  - [ ] 4.1 Implement token service
+- [x] 4. Authentication system
+  - [x] 4.1 Implement token service
     - Create `src/auth/tokenService.ts` with token management functions
     - Implement parseTokensFromUrl, storeTokens, getAccessToken, clearTokens
     - Implement isTokenExpired and refreshAccessToken functions
@@ -94,14 +94,14 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 5: Logout Clears Token**
     - **Validates: Requirements 1.3, 1.6**
   
-  - [ ] 4.3 Implement authentication context
+  - [x] 4.3 Implement authentication context
     - Create `src/auth/AuthProvider.tsx` with React Context
     - Implement useAuth hook in `src/auth/useAuth.ts`
     - Provide login, logout, getToken, and authentication state
     - Handle OAuth callback flow and token refresh
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
   
-  - [ ] 4.4 Implement protected route component
+  - [x] 4.4 Implement protected route component
     - Create `src/auth/ProtectedRoute.tsx` for route guarding
     - Redirect to Cognito login when not authenticated
     - Preserve current URL for post-login redirect
