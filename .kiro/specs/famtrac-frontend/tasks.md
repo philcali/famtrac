@@ -113,7 +113,7 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 36: URL Preservation on Auth Redirect**
     - **Validates: Requirements 1.2, 1.5, 14.6**
 
-- [ ] 5. Checkpoint - Ensure core infrastructure works
+- [x] 5. Checkpoint - Ensure core infrastructure works
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 6. Common UI components
