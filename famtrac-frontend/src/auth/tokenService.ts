@@ -17,7 +17,7 @@ export function parseTokensFromUrl(): CognitoTokens | null {
   if (!window.location.hash) {
     return null;
   }
-  
+
   const hash = window.location.hash.substring(1);
   if (!hash) {
     return null;
@@ -49,7 +49,7 @@ export function parseTokensFromUrl(): CognitoTokens | null {
  */
 export function storeTokens(tokens: CognitoTokens): void {
   sessionStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(tokens));
-  
+
   // Calculate and store expiry timestamp
   const expiryTime = Date.now() + tokens.expires_in * 1000;
   sessionStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
@@ -135,28 +135,21 @@ export function isTokenExpired(): boolean {
  * Refresh the access token using the refresh token
  * Note: This requires the Cognito token endpoint
  */
-export async function refreshAccessToken(
-  refreshToken: string
-): Promise<CognitoTokens | null> {
-  const cognitoConfig = await import('../config/cognito').then(
-    (m) => m.getCognitoConfig()
-  );
+export async function refreshAccessToken(refreshToken: string): Promise<CognitoTokens | null> {
+  const cognitoConfig = await import('../config/cognito').then((m) => m.getCognitoConfig());
 
   try {
-    const response = await fetch(
-      `https://${cognitoConfig.domain}/oauth2/token`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          grant_type: 'refresh_token',
-          client_id: cognitoConfig.clientId,
-          refresh_token: refreshToken,
-        }),
-      }
-    );
+    const response = await fetch(`https://${cognitoConfig.domain}/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: cognitoConfig.clientId,
+        refresh_token: refreshToken,
+      }),
+    });
 
     if (!response.ok) {
       console.error('Token refresh failed:', response.status);

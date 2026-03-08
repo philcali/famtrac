@@ -14,9 +14,7 @@ function TestComponent() {
 
   return (
     <div>
-      <div data-testid="auth-status">
-        {isAuthenticated ? 'Authenticated' : 'Not Authenticated'}
-      </div>
+      <div data-testid="auth-status">{isAuthenticated ? 'Authenticated' : 'Not Authenticated'}</div>
       {user && <div data-testid="user-email">{user.email}</div>}
     </div>
   );
@@ -42,9 +40,7 @@ describe('AuthProvider', () => {
       expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('auth-status')).toHaveTextContent(
-      'Not Authenticated'
-    );
+    expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
   });
 
   it('should set authenticated state when valid token exists', async () => {
@@ -65,12 +61,8 @@ describe('AuthProvider', () => {
       expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('auth-status')).toHaveTextContent(
-      'Authenticated'
-    );
-    expect(screen.getByTestId('user-email')).toHaveTextContent(
-      'test@example.com'
-    );
+    expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
+    expect(screen.getByTestId('user-email')).toHaveTextContent('test@example.com');
   });
 
   it('should handle OAuth callback with tokens in URL', async () => {
@@ -90,8 +82,6 @@ describe('AuthProvider', () => {
     });
 
     expect(storeTokensSpy).toHaveBeenCalled();
-    expect(screen.getByTestId('auth-status')).toHaveTextContent(
-      'Authenticated'
-    );
+    expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
   });
 });
