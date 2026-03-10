@@ -1,4 +1,4 @@
-use aws_lambda_events::apigw::{ApiGatewayProxyRequest, ApiGatewayProxyResponse};
+use aws_lambda_events::apigw::{ApiGatewayV2httpRequest, ApiGatewayV2httpResponse};
 use aws_lambda_events::encodings::Body;
 use aws_lambda_events::http::HeaderMap;
 use aws_sdk_dynamodb::Client;
@@ -36,7 +36,7 @@ async fn main() -> Result<(), Error> {
     let cors_config = CorsConfig::default();
 
     // Create handler closure with repository instances
-    let handler = service_fn(move |event: LambdaEvent<ApiGatewayProxyRequest>| {
+    let handler = service_fn(move |event: LambdaEvent<ApiGatewayV2httpRequest>| {
         let family_repo = family_repo.clone();
         let dependent_repo = dependent_repo.clone();
         let activity_repo = activity_repo.clone();
@@ -60,21 +60,21 @@ async fn main() -> Result<(), Error> {
 
 /// Route and handle incoming API Gateway requests
 async fn handle_request(
-    request: ApiGatewayProxyRequest,
+    request: ApiGatewayV2httpRequest,
     family_repo: &DynamoDbFamilyRepository,
     dependent_repo: &DynamoDbDependentRepository,
     activity_repo: &DynamoDbActivityRepository,
     cors_config: &CorsConfig,
-) -> Result<ApiGatewayProxyResponse, Error> {
+) -> Result<ApiGatewayV2httpResponse, Error> {
     // Log request for debugging (Requirement 9.4)
     eprintln!(
         "Received request: {} {}",
         request.http_method,
-        request.path.as_deref().unwrap_or("/")
+        request.raw_path.as_deref().unwrap_or("/")
     );
 
     // Handle OPTIONS requests for CORS preflight
-    if request.http_method == "OPTIONS" {
+    if request.request_context.http.method == "OPTIONS" {
         return Ok(create_options_response(cors_config));
     }
 
@@ -108,7 +108,7 @@ async fn handle_request(
 }
 
 /// Create OPTIONS response for CORS preflight
-fn create_options_response(cors_config: &CorsConfig) -> ApiGatewayProxyResponse {
+fn create_options_response(cors_config: &CorsConfig) -> ApiGatewayV2httpResponse {
     let mut headers = HeaderMap::new();
     headers.insert(
         "Access-Control-Allow-Origin",
@@ -123,17 +123,17 @@ fn create_options_response(cors_config: &CorsConfig) -> ApiGatewayProxyResponse 
         cors_config.allow_headers.parse().unwrap(),
     );
 
-    ApiGatewayProxyResponse {
+    ApiGatewayV2httpResponse {
         status_code: 200,
         headers,
-        multi_value_headers: HeaderMap::new(),
-        body: None,
         is_base64_encoded: false,
+        body: None,
+        ..Default::default()
     }
 }
 
 /// Convert HttpResponse to ApiGatewayProxyResponse
-fn to_api_gateway_response(response: HttpResponse) -> ApiGatewayProxyResponse {
+fn to_api_gateway_response(response: HttpResponse) -> ApiGatewayV2httpResponse {
     let mut headers = HeaderMap::new();
     for (key, value) in response.headers {
         if let Ok(header_value) = value.parse() {
@@ -160,11 +160,11 @@ fn to_api_gateway_response(response: HttpResponse) -> ApiGatewayProxyResponse {
         }
     }
 
-    ApiGatewayProxyResponse {
+    ApiGatewayV2httpResponse {
         status_code: response.status as i64,
         headers,
-        multi_value_headers: HeaderMap::new(),
         body: Some(Body::Text(response.body)),
         is_base64_encoded: false,
+        ..Default::default()
     }
 }

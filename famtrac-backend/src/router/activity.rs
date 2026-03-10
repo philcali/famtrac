@@ -10,7 +10,7 @@ use crate::repository::{
     DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
 };
 use crate::router::extractors::extract_uuid_param;
-use aws_lambda_events::apigw::ApiGatewayProxyRequest;
+use aws_lambda_events::apigw::ApiGatewayV2httpRequest;
 
 /// Route handler for all /activities/* routes
 ///
@@ -52,7 +52,7 @@ pub fn route_activity(
     method: &str,
     path: &str,
     body: &str,
-    request: &ApiGatewayProxyRequest,
+    request: &ApiGatewayV2httpRequest,
     context: &RequestContext,
     family_repo: &DynamoDbFamilyRepository,
     dependent_repo: &DynamoDbDependentRepository,

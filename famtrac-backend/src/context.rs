@@ -1,6 +1,6 @@
 use crate::domain::IdentityId;
 use crate::errors::AuthError;
-use aws_lambda_events::apigw::ApiGatewayProxyRequestContext;
+use aws_lambda_events::apigw::ApiGatewayV2httpRequestContext;
 use serde::{Deserialize, Serialize};
 
 /// Request context containing authenticated identity information
@@ -13,13 +13,14 @@ impl RequestContext {
     /// Extract identity from API Gateway request context
     /// Returns AuthError::MissingIdentity if identity is not present
     pub fn from_api_gateway_context(
-        context: &ApiGatewayProxyRequestContext,
+        context: &ApiGatewayV2httpRequestContext,
     ) -> Result<Self, AuthError> {
         // Extract identity from authorizer context
         // API Gateway with JWT authorizer puts the identity in the authorizer.jwt.claims
         let identity_id = context
             .authorizer
-            .jwt
+            .as_ref()
+            .and_then(|a| a.jwt.clone())
             .as_ref()
             .and_then(|jwt| jwt.claims.get("sub"))
             .map(|s| s.to_string())
@@ -42,10 +43,10 @@ impl RequestContext {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use aws_lambda_events::apigw::{ApiGatewayProxyRequestContext, ApiGatewayRequestAuthorizer};
+    use aws_lambda_events::apigw::{ApiGatewayRequestAuthorizer, ApiGatewayV2httpRequestContext};
     use std::collections::HashMap;
 
-    fn create_test_context_with_identity(identity_id: &str) -> ApiGatewayProxyRequestContext {
+    fn create_test_context_with_identity(identity_id: &str) -> ApiGatewayV2httpRequestContext {
         let mut claims = HashMap::new();
         claims.insert("sub".to_string(), identity_id.to_string());
 
@@ -54,21 +55,21 @@ mod tests {
             scopes: None,
         };
 
-        ApiGatewayProxyRequestContext {
-            authorizer: ApiGatewayRequestAuthorizer {
+        ApiGatewayV2httpRequestContext {
+            authorizer: Some(ApiGatewayRequestAuthorizer {
                 jwt: Some(jwt),
                 ..Default::default()
-            },
+            }),
             ..Default::default()
         }
     }
 
-    fn create_test_context_without_identity() -> ApiGatewayProxyRequestContext {
-        ApiGatewayProxyRequestContext {
-            authorizer: ApiGatewayRequestAuthorizer {
+    fn create_test_context_without_identity() -> ApiGatewayV2httpRequestContext {
+        ApiGatewayV2httpRequestContext {
+            authorizer: Some(ApiGatewayRequestAuthorizer {
                 jwt: None,
                 ..Default::default()
-            },
+            }),
             ..Default::default()
         }
     }
@@ -94,11 +95,11 @@ mod tests {
 
     #[test]
     fn test_extract_identity_missing_jwt() {
-        let api_context = ApiGatewayProxyRequestContext {
-            authorizer: ApiGatewayRequestAuthorizer {
+        let api_context = ApiGatewayV2httpRequestContext {
+            authorizer: Some(ApiGatewayRequestAuthorizer {
                 jwt: None,
                 ..Default::default()
-            },
+            }),
             ..Default::default()
         };
         let result = RequestContext::from_api_gateway_context(&api_context);
@@ -117,11 +118,11 @@ mod tests {
             scopes: None,
         };
 
-        let api_context = ApiGatewayProxyRequestContext {
-            authorizer: ApiGatewayRequestAuthorizer {
+        let api_context = ApiGatewayV2httpRequestContext {
+            authorizer: Some(ApiGatewayRequestAuthorizer {
                 jwt: Some(jwt),
                 ..Default::default()
-            },
+            }),
             ..Default::default()
         };
         let result = RequestContext::from_api_gateway_context(&api_context);

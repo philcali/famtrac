@@ -10,7 +10,7 @@ use crate::repository::{
 };
 use crate::utils::cors::CorsConfig;
 use crate::utils::response::HttpResponse;
-use aws_lambda_events::apigw::ApiGatewayProxyRequest;
+use aws_lambda_events::apigw::ApiGatewayV2httpRequest;
 
 pub mod activity;
 pub mod dependent;
@@ -46,7 +46,7 @@ pub mod family;
 /// - Requirement 7.4: Preserve logging statement "Routing: {method} {path}"
 /// - Requirement 7.5: Preserve CORS header handling through HttpResponse::from_handler_result()
 pub fn route_request(
-    request: &ApiGatewayProxyRequest,
+    request: &ApiGatewayV2httpRequest,
     context: &RequestContext,
     family_repo: &DynamoDbFamilyRepository,
     dependent_repo: &DynamoDbDependentRepository,
@@ -55,7 +55,7 @@ pub fn route_request(
 ) -> HttpResponse {
     // Extract HTTP method, path, and body from request
     let method = request.http_method.as_str();
-    let path = request.path.as_deref().unwrap_or("/");
+    let path = request.raw_path.as_deref().unwrap_or("/");
     let body = request.body.as_deref().unwrap_or("");
 
     // Log routing information (Requirement 7.4)
