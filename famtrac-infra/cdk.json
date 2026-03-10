@@ -17,6 +17,10 @@
     ]
   },
   "context": {
+    "famtrac/enableCustomDomain": false,
+    "famtrac/customDomain": "family.philcali.me",
+    "famtrac/hostedZoneId": "",
+    "famtrac/caertificateId": "",
     "@aws-cdk/aws-signer:signingProfileNamePassedToCfn": true,
     "@aws-cdk/aws-ecs-patterns:secGroupsDisablesImplicitOpenListener": true,
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
