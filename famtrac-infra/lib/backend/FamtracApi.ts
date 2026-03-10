@@ -1,9 +1,18 @@
 import { ArnFormat, Duration, Stack } from "aws-cdk-lib";
-import { CfnApi, CfnAuthorizer, CfnIntegration, CfnRoute, CfnRouteProps, CfnStage } from "aws-cdk-lib/aws-apigatewayv2";
+import { CfnApi, CfnApiMapping, CfnAuthorizer, CfnDomainName, CfnIntegration, CfnRoute, CfnRouteProps, CfnStage } from "aws-cdk-lib/aws-apigatewayv2";
+import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
 import { AttributeType, BillingMode, ITable, ProjectionType, Table } from "aws-cdk-lib/aws-dynamodb";
 import { Effect, PolicyStatement, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Architecture, Code, Function, Runtime } from "aws-cdk-lib/aws-lambda";
+import { CnameRecord, IHostedZone } from "aws-cdk-lib/aws-route53";
 import { Construct } from "constructs";
+
+
+export interface FamtracApiDomainProps {
+    readonly certificate: ICertificate;
+    readonly hostedZone: IHostedZone;
+    readonly domainName: string;
+}
 
 export interface FamtracApiAuthorizationProps {
     readonly issuer: string;
@@ -14,6 +23,9 @@ export interface FamtracApiAuthorizationProps {
 export interface IFamtracApi {
     readonly table: ITable;
     readonly apiId: string;
+    readonly stageId: string;
+
+    addDomain(id: string, props: FamtracApiDomainProps): void;
 }
 
 export interface FamtracApiProps {
@@ -28,6 +40,7 @@ export interface FamtracApiProps {
 export class FamtracApi extends Construct implements IFamtracApi {
     readonly table: ITable;
     readonly apiId: string;
+    readonly stageId: string;
 
     constructor(scope: Construct, id: string, props: FamtracApiProps) {
         super(scope, id);
@@ -190,6 +203,33 @@ export class FamtracApi extends Construct implements IFamtracApi {
                 arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
                 resourceName: "*/*"
             })
+        });
+        this.stageId = resourceStage.ref;
+    }
+
+    addDomain(id: string, props: FamtracApiDomainProps): void {
+        const domainCreation = new CfnDomainName(this, `${id}Name`, {
+            domainName: props.domainName,
+            domainNameConfigurations: [
+                {
+                    certificateArn: props.certificate.certificateArn,
+                    endpointType: 'REGIONAL',
+                    securityPolicy: 'TLS_1_2',
+                },
+            ],
+        });
+        const mappingResource = new CfnApiMapping(this, `${id}Mapping`, {
+            apiId: this.apiId,
+            domainName: props.domainName,
+            stage: this.stageId,
+        });
+        mappingResource.addDependency(domainCreation);
+
+        new CnameRecord(this, `${id}CNAME`, {
+            domainName: domainCreation.attrRegionalDomainName,
+            zone: props.hostedZone,
+            recordName: props.domainName,
+            ttl: Duration.minutes(5),
         });
     }
 }
