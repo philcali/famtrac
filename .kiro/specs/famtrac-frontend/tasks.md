@@ -283,8 +283,8 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - Implement filtering controls
     - _Requirements: 10.1, 10.10, 11.1, 11.2, 11.8, 12.1, 12.4, 13.1, 13.4_
 
-- [ ] 12. Routing and navigation
-  - [ ] 12.1 Set up React Router
+- [x] 12. Routing and navigation
+  - [x] 12.1 Set up React Router
     - Create `src/App.tsx` with route configuration
     - Define routes for families list, family detail, dependent detail
     - Add callback route for OAuth handling
@@ -296,13 +296,13 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 35: Invalid Route Handling**
     - **Validates: Requirements 14.4, 14.5**
   
-  - [ ] 12.3 Create navigation components
+  - [x] 12.3 Create navigation components
     - Add navigation bar using react-bootstrap Navbar
     - Include logout button in navigation
     - Show current user information
     - _Requirements: 1.6, 14.1_
   
-  - [ ] 12.4 Create error pages
+  - [x] 12.4 Create error pages
     - Create `src/pages/NotFoundPage.tsx` for 404 errors
     - Create `src/pages/ErrorPage.tsx` for general errors
     - _Requirements: 14.5, 15.4_

@@ -17,3 +17,4 @@ export { ConfirmDialog } from './ConfirmDialog';
 export type { ConfirmDialogProps } from './ConfirmDialog';
 
 export { ErrorBoundary } from './ErrorBoundary';
+export { Navigation } from './Navigation';
