@@ -116,8 +116,8 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
 - [x] 5. Checkpoint - Ensure core infrastructure works
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Common UI components
-  - [ ] 6.1 Create base form components
+- [x] 6. Common UI components
+  - [x] 6.1 Create base form components
     - Create `src/components/common/Input.tsx` with validation support
     - Create `src/components/common/Button.tsx` with loading states
     - Use react-bootstrap Form components with accessibility features
@@ -131,7 +131,7 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 48: Required Field Indicators**
     - **Validates: Requirements 17.4, 18.1, 18.2, 18.3, 18.6**
   
-  - [ ] 6.3 Create feedback components
+  - [x] 6.3 Create feedback components
     - Create `src/components/common/LoadingSpinner.tsx` using react-bootstrap Spinner
     - Create `src/components/common/ErrorMessage.tsx` using react-bootstrap Alert
     - Create `src/components/common/SuccessMessage.tsx` with auto-dismiss
@@ -144,7 +144,7 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 52: Success Message Auto-Dismiss**
     - **Validates: Requirements 2.6, 19.1, 19.4, 19.5**
   
-  - [ ] 6.5 Create error boundary component
+  - [x] 6.5 Create error boundary component
     - Create `src/components/common/ErrorBoundary.tsx` for application errors
     - Display fallback UI with reload option
     - Log errors to console
