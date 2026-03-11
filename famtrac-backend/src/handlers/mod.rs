@@ -11,6 +11,6 @@ pub use dependent::{
     DependentResponse, UpdateDependentRequest,
 };
 pub use family::{
-    create_family, get_family, update_family, CreateFamilyRequest, FamilyResponse,
+    create_family, get_family, list_families, update_family, CreateFamilyRequest, FamilyResponse,
     UpdateFamilyRequest,
 };

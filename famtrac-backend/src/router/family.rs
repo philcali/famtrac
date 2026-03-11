@@ -10,6 +10,7 @@ use crate::router::extractors::extract_uuid_param;
 /// Route handler for all /families/* routes
 ///
 /// This function handles routing for family-related endpoints:
+/// - GET /families - List all families for authenticated identity
 /// - POST /families - Create a new family
 /// - GET /families/{id} - Get a family by ID
 /// - PUT /families/{id} - Update a family
@@ -32,11 +33,12 @@ use crate::router::extractors::extract_uuid_param;
 /// # Requirements
 ///
 /// - Requirement 3.1: Handle all /families/* routes
-/// - Requirement 3.2: POST /families → create_family()
-/// - Requirement 3.3: GET /families/{id} → get_family()
-/// - Requirement 3.4: PUT /families/{id} → update_family()
-/// - Requirement 3.5: GET /families/{id}/dependents → list_dependents()
-/// - Requirement 3.6: Invalid UUID → HandlerError::Validation
+/// - Requirement 3.2: GET /families → list_families()
+/// - Requirement 3.3: POST /families → create_family()
+/// - Requirement 3.4: GET /families/{id} → get_family()
+/// - Requirement 3.5: PUT /families/{id} → update_family()
+/// - Requirement 3.6: GET /families/{id}/dependents → list_dependents()
+/// - Requirement 3.7: Invalid UUID → HandlerError::Validation
 /// - Requirement 6.5: Use extractors from extractors.rs
 pub fn route_family(
     method: &str,
@@ -47,6 +49,16 @@ pub fn route_family(
     dependent_repo: &DynamoDbDependentRepository,
 ) -> Result<serde_json::Value, HandlerError> {
     match (method, path) {
+        // GET /families - List all families for authenticated identity
+        ("GET", "/families") => {
+            let (_status, response_json) = handlers::list_families(context, family_repo)?;
+            let response: serde_json::Value =
+                serde_json::from_str(&response_json).map_err(|e| {
+                    HandlerError::InternalError(format!("Failed to parse response: {}", e))
+                })?;
+            Ok(response)
+        }
+
         // POST /families - Create a new family
         ("POST", "/families") => {
             let (_status, response_json) = handlers::create_family(body, context, family_repo)?;
@@ -128,6 +140,15 @@ mod tests {
 
         // Verify the pattern matches
         assert!(matches!((method, path), ("POST", "/families")));
+    }
+    #[test]
+    fn test_get_families_list_route() {
+        // This test verifies the route pattern matching for GET /families
+        let method = "GET";
+        let path = "/families";
+
+        // Verify the pattern matches
+        assert!(matches!((method, path), ("GET", "/families")));
     }
 
     #[test]
