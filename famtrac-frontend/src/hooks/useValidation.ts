@@ -1,9 +1,7 @@
 import { useState, useCallback } from 'react';
 import { type ValidationResult } from '../utils/validation';
 
-export interface ValidationRule {
-  validate: (value: unknown) => ValidationResult;
-}
+export type ValidationRule = (value: unknown) => ValidationResult;
 
 export interface FieldValidation {
   [fieldName: string]: ValidationRule[];
@@ -42,7 +40,7 @@ export function useValidation(rules: FieldValidation) {
 
       // Run all validation rules for this field
       for (const rule of fieldRules) {
-        const result = rule.validate(value);
+        const result = rule(value);
         if (!result.isValid) {
           // Update errors state with the first error found
           setErrors((prev) => ({
@@ -81,7 +79,7 @@ export function useValidation(rules: FieldValidation) {
 
         // Run all validation rules for this field
         for (const rule of fieldRules) {
-          const result = rule.validate(value);
+          const result = rule(value);
           if (!result.isValid) {
             newErrors[fieldName] = result.error || 'Validation failed';
             isValid = false;

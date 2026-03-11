@@ -205,13 +205,13 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - Handle create, update, delete operations with user feedback
     - _Requirements: 2.1, 2.4, 2.5, 3.1, 4.1, 4.4, 5.1, 5.4, 14.1_
 
-- [ ] 9. Dependent management features
-  - [ ] 9.1 Implement dependent API methods
+- [x] 9. Dependent management features
+  - [x] 9.1 Implement dependent API methods
     - Create `src/api/dependents.ts` with CRUD operations
     - Implement getDependents, getDependent, createDependent, updateDependent, deleteDependent
     - _Requirements: 6.5, 7.1, 7.2, 8.4, 9.3_
   
-  - [ ] 9.2 Create dependent UI components
+  - [x] 9.2 Create dependent UI components
     - Create `src/components/dependents/DependentList.tsx` to display dependents
     - Create `src/components/dependents/DependentCard.tsx` using react-bootstrap Card
     - Create `src/components/dependents/DependentForm.tsx` for create/edit
@@ -224,13 +224,13 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 21: Dependent Data Completeness**
     - **Validates: Requirements 6.4, 7.1, 7.3**
   
-  - [ ] 9.4 Create family detail page
+  - [x] 9.4 Create family detail page
     - Create `src/pages/FamilyDetailPage.tsx` to view single family
     - Display family information and associated dependents
     - Support adding, editing, and deleting dependents
     - _Requirements: 3.2, 3.3, 6.1, 6.6, 7.1, 8.1, 8.5, 9.1, 9.4, 14.2_
   
-  - [ ] 9.5 Create dependent detail page
+  - [x] 9.5 Create dependent detail page
     - Create `src/pages/DependentDetailPage.tsx` to view single dependent
     - Display dependent information with age
     - Prepare for activity list integration (next phase)

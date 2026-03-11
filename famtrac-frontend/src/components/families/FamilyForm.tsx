@@ -4,6 +4,7 @@ import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { useValidation } from '../../hooks/useValidation';
 import type { Family } from '../../types/domain';
+import { minLength, required } from '../../utils/validation';
 
 export interface FamilyFormProps {
   family?: Family;
@@ -23,19 +24,7 @@ export function FamilyForm({ family, onSubmit, onCancel, loading = false }: Fami
   const [name, setName] = useState(family?.name || '');
 
   const { validate, validateAll, errors, clearError } = useValidation({
-    name: [
-      {
-        validate: (value: unknown) => {
-          if (typeof value !== 'string') {
-            return { isValid: false, error: 'Family name must be a string' };
-          }
-          if (value.length < 1) {
-            return { isValid: false, error: 'Family name must be at least 1 character' };
-          }
-          return { isValid: true, error: null };
-        },
-      },
-    ],
+    name: [required('Name'), minLength(1)],
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
