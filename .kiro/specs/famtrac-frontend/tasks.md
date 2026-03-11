@@ -236,11 +236,11 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - Prepare for activity list integration (next phase)
     - _Requirements: 7.2, 7.3, 7.4, 8.1, 8.5, 14.3_
 
-- [ ] 10. Checkpoint - Ensure family and dependent features work
+- [x] 10. Checkpoint - Ensure family and dependent features work
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 11. Activity management features
-  - [ ] 11.1 Implement activity API methods
+- [x] 11. Activity management features
+  - [x] 11.1 Implement activity API methods
     - Create `src/api/activities.ts` with CRUD operations
     - Implement getActivities, getActivity, createActivity, updateActivity, deleteActivity
     - Support filtering by date range and activity type
@@ -251,7 +251,7 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 24: Activity Type Validation**
     - **Validates: Requirements 10.2, 10.3**
   
-  - [ ] 11.3 Create activity form component
+  - [x] 11.3 Create activity form component
     - Create `src/components/activities/ActivityForm.tsx` for create/edit
     - Implement conditional validation based on activity type
     - Show/hide fields based on selected activity type
@@ -263,7 +263,7 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 28: Sleep Time Range Validation**
     - **Validates: Requirements 10.5, 10.6, 10.7**
   
-  - [ ] 11.5 Create activity display components
+  - [x] 11.5 Create activity display components
     - Create `src/components/activities/ActivityCard.tsx` using react-bootstrap Card
     - Create `src/components/activities/ActivityList.tsx` with sorting
     - Create `src/components/activities/ActivityFilters.tsx` for date/type filtering
@@ -277,7 +277,7 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 33: Activity Type Filtering**
     - **Validates: Requirements 11.3, 11.4, 11.5, 11.6**
   
-  - [ ] 11.7 Integrate activities into dependent detail page
+  - [x] 11.7 Integrate activities into dependent detail page
     - Update DependentDetailPage to display activity list
     - Add activity creation, editing, and deletion
     - Implement filtering controls
