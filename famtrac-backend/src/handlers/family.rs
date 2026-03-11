@@ -173,6 +173,29 @@ pub fn update_family<R: FamilyRepository, D: crate::repository::DependentReposit
     // Return 200 OK
     Ok((200, response_json))
 }
+/// Handler for GET /families
+/// Lists all families owned by the authenticated identity
+///
+/// Requirements:
+/// - 1.3: Retrieve families by owner
+/// - 10.3: Serialize response data into valid JSON format
+pub fn list_families<R: FamilyRepository>(
+    context: &RequestContext,
+    repository: &R,
+) -> Result<(u16, String), HandlerError> {
+    // Retrieve all families owned by the authenticated identity
+    let families = repository.get_by_owner(context.identity_id.clone())?;
+
+    // Convert to response format
+    let response: Vec<FamilyResponse> = families.into_iter().map(FamilyResponse::from).collect();
+
+    // Serialize response (Requirement 10.3)
+    let response_json = serde_json::to_string(&response)
+        .map_err(|e| HandlerError::InternalError(format!("Failed to serialize response: {}", e)))?;
+
+    // Return 200 OK
+    Ok((200, response_json))
+}
 
 #[cfg(test)]
 mod tests {
@@ -237,8 +260,22 @@ mod tests {
             }
         }
 
-        fn get_by_owner(&self, _owner_id: IdentityId) -> Result<Vec<Family>, StoreError> {
-            unimplemented!()
+        fn get_by_owner(&self, owner_id: IdentityId) -> Result<Vec<Family>, StoreError> {
+            if self.should_fail {
+                Err(StoreError::ConnectionError(
+                    "Database unavailable".to_string(),
+                ))
+            } else {
+                let families: Vec<Family> = self
+                    .families
+                    .lock()
+                    .unwrap()
+                    .values()
+                    .filter(|f| f.owner_id == owner_id)
+                    .cloned()
+                    .collect();
+                Ok(families)
+            }
         }
     }
 
@@ -719,6 +756,80 @@ mod tests {
             &repository,
             &dependent_repo,
         );
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            HandlerError::Store(_) => {}
+            _ => panic!("Expected store error"),
+        }
+    }
+    #[test]
+    fn test_list_families_success() {
+        let owner_id = IdentityId::new("user-123".to_string());
+        let context = create_test_context("user-123");
+        let repository = MockFamilyRepository::new();
+
+        // Create multiple families
+        let family1 = Family {
+            id: FamilyId::new(),
+            name: "Smith Family".to_string(),
+            owner_id: owner_id.clone(),
+            created_at: Timestamp::now(),
+            updated_at: Timestamp::now(),
+        };
+        let family2 = Family {
+            id: FamilyId::new(),
+            name: "Jones Family".to_string(),
+            owner_id: owner_id.clone(),
+            created_at: Timestamp::now(),
+            updated_at: Timestamp::now(),
+        };
+
+        repository
+            .families
+            .lock()
+            .unwrap()
+            .insert(family1.id, family1);
+        repository
+            .families
+            .lock()
+            .unwrap()
+            .insert(family2.id, family2);
+
+        let result = list_families(&context, &repository);
+
+        assert!(result.is_ok());
+        let (status, response_json) = result.unwrap();
+        assert_eq!(status, 200);
+
+        let response: Vec<FamilyResponse> = serde_json::from_str(&response_json).unwrap();
+        assert_eq!(response.len(), 2);
+        assert!(response.iter().any(|f| f.name == "Smith Family"));
+        assert!(response.iter().any(|f| f.name == "Jones Family"));
+    }
+
+    #[test]
+    fn test_list_families_empty() {
+        let context = create_test_context("user-123");
+        let repository = MockFamilyRepository::new();
+
+        let result = list_families(&context, &repository);
+
+        assert!(result.is_ok());
+        let (status, response_json) = result.unwrap();
+        assert_eq!(status, 200);
+
+        let response: Vec<FamilyResponse> = serde_json::from_str(&response_json).unwrap();
+        assert_eq!(response.len(), 0);
+    }
+
+    #[test]
+    fn test_list_families_repository_error() {
+        let context = create_test_context("user-123");
+        let mut repository = MockFamilyRepository::new();
+        repository.should_fail = true;
+
+        let result = list_families(&context, &repository);
 
         assert!(result.is_err());
         match result.unwrap_err() {
