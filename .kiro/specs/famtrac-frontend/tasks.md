@@ -150,13 +150,13 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - Log errors to console
     - _Requirements: 15.7_
 
-- [ ] 7. Custom hooks for API and forms
-  - [ ] 7.1 Implement useApi hook
+- [x] 7. Custom hooks for API and forms
+  - [x] 7.1 Implement useApi hook
     - Create `src/hooks/useApi.ts` for data fetching with loading/error states
     - Implement useApiMutation for create/update/delete operations
     - _Requirements: 2.5, 2.6, 4.5, 6.7, 8.6, 9.5, 10.11, 12.5, 13.5_
   
-  - [ ] 7.2 Implement useValidation hook
+  - [x] 7.2 Implement useValidation hook
     - Create `src/hooks/useValidation.ts` for form validation logic
     - Support field-level and form-level validation
     - Track validation errors and provide clear/validate functions
@@ -166,7 +166,7 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 47: Submit Button Disabled with Errors**
     - **Validates: Requirements 18.4**
   
-  - [ ] 7.4 Implement useForm hook
+  - [x] 7.4 Implement useForm hook
     - Create `src/hooks/useForm.ts` for form state management
     - Integrate with useValidation for automatic validation
     - _Requirements: 18.1, 18.4_
