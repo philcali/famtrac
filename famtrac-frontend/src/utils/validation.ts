@@ -1,18 +1,22 @@
+import type { ValidationRule } from '../hooks/useValidation';
+
 export interface ValidationResult {
   isValid: boolean;
   error: string | null;
 }
 
-export function required(value: unknown): ValidationResult {
-  if (value === null || value === undefined || value === '') {
-    return { isValid: false, error: 'This field is required' };
-  }
-  return { isValid: true, error: null };
+export function required(field: string): ValidationRule {
+  return (value: unknown): ValidationResult => {
+    if (value === null || value === undefined || value === '') {
+      return { isValid: false, error: `${field} is required` };
+    }
+    return { isValid: true, error: null };
+  };
 }
 
-export function minLength(min: number) {
-  return (value: string): ValidationResult => {
-    if (value.length < min) {
+export function minLength(min: number): ValidationRule {
+  return (value: unknown): ValidationResult => {
+    if (typeof value === 'string' && (value as string).length < min) {
       return { isValid: false, error: `Must be at least ${min} character${min !== 1 ? 's' : ''}` };
     }
     return { isValid: true, error: null };
@@ -37,65 +41,92 @@ export function pattern(regex: RegExp, message: string) {
   };
 }
 
-export function pastDate(value: string): ValidationResult {
-  const date = new Date(value);
-  const now = new Date();
+export function pastDate(field: string): ValidationRule {
+  return (value: unknown) => {
+    if (typeof value !== 'string' && typeof value !== 'number') {
+      return { isValid: false, error: 'Invalid date' };
+    }
 
-  if (isNaN(date.getTime())) {
-    return { isValid: false, error: 'Invalid date' };
-  }
+    const date = new Date(value);
+    const now = new Date();
 
-  if (date >= now) {
-    return { isValid: false, error: 'Date must be in the past' };
-  }
+    if (isNaN(date.getTime())) {
+      return { isValid: false, error: 'Invalid date' };
+    }
 
-  return { isValid: true, error: null };
+    if (date >= now) {
+      return { isValid: false, error: `${field} must be in the past` };
+    }
+
+    return { isValid: true, error: null };
+  };
 }
 
-export function notFutureDate(value: string): ValidationResult {
-  const date = new Date(value);
-  const now = new Date();
+export function notFutureDate(field: string): ValidationRule {
+  return (value: unknown) => {
+    if (typeof value !== 'string' && typeof value !== 'number') {
+      return { isValid: false, error: 'Invalid date' };
+    }
+    const date = new Date(value);
+    const now = new Date();
 
-  if (isNaN(date.getTime())) {
-    return { isValid: false, error: 'Invalid date' };
-  }
+    if (isNaN(date.getTime())) {
+      return { isValid: false, error: 'Invalid date' };
+    }
 
-  if (date > now) {
-    return { isValid: false, error: 'Date cannot be in the future' };
-  }
+    if (date > now) {
+      return { isValid: false, error: `${field} cannot be in the future` };
+    }
 
-  return { isValid: true, error: null };
+    return { isValid: true, error: null };
+  };
 }
 
-export function positiveInteger(value: string | number): ValidationResult {
-  const num = typeof value === 'string' ? parseInt(value, 10) : value;
+export function positiveInteger(field: string): ValidationRule {
+  return (value: unknown) => {
+    if (typeof value !== 'string' && typeof value !== 'number') {
+      return { isValid: false, error: 'Invalid number' };
+    }
 
-  if (isNaN(num)) {
-    return { isValid: false, error: 'Must be a number' };
-  }
+    const num = typeof value === 'string' ? parseInt(value, 10) : value;
 
-  if (!Number.isInteger(num)) {
-    return { isValid: false, error: 'Must be an integer' };
-  }
+    if (isNaN(num)) {
+      return { isValid: false, error: `${field} must be a number` };
+    }
 
-  if (num <= 0) {
-    return { isValid: false, error: 'Must be a positive number' };
-  }
+    if (!Number.isInteger(num)) {
+      return { isValid: false, error: `${field} must be an integer` };
+    }
 
-  return { isValid: true, error: null };
+    if (num <= 0) {
+      return { isValid: false, error: `${field} be a positive number` };
+    }
+
+    return { isValid: true, error: null };
+  };
 }
 
-export function dateRange(startDate: string, endDate: string): ValidationResult {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+export function dateRange(startDate: string, endDate: string): ValidationRule {
+  return (value: unknown) => {
+    if (typeof value !== 'string' && typeof value !== 'number') {
+      return { isValid: false, error: 'Invalid date' };
+    }
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const current = new Date(value);
 
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-    return { isValid: false, error: 'Invalid date range' };
-  }
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return { isValid: false, error: 'Invalid date range' };
+    }
 
-  if (end <= start) {
-    return { isValid: false, error: 'End date must be after start date' };
-  }
+    if (end <= start) {
+      return { isValid: false, error: 'End date must be after start date' };
+    }
 
-  return { isValid: true, error: null };
+    if (current < start || current > end) {
+      return { isValid: false, error: `Date is not within ${start} and ${end}` };
+    }
+
+    return { isValid: true, error: null };
+  };
 }
