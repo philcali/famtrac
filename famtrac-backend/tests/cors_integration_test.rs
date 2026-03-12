@@ -37,8 +37,8 @@ fn test_options_handler_returns_cors_headers() {
     );
 }
 
-#[test]
-fn test_success_response_includes_cors_headers() {
+#[tokio::test]
+async fn test_success_response_includes_cors_headers() {
     // Test that successful API responses include CORS headers
     let repository = MockFamilyRepository::new();
     let context = RequestContext {
@@ -46,7 +46,7 @@ fn test_success_response_includes_cors_headers() {
     };
 
     let request_body = r#"{"name":"Test Family"}"#;
-    let result = create_family(request_body, &context, &repository);
+    let result = create_family(request_body, &context, &repository).await;
 
     // Convert handler result to HttpResponse with CORS
     let cors_config = CorsConfig::default();
@@ -66,8 +66,8 @@ fn test_success_response_includes_cors_headers() {
         .contains_key("Access-Control-Allow-Headers"));
 }
 
-#[test]
-fn test_error_response_includes_cors_headers() {
+#[tokio::test]
+async fn test_error_response_includes_cors_headers() {
     // Test that error responses include CORS headers
     let repository = MockFamilyRepository::new();
     let context = RequestContext {
@@ -76,7 +76,7 @@ fn test_error_response_includes_cors_headers() {
 
     // Invalid JSON should trigger an error
     let request_body = r#"{"name":}"#;
-    let result = create_family(request_body, &context, &repository);
+    let result = create_family(request_body, &context, &repository).await;
 
     // Convert handler result to HttpResponse with CORS
     let cors_config = CorsConfig::default();
@@ -96,8 +96,8 @@ fn test_error_response_includes_cors_headers() {
         .contains_key("Access-Control-Allow-Headers"));
 }
 
-#[test]
-fn test_not_found_response_includes_cors_headers() {
+#[tokio::test]
+async fn test_not_found_response_includes_cors_headers() {
     // Test that 404 responses include CORS headers
     let repository = MockFamilyRepository::new();
     let context = RequestContext {
@@ -110,7 +110,8 @@ fn test_not_found_response_includes_cors_headers() {
         &context,
         &repository,
         &MockDependentRepository::new(),
-    );
+    )
+    .await;
 
     // Convert handler result to HttpResponse with CORS
     let cors_config = CorsConfig::default();

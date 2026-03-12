@@ -2,35 +2,38 @@ use crate::domain::{
     Activity, ActivityType, Date, Dependent, DependentId, Family, FamilyId, IdentityId,
 };
 use crate::errors::StoreError;
+use async_trait::async_trait;
 
 /// Repository trait for Family operations
-pub trait FamilyRepository {
+#[async_trait]
+pub trait FamilyRepository: Send + Sync {
     /// Create a new family
-    fn create(&self, family: Family) -> Result<Family, StoreError>;
+    async fn create(&self, family: Family) -> Result<Family, StoreError>;
 
     /// Get a family by ID
-    fn get(&self, id: FamilyId) -> Result<Option<Family>, StoreError>;
+    async fn get(&self, id: FamilyId) -> Result<Option<Family>, StoreError>;
 
     /// Update an existing family
-    fn update(&self, family: Family) -> Result<Family, StoreError>;
+    async fn update(&self, family: Family) -> Result<Family, StoreError>;
 
     /// Get all families owned by a specific identity
-    fn get_by_owner(&self, owner_id: IdentityId) -> Result<Vec<Family>, StoreError>;
+    async fn get_by_owner(&self, owner_id: IdentityId) -> Result<Vec<Family>, StoreError>;
 }
 
 /// Repository trait for Dependent operations
-pub trait DependentRepository {
+#[async_trait]
+pub trait DependentRepository: Send + Sync {
     /// Create a new dependent
-    fn create(&self, dependent: Dependent) -> Result<Dependent, StoreError>;
+    async fn create(&self, dependent: Dependent) -> Result<Dependent, StoreError>;
 
     /// Get a dependent by ID
-    fn get(&self, id: DependentId) -> Result<Option<Dependent>, StoreError>;
+    async fn get(&self, id: DependentId) -> Result<Option<Dependent>, StoreError>;
 
     /// Update an existing dependent
-    fn update(&self, dependent: Dependent) -> Result<Dependent, StoreError>;
+    async fn update(&self, dependent: Dependent) -> Result<Dependent, StoreError>;
 
     /// List all dependents for a specific family
-    fn list_by_family(&self, family_id: FamilyId) -> Result<Vec<Dependent>, StoreError>;
+    async fn list_by_family(&self, family_id: FamilyId) -> Result<Vec<Dependent>, StoreError>;
 }
 
 /// Query parameters for activity queries
@@ -43,19 +46,20 @@ pub struct ActivityQueryParams {
 }
 
 /// Repository trait for Activity operations
-pub trait ActivityRepository {
+#[async_trait]
+pub trait ActivityRepository: Send + Sync {
     /// Create a new activity
-    fn create(&self, activity: Activity) -> Result<Activity, StoreError>;
+    async fn create(&self, activity: Activity) -> Result<Activity, StoreError>;
 
     /// Get an activity by ID
-    fn get(&self, id: crate::domain::ActivityId) -> Result<Option<Activity>, StoreError>;
+    async fn get(&self, id: crate::domain::ActivityId) -> Result<Option<Activity>, StoreError>;
 
     /// Update an existing activity
-    fn update(&self, activity: Activity) -> Result<Activity, StoreError>;
+    async fn update(&self, activity: Activity) -> Result<Activity, StoreError>;
 
     /// Delete an activity by ID
-    fn delete(&self, id: crate::domain::ActivityId) -> Result<(), StoreError>;
+    async fn delete(&self, id: crate::domain::ActivityId) -> Result<(), StoreError>;
 
     /// Query activities with filters
-    fn query(&self, params: ActivityQueryParams) -> Result<Vec<Activity>, StoreError>;
+    async fn query(&self, params: ActivityQueryParams) -> Result<Vec<Activity>, StoreError>;
 }

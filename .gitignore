@@ -20,3 +20,6 @@ dynamodb-local-metadata.json
 # Asset
 build_*_function.zip
 bootstrap
+
+.env.development
+.env.production

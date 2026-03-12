@@ -40,7 +40,7 @@ use crate::router::extractors::extract_uuid_param;
 /// - Requirement 3.6: GET /families/{id}/dependents → list_dependents()
 /// - Requirement 3.7: Invalid UUID → HandlerError::Validation
 /// - Requirement 6.5: Use extractors from extractors.rs
-pub fn route_family(
+pub async fn route_family(
     method: &str,
     path: &str,
     body: &str,
@@ -51,7 +51,7 @@ pub fn route_family(
     match (method, path) {
         // GET /families - List all families for authenticated identity
         ("GET", "/families") => {
-            let (_status, response_json) = handlers::list_families(context, family_repo)?;
+            let (_status, response_json) = handlers::list_families(context, family_repo).await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -61,7 +61,8 @@ pub fn route_family(
 
         // POST /families - Create a new family
         ("POST", "/families") => {
-            let (_status, response_json) = handlers::create_family(body, context, family_repo)?;
+            let (_status, response_json) =
+                handlers::create_family(body, context, family_repo).await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -73,7 +74,8 @@ pub fn route_family(
         ("GET", p) if p.starts_with("/families/") && !p.contains("/dependents") => {
             let family_id = extract_uuid_param(path, "/families/", "family_id")?;
             let (_status, response_json) =
-                handlers::get_family(FamilyId(family_id), context, family_repo, dependent_repo)?;
+                handlers::get_family(FamilyId(family_id), context, family_repo, dependent_repo)
+                    .await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -90,7 +92,8 @@ pub fn route_family(
                 context,
                 family_repo,
                 dependent_repo,
-            )?;
+            )
+            .await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -106,7 +109,8 @@ pub fn route_family(
                 context,
                 family_repo,
                 dependent_repo,
-            )?;
+            )
+            .await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))

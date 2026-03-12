@@ -48,7 +48,7 @@ use aws_lambda_events::apigw::ApiGatewayV2httpRequest;
 /// - Requirement 5.6: Invalid UUID → HandlerError::Validation
 /// - Requirement 6.5: Use extractors from extractors.rs
 #[allow(clippy::too_many_arguments)]
-pub fn route_activity(
+pub async fn route_activity(
     method: &str,
     path: &str,
     body: &str,
@@ -67,7 +67,8 @@ pub fn route_activity(
                 family_repo,
                 dependent_repo,
                 activity_repo,
-            )?;
+            )
+            .await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -84,7 +85,8 @@ pub fn route_activity(
                 family_repo,
                 dependent_repo,
                 activity_repo,
-            )?;
+            )
+            .await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -102,7 +104,8 @@ pub fn route_activity(
                 family_repo,
                 dependent_repo,
                 activity_repo,
-            )?;
+            )
+            .await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -119,7 +122,8 @@ pub fn route_activity(
                 family_repo,
                 dependent_repo,
                 activity_repo,
-            )?;
+            )
+            .await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -172,7 +176,8 @@ pub fn route_activity(
                 family_repo,
                 dependent_repo,
                 activity_repo,
-            )?;
+            )
+            .await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
