@@ -54,7 +54,7 @@ pub async fn route_request(
     cors_config: &CorsConfig,
 ) -> HttpResponse {
     // Extract HTTP method, path, and body from request
-    let method = request.http_method.as_str();
+    let method = request.request_context.http.method.as_str();
     let path = request.raw_path.as_deref().unwrap_or("/");
     let body = request.body.as_deref().unwrap_or("");
 
