@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use aws_sdk_dynamodb::types::AttributeValue;
 use aws_sdk_dynamodb::Client;
 use std::collections::HashMap;
@@ -92,35 +93,31 @@ impl DynamoDbFamilyRepository {
     }
 }
 
+#[async_trait]
 impl FamilyRepository for DynamoDbFamilyRepository {
-    fn create(&self, family: Family) -> Result<Family, StoreError> {
+    async fn create(&self, family: Family) -> Result<Family, StoreError> {
         let item = self.to_item(&family);
 
-        tokio::runtime::Handle::current()
-            .block_on(async {
-                self.client
-                    .put_item()
-                    .table_name(&self.table_name)
-                    .set_item(Some(item))
-                    .send()
-                    .await
-            })
+        self.client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item))
+            .send()
+            .await
             .map_err(|e| StoreError::QueryError(format!("Failed to create family: {}", e)))?;
 
         Ok(family)
     }
 
-    fn get(&self, id: FamilyId) -> Result<Option<Family>, StoreError> {
-        let result = tokio::runtime::Handle::current()
-            .block_on(async {
-                self.client
-                    .get_item()
-                    .table_name(&self.table_name)
-                    .key("PK", AttributeValue::S(format!("FAMILY#{}", id.0)))
-                    .key("SK", AttributeValue::S("METADATA".to_string()))
-                    .send()
-                    .await
-            })
+    async fn get(&self, id: FamilyId) -> Result<Option<Family>, StoreError> {
+        let result = self
+            .client
+            .get_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("FAMILY#{}", id.0)))
+            .key("SK", AttributeValue::S("METADATA".to_string()))
+            .send()
+            .await
             .map_err(|e| StoreError::QueryError(format!("Failed to get family: {}", e)))?;
 
         match result.item {
@@ -129,35 +126,30 @@ impl FamilyRepository for DynamoDbFamilyRepository {
         }
     }
 
-    fn update(&self, family: Family) -> Result<Family, StoreError> {
+    async fn update(&self, family: Family) -> Result<Family, StoreError> {
         let item = self.to_item(&family);
 
-        tokio::runtime::Handle::current()
-            .block_on(async {
-                self.client
-                    .put_item()
-                    .table_name(&self.table_name)
-                    .set_item(Some(item))
-                    .send()
-                    .await
-            })
+        self.client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item))
+            .send()
+            .await
             .map_err(|e| StoreError::QueryError(format!("Failed to update family: {}", e)))?;
 
         Ok(family)
     }
 
-    fn get_by_owner(&self, owner_id: IdentityId) -> Result<Vec<Family>, StoreError> {
-        let result = tokio::runtime::Handle::current()
-            .block_on(async {
-                self.client
-                    .query()
-                    .table_name(&self.table_name)
-                    .index_name("GSI-1")
-                    .key_condition_expression("owner_id = :owner_id")
-                    .expression_attribute_values(":owner_id", AttributeValue::S(owner_id.0.clone()))
-                    .send()
-                    .await
-            })
+    async fn get_by_owner(&self, owner_id: IdentityId) -> Result<Vec<Family>, StoreError> {
+        let result = self
+            .client
+            .query()
+            .table_name(&self.table_name)
+            .index_name("GSI-1")
+            .key_condition_expression("owner_id = :owner_id")
+            .expression_attribute_values(":owner_id", AttributeValue::S(owner_id.0.clone()))
+            .send()
+            .await
             .map_err(|e| {
                 StoreError::QueryError(format!("Failed to query families by owner: {}", e))
             })?;
@@ -278,46 +270,39 @@ impl DynamoDbDependentRepository {
     }
 }
 
+#[async_trait]
 impl DependentRepository for DynamoDbDependentRepository {
-    fn create(&self, dependent: Dependent) -> Result<Dependent, StoreError> {
+    async fn create(&self, dependent: Dependent) -> Result<Dependent, StoreError> {
         let item = self.to_item(&dependent);
 
-        tokio::runtime::Handle::current()
-            .block_on(async {
-                self.client
-                    .put_item()
-                    .table_name(&self.table_name)
-                    .set_item(Some(item))
-                    .send()
-                    .await
-            })
+        self.client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item))
+            .send()
+            .await
             .map_err(|e| StoreError::QueryError(format!("Failed to create dependent: {}", e)))?;
 
         Ok(dependent)
     }
 
-    fn get(&self, id: DependentId) -> Result<Option<Dependent>, StoreError> {
+    async fn get(&self, id: DependentId) -> Result<Option<Dependent>, StoreError> {
         // We need to query by GSI or scan to find the dependent by ID
         // For now, we'll use a query on the SK with begins_with
         // This requires knowing the family_id, which we don't have here
         // So we'll need to use a different approach - query GSI or scan
 
         // For simplicity, we'll scan with a filter (not ideal for production)
-        let result = tokio::runtime::Handle::current()
-            .block_on(async {
-                self.client
-                    .scan()
-                    .table_name(&self.table_name)
-                    .filter_expression("id = :id AND #type = :type")
-                    .expression_attribute_names("#type", "Type")
-                    .expression_attribute_values(":id", AttributeValue::S(id.0.to_string()))
-                    .expression_attribute_values(
-                        ":type",
-                        AttributeValue::S("Dependent".to_string()),
-                    )
-                    .send()
-                    .await
-            })
+        let result = self
+            .client
+            .scan()
+            .table_name(&self.table_name)
+            .filter_expression("id = :id AND #type = :type")
+            .expression_attribute_names("#type", "Type")
+            .expression_attribute_values(":id", AttributeValue::S(id.0.to_string()))
+            .expression_attribute_values(":type", AttributeValue::S("Dependent".to_string()))
+            .send()
+            .await
             .map_err(|e| StoreError::QueryError(format!("Failed to get dependent: {}", e)))?;
 
         match result.items {
@@ -329,41 +314,33 @@ impl DependentRepository for DynamoDbDependentRepository {
         }
     }
 
-    fn update(&self, dependent: Dependent) -> Result<Dependent, StoreError> {
+    async fn update(&self, dependent: Dependent) -> Result<Dependent, StoreError> {
         let item = self.to_item(&dependent);
 
-        tokio::runtime::Handle::current()
-            .block_on(async {
-                self.client
-                    .put_item()
-                    .table_name(&self.table_name)
-                    .set_item(Some(item))
-                    .send()
-                    .await
-            })
+        self.client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item))
+            .send()
+            .await
             .map_err(|e| StoreError::QueryError(format!("Failed to update dependent: {}", e)))?;
 
         Ok(dependent)
     }
 
-    fn list_by_family(&self, family_id: FamilyId) -> Result<Vec<Dependent>, StoreError> {
-        let result = tokio::runtime::Handle::current()
-            .block_on(async {
-                self.client
-                    .query()
-                    .table_name(&self.table_name)
-                    .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
-                    .expression_attribute_values(
-                        ":pk",
-                        AttributeValue::S(format!("FAMILY#{}", family_id.0)),
-                    )
-                    .expression_attribute_values(
-                        ":sk_prefix",
-                        AttributeValue::S("DEPENDENT#".to_string()),
-                    )
-                    .send()
-                    .await
-            })
+    async fn list_by_family(&self, family_id: FamilyId) -> Result<Vec<Dependent>, StoreError> {
+        let result = self
+            .client
+            .query()
+            .table_name(&self.table_name)
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+            .expression_attribute_values(
+                ":pk",
+                AttributeValue::S(format!("FAMILY#{}", family_id.0)),
+            )
+            .expression_attribute_values(":sk_prefix", AttributeValue::S("DEPENDENT#".to_string()))
+            .send()
+            .await
             .map_err(|e| {
                 StoreError::QueryError(format!("Failed to list dependents by family: {}", e))
             })?;
@@ -505,38 +482,34 @@ impl DynamoDbActivityRepository {
     }
 }
 
+#[async_trait]
 impl ActivityRepository for DynamoDbActivityRepository {
-    fn create(&self, activity: Activity) -> Result<Activity, StoreError> {
+    async fn create(&self, activity: Activity) -> Result<Activity, StoreError> {
         let item = self.to_item(&activity);
 
-        tokio::runtime::Handle::current()
-            .block_on(async {
-                self.client
-                    .put_item()
-                    .table_name(&self.table_name)
-                    .set_item(Some(item))
-                    .send()
-                    .await
-            })
+        self.client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item))
+            .send()
+            .await
             .map_err(|e| StoreError::QueryError(format!("Failed to create activity: {}", e)))?;
 
         Ok(activity)
     }
 
-    fn get(&self, id: ActivityId) -> Result<Option<Activity>, StoreError> {
+    async fn get(&self, id: ActivityId) -> Result<Option<Activity>, StoreError> {
         // Similar to dependent, we need to scan to find by ID
-        let result = tokio::runtime::Handle::current()
-            .block_on(async {
-                self.client
-                    .scan()
-                    .table_name(&self.table_name)
-                    .filter_expression("id = :id AND #type = :type")
-                    .expression_attribute_names("#type", "Type")
-                    .expression_attribute_values(":id", AttributeValue::S(id.0.to_string()))
-                    .expression_attribute_values(":type", AttributeValue::S("Activity".to_string()))
-                    .send()
-                    .await
-            })
+        let result = self
+            .client
+            .scan()
+            .table_name(&self.table_name)
+            .filter_expression("id = :id AND #type = :type")
+            .expression_attribute_names("#type", "Type")
+            .expression_attribute_values(":id", AttributeValue::S(id.0.to_string()))
+            .expression_attribute_values(":type", AttributeValue::S("Activity".to_string()))
+            .send()
+            .await
             .map_err(|e| StoreError::QueryError(format!("Failed to get activity: {}", e)))?;
 
         match result.items {
@@ -548,55 +521,50 @@ impl ActivityRepository for DynamoDbActivityRepository {
         }
     }
 
-    fn update(&self, activity: Activity) -> Result<Activity, StoreError> {
+    async fn update(&self, activity: Activity) -> Result<Activity, StoreError> {
         let item = self.to_item(&activity);
 
-        tokio::runtime::Handle::current()
-            .block_on(async {
-                self.client
-                    .put_item()
-                    .table_name(&self.table_name)
-                    .set_item(Some(item))
-                    .send()
-                    .await
-            })
+        self.client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item))
+            .send()
+            .await
             .map_err(|e| StoreError::QueryError(format!("Failed to update activity: {}", e)))?;
 
         Ok(activity)
     }
 
-    fn delete(&self, id: ActivityId) -> Result<(), StoreError> {
+    async fn delete(&self, id: ActivityId) -> Result<(), StoreError> {
         // First, we need to get the activity to know its PK and SK
         let activity = self
-            .get(id)?
+            .get(id)
+            .await?
             .ok_or_else(|| StoreError::NotFound(format!("Activity with id {} not found", id.0)))?;
 
-        tokio::runtime::Handle::current()
-            .block_on(async {
-                self.client
-                    .delete_item()
-                    .table_name(&self.table_name)
-                    .key(
-                        "PK",
-                        AttributeValue::S(format!("DEPENDENT#{}", activity.dependent_id.0)),
-                    )
-                    .key(
-                        "SK",
-                        AttributeValue::S(format!(
-                            "ACTIVITY#{}#{}",
-                            activity.timestamp.0.to_rfc3339(),
-                            activity.id.0
-                        )),
-                    )
-                    .send()
-                    .await
-            })
+        self.client
+            .delete_item()
+            .table_name(&self.table_name)
+            .key(
+                "PK",
+                AttributeValue::S(format!("DEPENDENT#{}", activity.dependent_id.0)),
+            )
+            .key(
+                "SK",
+                AttributeValue::S(format!(
+                    "ACTIVITY#{}#{}",
+                    activity.timestamp.0.to_rfc3339(),
+                    activity.id.0
+                )),
+            )
+            .send()
+            .await
             .map_err(|e| StoreError::QueryError(format!("Failed to delete activity: {}", e)))?;
 
         Ok(())
     }
 
-    fn query(&self, params: ActivityQueryParams) -> Result<Vec<Activity>, StoreError> {
+    async fn query(&self, params: ActivityQueryParams) -> Result<Vec<Activity>, StoreError> {
         let key_condition = "PK = :pk AND begins_with(SK, :sk_prefix".to_string();
         let mut filter_expressions = Vec::new();
 
@@ -668,8 +636,9 @@ impl ActivityRepository for DynamoDbActivityRepository {
             }
         }
 
-        let result = tokio::runtime::Handle::current()
-            .block_on(async { query_builder.send().await })
+        let result = query_builder
+            .send()
+            .await
             .map_err(|e| StoreError::QueryError(format!("Failed to query activities: {}", e)))?;
 
         let activities = result

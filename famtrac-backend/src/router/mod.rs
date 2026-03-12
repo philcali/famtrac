@@ -45,7 +45,7 @@ pub mod family;
 /// - Requirement 2.5: Return HandlerError::NotFound for unknown routes
 /// - Requirement 7.4: Preserve logging statement "Routing: {method} {path}"
 /// - Requirement 7.5: Preserve CORS header handling through HttpResponse::from_handler_result()
-pub fn route_request(
+pub async fn route_request(
     request: &ApiGatewayV2httpRequest,
     context: &RequestContext,
     family_repo: &DynamoDbFamilyRepository,
@@ -54,7 +54,7 @@ pub fn route_request(
     cors_config: &CorsConfig,
 ) -> HttpResponse {
     // Extract HTTP method, path, and body from request
-    let method = request.http_method.as_str();
+    let method = request.request_context.http.method.as_str();
     let path = request.raw_path.as_deref().unwrap_or("/");
     let body = request.body.as_deref().unwrap_or("");
 
@@ -64,10 +64,10 @@ pub fn route_request(
     // Match on path prefix to delegate to appropriate route handler
     let result = if path.starts_with("/families") {
         // Delegate to family route handler
-        family::route_family(method, path, body, context, family_repo, dependent_repo)
+        family::route_family(method, path, body, context, family_repo, dependent_repo).await
     } else if path.starts_with("/dependents") && !path.ends_with("/activities") {
         // Delegate to dependent route handler (but not /dependents/{id}/activities)
-        dependent::route_dependent(method, path, body, context, family_repo, dependent_repo)
+        dependent::route_dependent(method, path, body, context, family_repo, dependent_repo).await
     } else if path.starts_with("/activities")
         || (path.contains("/dependents/") && path.ends_with("/activities"))
     {
@@ -83,6 +83,7 @@ pub fn route_request(
             dependent_repo,
             activity_repo,
         )
+        .await
     } else {
         // Unknown route - return NotFound error (Requirement 2.5)
         Err(HandlerError::NotFound(format!(

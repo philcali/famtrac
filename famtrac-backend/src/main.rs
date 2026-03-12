@@ -102,7 +102,8 @@ async fn handle_request(
         dependent_repo,
         activity_repo,
         cors_config,
-    );
+    )
+    .await;
 
     Ok(to_api_gateway_response(http_response))
 }

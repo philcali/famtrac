@@ -53,7 +53,7 @@ impl From<Dependent> for DependentResponse {
 /// - 2.6: Verify the Identity has access to the associated Family
 /// - 8.1: Return 400 Bad Request for malformed JSON
 /// - 10.1: Parse incoming JSON request bodies into strongly-typed Rust structures
-pub fn create_dependent<F: FamilyRepository, D: DependentRepository>(
+pub async fn create_dependent<F: FamilyRepository, D: DependentRepository>(
     request_body: &str,
     context: &RequestContext,
     family_repository: &F,
@@ -75,17 +75,19 @@ pub fn create_dependent<F: FamilyRepository, D: DependentRepository>(
     validate_date_of_birth(&request.date_of_birth)?;
 
     // Retrieve parent Family and authorize access (Requirement 2.6)
-    let family = family_repository.get(request.family_id)?;
+    let family = family_repository.get(request.family_id).await?;
     let family = family.ok_or(HandlerError::NotFound(format!(
         "Family with id {:?} not found",
         request.family_id
     )))?;
 
-    family.authorize(
-        &context.identity_id,
-        family_repository,
-        dependent_repository,
-    )?;
+    family
+        .authorize(
+            &context.identity_id,
+            family_repository,
+            dependent_repository,
+        )
+        .await?;
 
     // Create dependent (Requirement 2.1)
     let now = Timestamp::now();
@@ -99,7 +101,7 @@ pub fn create_dependent<F: FamilyRepository, D: DependentRepository>(
     };
 
     // Persist to repository
-    let created_dependent = dependent_repository.create(dependent)?;
+    let created_dependent = dependent_repository.create(dependent).await?;
 
     // Convert to response and serialize
     let response = DependentResponse::from(created_dependent);
@@ -117,14 +119,14 @@ pub fn create_dependent<F: FamilyRepository, D: DependentRepository>(
 /// - 2.3: Retrieve a Dependent by its unique identifier
 /// - 2.6: Verify the Identity has access to the associated Family
 /// - 10.3: Serialize response data into valid JSON format
-pub fn get_dependent<F: FamilyRepository, D: DependentRepository>(
+pub async fn get_dependent<F: FamilyRepository, D: DependentRepository>(
     dependent_id: DependentId,
     context: &RequestContext,
     family_repository: &F,
     dependent_repository: &D,
 ) -> Result<(u16, String), HandlerError> {
     // Retrieve dependent from repository (Requirement 2.3)
-    let dependent = dependent_repository.get(dependent_id)?;
+    let dependent = dependent_repository.get(dependent_id).await?;
 
     // Return 404 if dependent doesn't exist
     let dependent = dependent.ok_or(HandlerError::NotFound(format!(
@@ -133,11 +135,13 @@ pub fn get_dependent<F: FamilyRepository, D: DependentRepository>(
     )))?;
 
     // Authorize identity has access to parent Family (Requirement 2.6)
-    dependent.authorize(
-        &context.identity_id,
-        family_repository,
-        dependent_repository,
-    )?;
+    dependent
+        .authorize(
+            &context.identity_id,
+            family_repository,
+            dependent_repository,
+        )
+        .await?;
 
     // Convert to response and serialize (Requirement 10.3)
     let response = DependentResponse::from(dependent);
@@ -156,7 +160,7 @@ pub fn get_dependent<F: FamilyRepository, D: DependentRepository>(
 /// - 2.6: Verify the Identity has access to the associated Family
 /// - 8.1: Return 400 Bad Request for malformed JSON
 /// - 10.1: Parse incoming JSON request bodies into strongly-typed Rust structures
-pub fn update_dependent<F: FamilyRepository, D: DependentRepository>(
+pub async fn update_dependent<F: FamilyRepository, D: DependentRepository>(
     dependent_id: DependentId,
     request_body: &str,
     context: &RequestContext,
@@ -179,7 +183,7 @@ pub fn update_dependent<F: FamilyRepository, D: DependentRepository>(
     validate_date_of_birth(&request.date_of_birth)?;
 
     // Retrieve existing dependent (Requirement 2.4)
-    let dependent = dependent_repository.get(dependent_id)?;
+    let dependent = dependent_repository.get(dependent_id).await?;
 
     // Return 404 if dependent doesn't exist
     let mut dependent = dependent.ok_or(HandlerError::NotFound(format!(
@@ -188,11 +192,13 @@ pub fn update_dependent<F: FamilyRepository, D: DependentRepository>(
     )))?;
 
     // Authorize identity has access to parent Family (Requirement 2.6)
-    dependent.authorize(
-        &context.identity_id,
-        family_repository,
-        dependent_repository,
-    )?;
+    dependent
+        .authorize(
+            &context.identity_id,
+            family_repository,
+            dependent_repository,
+        )
+        .await?;
 
     // Update dependent data
     dependent.name = request.name;
@@ -200,7 +206,7 @@ pub fn update_dependent<F: FamilyRepository, D: DependentRepository>(
     dependent.updated_at = Timestamp::now();
 
     // Persist to repository
-    let updated_dependent = dependent_repository.update(dependent)?;
+    let updated_dependent = dependent_repository.update(dependent).await?;
 
     // Convert to response and serialize
     let response = DependentResponse::from(updated_dependent);
@@ -218,27 +224,29 @@ pub fn update_dependent<F: FamilyRepository, D: DependentRepository>(
 /// - 2.5: List all Dependents associated with a specific Family
 /// - 2.6: Verify the Identity has access to the associated Family
 /// - 10.3: Serialize response data into valid JSON format
-pub fn list_dependents<F: FamilyRepository, D: DependentRepository>(
+pub async fn list_dependents<F: FamilyRepository, D: DependentRepository>(
     family_id: FamilyId,
     context: &RequestContext,
     family_repository: &F,
     dependent_repository: &D,
 ) -> Result<(u16, String), HandlerError> {
     // Retrieve Family and authorize access (Requirement 2.6)
-    let family = family_repository.get(family_id)?;
+    let family = family_repository.get(family_id).await?;
     let family = family.ok_or(HandlerError::NotFound(format!(
         "Family with id {:?} not found",
         family_id
     )))?;
 
-    family.authorize(
-        &context.identity_id,
-        family_repository,
-        dependent_repository,
-    )?;
+    family
+        .authorize(
+            &context.identity_id,
+            family_repository,
+            dependent_repository,
+        )
+        .await?;
 
     // List all Dependents for Family (Requirement 2.5)
-    let dependents = dependent_repository.list_by_family(family_id)?;
+    let dependents = dependent_repository.list_by_family(family_id).await?;
 
     // Convert to response and serialize (Requirement 10.3)
     let response: Vec<DependentResponse> = dependents
@@ -257,138 +265,7 @@ pub fn list_dependents<F: FamilyRepository, D: DependentRepository>(
 mod tests {
     use super::*;
     use crate::domain::{Family, IdentityId};
-    use crate::errors::StoreError;
-    use std::collections::HashMap;
-    use std::sync::{Arc, Mutex};
-
-    struct MockFamilyRepository {
-        should_fail: bool,
-        families: Arc<Mutex<HashMap<FamilyId, Family>>>,
-    }
-
-    impl MockFamilyRepository {
-        fn new() -> Self {
-            MockFamilyRepository {
-                should_fail: false,
-                families: Arc::new(Mutex::new(HashMap::new())),
-            }
-        }
-    }
-
-    impl FamilyRepository for MockFamilyRepository {
-        fn create(&self, family: Family) -> Result<Family, StoreError> {
-            if self.should_fail {
-                Err(StoreError::ConnectionError(
-                    "Database unavailable".to_string(),
-                ))
-            } else {
-                self.families
-                    .lock()
-                    .unwrap()
-                    .insert(family.id, family.clone());
-                Ok(family)
-            }
-        }
-
-        fn get(&self, id: FamilyId) -> Result<Option<Family>, StoreError> {
-            if self.should_fail {
-                Err(StoreError::ConnectionError(
-                    "Database unavailable".to_string(),
-                ))
-            } else {
-                Ok(self.families.lock().unwrap().get(&id).cloned())
-            }
-        }
-
-        fn update(&self, family: Family) -> Result<Family, StoreError> {
-            if self.should_fail {
-                Err(StoreError::ConnectionError(
-                    "Database unavailable".to_string(),
-                ))
-            } else {
-                self.families
-                    .lock()
-                    .unwrap()
-                    .insert(family.id, family.clone());
-                Ok(family)
-            }
-        }
-
-        fn get_by_owner(&self, _owner_id: IdentityId) -> Result<Vec<Family>, StoreError> {
-            unimplemented!()
-        }
-    }
-
-    struct MockDependentRepository {
-        should_fail: bool,
-        dependents: Arc<Mutex<HashMap<DependentId, Dependent>>>,
-    }
-
-    impl MockDependentRepository {
-        fn new() -> Self {
-            MockDependentRepository {
-                should_fail: false,
-                dependents: Arc::new(Mutex::new(HashMap::new())),
-            }
-        }
-    }
-
-    impl DependentRepository for MockDependentRepository {
-        fn create(&self, dependent: Dependent) -> Result<Dependent, StoreError> {
-            if self.should_fail {
-                Err(StoreError::ConnectionError(
-                    "Database unavailable".to_string(),
-                ))
-            } else {
-                self.dependents
-                    .lock()
-                    .unwrap()
-                    .insert(dependent.id, dependent.clone());
-                Ok(dependent)
-            }
-        }
-
-        fn get(&self, id: DependentId) -> Result<Option<Dependent>, StoreError> {
-            if self.should_fail {
-                Err(StoreError::ConnectionError(
-                    "Database unavailable".to_string(),
-                ))
-            } else {
-                Ok(self.dependents.lock().unwrap().get(&id).cloned())
-            }
-        }
-
-        fn update(&self, dependent: Dependent) -> Result<Dependent, StoreError> {
-            if self.should_fail {
-                Err(StoreError::ConnectionError(
-                    "Database unavailable".to_string(),
-                ))
-            } else {
-                self.dependents
-                    .lock()
-                    .unwrap()
-                    .insert(dependent.id, dependent.clone());
-                Ok(dependent)
-            }
-        }
-
-        fn list_by_family(&self, family_id: FamilyId) -> Result<Vec<Dependent>, StoreError> {
-            if self.should_fail {
-                Err(StoreError::ConnectionError(
-                    "Database unavailable".to_string(),
-                ))
-            } else {
-                Ok(self
-                    .dependents
-                    .lock()
-                    .unwrap()
-                    .values()
-                    .filter(|d| d.family_id == family_id)
-                    .cloned()
-                    .collect())
-            }
-        }
-    }
+    use crate::test_utils::mocks::{MockDependentRepository, MockFamilyRepository};
 
     fn create_test_context(identity_id: &str) -> RequestContext {
         RequestContext {
@@ -406,8 +283,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_create_dependent_success() {
+    #[tokio::test]
+    async fn test_create_dependent_success() {
         let family_id = FamilyId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
@@ -426,7 +303,7 @@ mod tests {
             family_id.0
         );
 
-        let result = create_dependent(&request_body, &context, &family_repo, &dependent_repo);
+        let result = create_dependent(&request_body, &context, &family_repo, &dependent_repo).await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -437,14 +314,14 @@ mod tests {
         assert_eq!(response.family_id, family_id);
     }
 
-    #[test]
-    fn test_create_dependent_invalid_json() {
+    #[tokio::test]
+    async fn test_create_dependent_invalid_json() {
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
         let dependent_repo = MockDependentRepository::new();
 
         let request_body = r#"{"name": invalid}"#;
-        let result = create_dependent(request_body, &context, &family_repo, &dependent_repo);
+        let result = create_dependent(request_body, &context, &family_repo, &dependent_repo).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -456,8 +333,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_create_dependent_empty_name() {
+    #[tokio::test]
+    async fn test_create_dependent_empty_name() {
         let family_id = FamilyId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
@@ -475,7 +352,7 @@ mod tests {
             family_id.0
         );
 
-        let result = create_dependent(&request_body, &context, &family_repo, &dependent_repo);
+        let result = create_dependent(&request_body, &context, &family_repo, &dependent_repo).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -487,8 +364,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_create_dependent_future_date_of_birth() {
+    #[tokio::test]
+    async fn test_create_dependent_future_date_of_birth() {
         let family_id = FamilyId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
@@ -509,7 +386,7 @@ mod tests {
             family_id.0, future_date
         );
 
-        let result = create_dependent(&request_body, &context, &family_repo, &dependent_repo);
+        let result = create_dependent(&request_body, &context, &family_repo, &dependent_repo).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -521,8 +398,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_create_dependent_family_not_found() {
+    #[tokio::test]
+    async fn test_create_dependent_family_not_found() {
         let family_id = FamilyId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
@@ -533,7 +410,7 @@ mod tests {
             family_id.0
         );
 
-        let result = create_dependent(&request_body, &context, &family_repo, &dependent_repo);
+        let result = create_dependent(&request_body, &context, &family_repo, &dependent_repo).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -544,8 +421,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_create_dependent_unauthorized() {
+    #[tokio::test]
+    async fn test_create_dependent_unauthorized() {
         let family_id = FamilyId::new();
         let context = create_test_context("user-456"); // Different user
         let family_repo = MockFamilyRepository::new();
@@ -563,7 +440,7 @@ mod tests {
             family_id.0
         );
 
-        let result = create_dependent(&request_body, &context, &family_repo, &dependent_repo);
+        let result = create_dependent(&request_body, &context, &family_repo, &dependent_repo).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -572,8 +449,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_get_dependent_success() {
+    #[tokio::test]
+    async fn test_get_dependent_success() {
         let family_id = FamilyId::new();
         let dependent_id = DependentId::new();
         let context = create_test_context("user-123");
@@ -605,7 +482,7 @@ mod tests {
             .unwrap()
             .insert(dependent_id, dependent);
 
-        let result = get_dependent(dependent_id, &context, &family_repo, &dependent_repo);
+        let result = get_dependent(dependent_id, &context, &family_repo, &dependent_repo).await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -616,14 +493,14 @@ mod tests {
         assert_eq!(response.family_id, family_id);
     }
 
-    #[test]
-    fn test_get_dependent_not_found() {
+    #[tokio::test]
+    async fn test_get_dependent_not_found() {
         let dependent_id = DependentId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
         let dependent_repo = MockDependentRepository::new();
 
-        let result = get_dependent(dependent_id, &context, &family_repo, &dependent_repo);
+        let result = get_dependent(dependent_id, &context, &family_repo, &dependent_repo).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -634,8 +511,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_get_dependent_unauthorized() {
+    #[tokio::test]
+    async fn test_get_dependent_unauthorized() {
         let family_id = FamilyId::new();
         let dependent_id = DependentId::new();
         let context = create_test_context("user-456"); // Different user
@@ -667,7 +544,7 @@ mod tests {
             .unwrap()
             .insert(dependent_id, dependent);
 
-        let result = get_dependent(dependent_id, &context, &family_repo, &dependent_repo);
+        let result = get_dependent(dependent_id, &context, &family_repo, &dependent_repo).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -676,8 +553,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_update_dependent_success() {
+    #[tokio::test]
+    async fn test_update_dependent_success() {
         let family_id = FamilyId::new();
         let dependent_id = DependentId::new();
         let context = create_test_context("user-123");
@@ -716,7 +593,8 @@ mod tests {
             &context,
             &family_repo,
             &dependent_repo,
-        );
+        )
+        .await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -726,8 +604,8 @@ mod tests {
         assert_eq!(response.name, "Alice Updated");
     }
 
-    #[test]
-    fn test_update_dependent_not_found() {
+    #[tokio::test]
+    async fn test_update_dependent_not_found() {
         let dependent_id = DependentId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
@@ -740,7 +618,8 @@ mod tests {
             &context,
             &family_repo,
             &dependent_repo,
-        );
+        )
+        .await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -751,8 +630,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_update_dependent_unauthorized() {
+    #[tokio::test]
+    async fn test_update_dependent_unauthorized() {
         let family_id = FamilyId::new();
         let dependent_id = DependentId::new();
         let context = create_test_context("user-456"); // Different user
@@ -791,7 +670,8 @@ mod tests {
             &context,
             &family_repo,
             &dependent_repo,
-        );
+        )
+        .await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -800,8 +680,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_update_dependent_invalid_json() {
+    #[tokio::test]
+    async fn test_update_dependent_invalid_json() {
         let family_id = FamilyId::new();
         let dependent_id = DependentId::new();
         let context = create_test_context("user-123");
@@ -840,7 +720,8 @@ mod tests {
             &context,
             &family_repo,
             &dependent_repo,
-        );
+        )
+        .await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -852,8 +733,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_list_dependents_success() {
+    #[tokio::test]
+    async fn test_list_dependents_success() {
         let family_id = FamilyId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
@@ -899,7 +780,7 @@ mod tests {
             .unwrap()
             .insert(dependent2.id, dependent2);
 
-        let result = list_dependents(family_id, &context, &family_repo, &dependent_repo);
+        let result = list_dependents(family_id, &context, &family_repo, &dependent_repo).await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -909,8 +790,8 @@ mod tests {
         assert_eq!(response.len(), 2);
     }
 
-    #[test]
-    fn test_list_dependents_empty() {
+    #[tokio::test]
+    async fn test_list_dependents_empty() {
         let family_id = FamilyId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
@@ -924,7 +805,7 @@ mod tests {
             .unwrap()
             .insert(family_id, family);
 
-        let result = list_dependents(family_id, &context, &family_repo, &dependent_repo);
+        let result = list_dependents(family_id, &context, &family_repo, &dependent_repo).await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -934,14 +815,14 @@ mod tests {
         assert_eq!(response.len(), 0);
     }
 
-    #[test]
-    fn test_list_dependents_family_not_found() {
+    #[tokio::test]
+    async fn test_list_dependents_family_not_found() {
         let family_id = FamilyId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
         let dependent_repo = MockDependentRepository::new();
 
-        let result = list_dependents(family_id, &context, &family_repo, &dependent_repo);
+        let result = list_dependents(family_id, &context, &family_repo, &dependent_repo).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -952,8 +833,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_list_dependents_unauthorized() {
+    #[tokio::test]
+    async fn test_list_dependents_unauthorized() {
         let family_id = FamilyId::new();
         let context = create_test_context("user-456"); // Different user
         let family_repo = MockFamilyRepository::new();
@@ -967,7 +848,7 @@ mod tests {
             .unwrap()
             .insert(family_id, family);
 
-        let result = list_dependents(family_id, &context, &family_repo, &dependent_repo);
+        let result = list_dependents(family_id, &context, &family_repo, &dependent_repo).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {

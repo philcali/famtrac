@@ -36,7 +36,7 @@ use crate::router::extractors::extract_uuid_param;
 /// - Requirement 4.4: PUT /dependents/{id} → update_dependent()
 /// - Requirement 4.6: Invalid UUID → HandlerError::Validation
 /// - Requirement 6.5: Use extractors from extractors.rs
-pub fn route_dependent(
+pub async fn route_dependent(
     method: &str,
     path: &str,
     body: &str,
@@ -48,7 +48,7 @@ pub fn route_dependent(
         // POST /dependents - Create a new dependent
         ("POST", "/dependents") => {
             let (_status, response_json) =
-                handlers::create_dependent(body, context, family_repo, dependent_repo)?;
+                handlers::create_dependent(body, context, family_repo, dependent_repo).await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -64,7 +64,8 @@ pub fn route_dependent(
                 context,
                 family_repo,
                 dependent_repo,
-            )?;
+            )
+            .await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -81,7 +82,8 @@ pub fn route_dependent(
                 context,
                 family_repo,
                 dependent_repo,
-            )?;
+            )
+            .await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))

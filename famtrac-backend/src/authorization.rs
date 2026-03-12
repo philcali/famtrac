@@ -1,16 +1,18 @@
 use crate::domain::{Activity, Dependent, Family, IdentityId};
 use crate::errors::AuthError;
 use crate::repository::{DependentRepository, FamilyRepository};
+use async_trait::async_trait;
 
 /// Trait for resources that can be authorized against an identity
 /// Implements hierarchical authorization:
 /// - Family: identity must be the owner
 /// - Dependent: identity must own the parent Family
 /// - Activity: identity must own the parent Family via Dependent
+#[async_trait]
 pub trait Authorizable {
     /// Authorize access to this resource for the given identity
     /// Returns Ok(()) if authorized, Err(AuthError::Forbidden) otherwise
-    fn authorize<F, D>(
+    async fn authorize<F, D>(
         &self,
         identity: &IdentityId,
         family_repo: &F,
@@ -21,8 +23,9 @@ pub trait Authorizable {
         D: DependentRepository;
 }
 
+#[async_trait]
 impl Authorizable for Family {
-    fn authorize<F, D>(
+    async fn authorize<F, D>(
         &self,
         identity: &IdentityId,
         _family_repo: &F,
@@ -44,8 +47,9 @@ impl Authorizable for Family {
     }
 }
 
+#[async_trait]
 impl Authorizable for Dependent {
-    fn authorize<F, D>(
+    async fn authorize<F, D>(
         &self,
         identity: &IdentityId,
         family_repo: &F,
@@ -58,6 +62,7 @@ impl Authorizable for Dependent {
         // Dependent authorization: verify identity owns parent Family
         let family = family_repo
             .get(self.family_id)
+            .await
             .map_err(|e| AuthError::Forbidden(format!("Failed to verify family access: {}", e)))?
             .ok_or_else(|| {
                 AuthError::Forbidden(format!("Parent family {} not found", self.family_id.0))
@@ -74,8 +79,9 @@ impl Authorizable for Dependent {
     }
 }
 
+#[async_trait]
 impl Authorizable for Activity {
-    fn authorize<F, D>(
+    async fn authorize<F, D>(
         &self,
         identity: &IdentityId,
         family_repo: &F,
@@ -88,6 +94,7 @@ impl Authorizable for Activity {
         // Activity authorization: verify identity owns parent Family via Dependent
         let dependent = dependent_repo
             .get(self.dependent_id)
+            .await
             .map_err(|e| AuthError::Forbidden(format!("Failed to verify dependent access: {}", e)))?
             .ok_or_else(|| {
                 AuthError::Forbidden(format!(
@@ -98,6 +105,7 @@ impl Authorizable for Activity {
 
         let family = family_repo
             .get(dependent.family_id)
+            .await
             .map_err(|e| AuthError::Forbidden(format!("Failed to verify family access: {}", e)))?
             .ok_or_else(|| {
                 AuthError::Forbidden(format!("Parent family {} not found", dependent.family_id.0))
@@ -144,22 +152,23 @@ mod tests {
         }
     }
 
+    #[async_trait]
     impl FamilyRepository for MockFamilyRepository {
-        fn create(&self, family: Family) -> Result<Family, StoreError> {
+        async fn create(&self, family: Family) -> Result<Family, StoreError> {
             self.add_family(family.clone());
             Ok(family)
         }
 
-        fn get(&self, id: FamilyId) -> Result<Option<Family>, StoreError> {
+        async fn get(&self, id: FamilyId) -> Result<Option<Family>, StoreError> {
             Ok(self.families.lock().unwrap().get(&id).cloned())
         }
 
-        fn update(&self, family: Family) -> Result<Family, StoreError> {
+        async fn update(&self, family: Family) -> Result<Family, StoreError> {
             self.add_family(family.clone());
             Ok(family)
         }
 
-        fn get_by_owner(&self, owner_id: IdentityId) -> Result<Vec<Family>, StoreError> {
+        async fn get_by_owner(&self, owner_id: IdentityId) -> Result<Vec<Family>, StoreError> {
             Ok(self
                 .families
                 .lock()
@@ -191,22 +200,23 @@ mod tests {
         }
     }
 
+    #[async_trait]
     impl DependentRepository for MockDependentRepository {
-        fn create(&self, dependent: Dependent) -> Result<Dependent, StoreError> {
+        async fn create(&self, dependent: Dependent) -> Result<Dependent, StoreError> {
             self.add_dependent(dependent.clone());
             Ok(dependent)
         }
 
-        fn get(&self, id: DependentId) -> Result<Option<Dependent>, StoreError> {
+        async fn get(&self, id: DependentId) -> Result<Option<Dependent>, StoreError> {
             Ok(self.dependents.lock().unwrap().get(&id).cloned())
         }
 
-        fn update(&self, dependent: Dependent) -> Result<Dependent, StoreError> {
+        async fn update(&self, dependent: Dependent) -> Result<Dependent, StoreError> {
             self.add_dependent(dependent.clone());
             Ok(dependent)
         }
 
-        fn list_by_family(&self, family_id: FamilyId) -> Result<Vec<Dependent>, StoreError> {
+        async fn list_by_family(&self, family_id: FamilyId) -> Result<Vec<Dependent>, StoreError> {
             Ok(self
                 .dependents
                 .lock()
@@ -255,33 +265,37 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_family_authorization_owner_success() {
+    #[tokio::test]
+    async fn test_family_authorization_owner_success() {
         let family_repo = MockFamilyRepository::new();
         let dependent_repo = MockDependentRepository::new();
 
         let owner_id = IdentityId::new("user-123".to_string());
         let family = create_test_family("user-123");
 
-        let result = family.authorize(&owner_id, &family_repo, &dependent_repo);
+        let result = family
+            .authorize(&owner_id, &family_repo, &dependent_repo)
+            .await;
         assert!(result.is_ok());
     }
 
-    #[test]
-    fn test_family_authorization_non_owner_forbidden() {
+    #[tokio::test]
+    async fn test_family_authorization_non_owner_forbidden() {
         let family_repo = MockFamilyRepository::new();
         let dependent_repo = MockDependentRepository::new();
 
         let other_identity = IdentityId::new("user-456".to_string());
         let family = create_test_family("user-123");
 
-        let result = family.authorize(&other_identity, &family_repo, &dependent_repo);
+        let result = family
+            .authorize(&other_identity, &family_repo, &dependent_repo)
+            .await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), AuthError::Forbidden(_)));
     }
 
-    #[test]
-    fn test_dependent_authorization_owner_success() {
+    #[tokio::test]
+    async fn test_dependent_authorization_owner_success() {
         let family_repo = MockFamilyRepository::new();
         let dependent_repo = MockDependentRepository::new();
 
@@ -291,12 +305,14 @@ mod tests {
 
         let dependent = create_test_dependent(family.id);
 
-        let result = dependent.authorize(&owner_id, &family_repo, &dependent_repo);
+        let result = dependent
+            .authorize(&owner_id, &family_repo, &dependent_repo)
+            .await;
         assert!(result.is_ok());
     }
 
-    #[test]
-    fn test_dependent_authorization_non_owner_forbidden() {
+    #[tokio::test]
+    async fn test_dependent_authorization_non_owner_forbidden() {
         let family_repo = MockFamilyRepository::new();
         let dependent_repo = MockDependentRepository::new();
 
@@ -306,26 +322,30 @@ mod tests {
 
         let dependent = create_test_dependent(family.id);
 
-        let result = dependent.authorize(&other_identity, &family_repo, &dependent_repo);
+        let result = dependent
+            .authorize(&other_identity, &family_repo, &dependent_repo)
+            .await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), AuthError::Forbidden(_)));
     }
 
-    #[test]
-    fn test_dependent_authorization_family_not_found() {
+    #[tokio::test]
+    async fn test_dependent_authorization_family_not_found() {
         let family_repo = MockFamilyRepository::new();
         let dependent_repo = MockDependentRepository::new();
 
         let owner_id = IdentityId::new("user-123".to_string());
         let dependent = create_test_dependent(FamilyId::new());
 
-        let result = dependent.authorize(&owner_id, &family_repo, &dependent_repo);
+        let result = dependent
+            .authorize(&owner_id, &family_repo, &dependent_repo)
+            .await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), AuthError::Forbidden(_)));
     }
 
-    #[test]
-    fn test_activity_authorization_owner_success() {
+    #[tokio::test]
+    async fn test_activity_authorization_owner_success() {
         let family_repo = MockFamilyRepository::new();
         let dependent_repo = MockDependentRepository::new();
 
@@ -338,12 +358,14 @@ mod tests {
 
         let activity = create_test_activity(dependent.id);
 
-        let result = activity.authorize(&owner_id, &family_repo, &dependent_repo);
+        let result = activity
+            .authorize(&owner_id, &family_repo, &dependent_repo)
+            .await;
         assert!(result.is_ok());
     }
 
-    #[test]
-    fn test_activity_authorization_non_owner_forbidden() {
+    #[tokio::test]
+    async fn test_activity_authorization_non_owner_forbidden() {
         let family_repo = MockFamilyRepository::new();
         let dependent_repo = MockDependentRepository::new();
 
@@ -356,26 +378,30 @@ mod tests {
 
         let activity = create_test_activity(dependent.id);
 
-        let result = activity.authorize(&other_identity, &family_repo, &dependent_repo);
+        let result = activity
+            .authorize(&other_identity, &family_repo, &dependent_repo)
+            .await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), AuthError::Forbidden(_)));
     }
 
-    #[test]
-    fn test_activity_authorization_dependent_not_found() {
+    #[tokio::test]
+    async fn test_activity_authorization_dependent_not_found() {
         let family_repo = MockFamilyRepository::new();
         let dependent_repo = MockDependentRepository::new();
 
         let owner_id = IdentityId::new("user-123".to_string());
         let activity = create_test_activity(DependentId::new());
 
-        let result = activity.authorize(&owner_id, &family_repo, &dependent_repo);
+        let result = activity
+            .authorize(&owner_id, &family_repo, &dependent_repo)
+            .await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), AuthError::Forbidden(_)));
     }
 
-    #[test]
-    fn test_activity_authorization_family_not_found() {
+    #[tokio::test]
+    async fn test_activity_authorization_family_not_found() {
         let family_repo = MockFamilyRepository::new();
         let dependent_repo = MockDependentRepository::new();
 
@@ -385,7 +411,9 @@ mod tests {
 
         let activity = create_test_activity(dependent.id);
 
-        let result = activity.authorize(&owner_id, &family_repo, &dependent_repo);
+        let result = activity
+            .authorize(&owner_id, &family_repo, &dependent_repo)
+            .await;
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), AuthError::Forbidden(_)));
     }

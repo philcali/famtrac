@@ -47,7 +47,7 @@ impl From<Family> for FamilyResponse {
 /// - 1.2: Return descriptive error messages for invalid data
 /// - 8.1: Return 400 Bad Request for malformed JSON
 /// - 10.1: Parse incoming JSON request bodies into strongly-typed Rust structures
-pub fn create_family<R: FamilyRepository>(
+pub async fn create_family<R: FamilyRepository>(
     request_body: &str,
     context: &RequestContext,
     repository: &R,
@@ -75,7 +75,7 @@ pub fn create_family<R: FamilyRepository>(
     };
 
     // Persist to repository
-    let created_family = repository.create(family)?;
+    let created_family = repository.create(family).await?;
 
     // Convert to response and serialize
     let response = FamilyResponse::from(created_family);
@@ -92,14 +92,14 @@ pub fn create_family<R: FamilyRepository>(
 /// - 1.3: Retrieve a Family by its unique identifier
 /// - 1.5: Verify the Identity has access to that Family
 /// - 10.3: Serialize response data into valid JSON format
-pub fn get_family<R: FamilyRepository, D: crate::repository::DependentRepository>(
+pub async fn get_family<R: FamilyRepository, D: crate::repository::DependentRepository>(
     family_id: FamilyId,
     context: &RequestContext,
     repository: &R,
     dependent_repo: &D,
 ) -> Result<(u16, String), HandlerError> {
     // Retrieve family from repository (Requirement 1.3)
-    let family = repository.get(family_id)?;
+    let family = repository.get(family_id).await?;
 
     // Return 404 if family doesn't exist
     let family = family.ok_or(HandlerError::NotFound(format!(
@@ -108,7 +108,9 @@ pub fn get_family<R: FamilyRepository, D: crate::repository::DependentRepository
     )))?;
 
     // Authorize identity has access to family (Requirement 1.5)
-    family.authorize(&context.identity_id, repository, dependent_repo)?;
+    family
+        .authorize(&context.identity_id, repository, dependent_repo)
+        .await?;
 
     // Convert to response and serialize (Requirement 10.3)
     let response = FamilyResponse::from(family);
@@ -127,7 +129,7 @@ pub fn get_family<R: FamilyRepository, D: crate::repository::DependentRepository
 /// - 1.5: Verify the Identity has access to that Family
 /// - 8.1: Return 400 Bad Request for malformed JSON
 /// - 10.1: Parse incoming JSON request bodies into strongly-typed Rust structures
-pub fn update_family<R: FamilyRepository, D: crate::repository::DependentRepository>(
+pub async fn update_family<R: FamilyRepository, D: crate::repository::DependentRepository>(
     family_id: FamilyId,
     request_body: &str,
     context: &RequestContext,
@@ -147,7 +149,7 @@ pub fn update_family<R: FamilyRepository, D: crate::repository::DependentReposit
     validate_family_name(&request.name)?;
 
     // Retrieve existing family (Requirement 1.4)
-    let family = repository.get(family_id)?;
+    let family = repository.get(family_id).await?;
 
     // Return 404 if family doesn't exist
     let mut family = family.ok_or(HandlerError::NotFound(format!(
@@ -156,14 +158,16 @@ pub fn update_family<R: FamilyRepository, D: crate::repository::DependentReposit
     )))?;
 
     // Authorize identity has access to family (Requirement 1.5)
-    family.authorize(&context.identity_id, repository, dependent_repo)?;
+    family
+        .authorize(&context.identity_id, repository, dependent_repo)
+        .await?;
 
     // Update family data
     family.name = request.name;
     family.updated_at = Timestamp::now();
 
     // Persist to repository
-    let updated_family = repository.update(family)?;
+    let updated_family = repository.update(family).await?;
 
     // Convert to response and serialize
     let response = FamilyResponse::from(updated_family);
@@ -173,18 +177,19 @@ pub fn update_family<R: FamilyRepository, D: crate::repository::DependentReposit
     // Return 200 OK
     Ok((200, response_json))
 }
+
 /// Handler for GET /families
 /// Lists all families owned by the authenticated identity
 ///
 /// Requirements:
 /// - 1.3: Retrieve families by owner
 /// - 10.3: Serialize response data into valid JSON format
-pub fn list_families<R: FamilyRepository>(
+pub async fn list_families<R: FamilyRepository>(
     context: &RequestContext,
     repository: &R,
 ) -> Result<(u16, String), HandlerError> {
     // Retrieve all families owned by the authenticated identity
-    let families = repository.get_by_owner(context.identity_id.clone())?;
+    let families = repository.get_by_owner(context.identity_id.clone()).await?;
 
     // Convert to response format
     let response: Vec<FamilyResponse> = families.into_iter().map(FamilyResponse::from).collect();
@@ -201,103 +206,9 @@ pub fn list_families<R: FamilyRepository>(
 mod tests {
     use super::*;
     use crate::domain::IdentityId;
-    use crate::domain::{Dependent, DependentId};
-    use crate::errors::StoreError;
-    use crate::repository::DependentRepository;
-    use std::collections::HashMap;
-    use std::sync::{Arc, Mutex};
 
-    struct MockFamilyRepository {
-        should_fail: bool,
-        families: Arc<Mutex<HashMap<FamilyId, Family>>>,
-    }
-
-    impl MockFamilyRepository {
-        fn new() -> Self {
-            MockFamilyRepository {
-                should_fail: false,
-                families: Arc::new(Mutex::new(HashMap::new())),
-            }
-        }
-    }
-
-    impl FamilyRepository for MockFamilyRepository {
-        fn create(&self, family: Family) -> Result<Family, StoreError> {
-            if self.should_fail {
-                Err(StoreError::ConnectionError(
-                    "Database unavailable".to_string(),
-                ))
-            } else {
-                self.families
-                    .lock()
-                    .unwrap()
-                    .insert(family.id, family.clone());
-                Ok(family)
-            }
-        }
-
-        fn get(&self, id: FamilyId) -> Result<Option<Family>, StoreError> {
-            if self.should_fail {
-                Err(StoreError::ConnectionError(
-                    "Database unavailable".to_string(),
-                ))
-            } else {
-                Ok(self.families.lock().unwrap().get(&id).cloned())
-            }
-        }
-
-        fn update(&self, family: Family) -> Result<Family, StoreError> {
-            if self.should_fail {
-                Err(StoreError::ConnectionError(
-                    "Database unavailable".to_string(),
-                ))
-            } else {
-                self.families
-                    .lock()
-                    .unwrap()
-                    .insert(family.id, family.clone());
-                Ok(family)
-            }
-        }
-
-        fn get_by_owner(&self, owner_id: IdentityId) -> Result<Vec<Family>, StoreError> {
-            if self.should_fail {
-                Err(StoreError::ConnectionError(
-                    "Database unavailable".to_string(),
-                ))
-            } else {
-                let families: Vec<Family> = self
-                    .families
-                    .lock()
-                    .unwrap()
-                    .values()
-                    .filter(|f| f.owner_id == owner_id)
-                    .cloned()
-                    .collect();
-                Ok(families)
-            }
-        }
-    }
-
-    struct MockDependentRepository;
-
-    impl DependentRepository for MockDependentRepository {
-        fn create(&self, _dependent: Dependent) -> Result<Dependent, StoreError> {
-            unimplemented!()
-        }
-
-        fn get(&self, _id: DependentId) -> Result<Option<Dependent>, StoreError> {
-            unimplemented!()
-        }
-
-        fn update(&self, _dependent: Dependent) -> Result<Dependent, StoreError> {
-            unimplemented!()
-        }
-
-        fn list_by_family(&self, _family_id: FamilyId) -> Result<Vec<Dependent>, StoreError> {
-            unimplemented!()
-        }
-    }
+    // Import common test mocks
+    use crate::test_utils::mocks::{MockDependentRepository, MockFamilyRepository};
 
     fn create_test_context(identity_id: &str) -> RequestContext {
         RequestContext {
@@ -305,13 +216,13 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_create_family_success() {
+    #[tokio::test]
+    async fn test_create_family_success() {
         let request_body = r#"{"name": "Smith Family"}"#;
         let context = create_test_context("user-123");
         let repository = MockFamilyRepository::new();
 
-        let result = create_family(request_body, &context, &repository);
+        let result = create_family(request_body, &context, &repository).await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -322,13 +233,13 @@ mod tests {
         assert_eq!(response.owner_id, "user-123");
     }
 
-    #[test]
-    fn test_create_family_invalid_json() {
+    #[tokio::test]
+    async fn test_create_family_invalid_json() {
         let request_body = r#"{"name": invalid}"#;
         let context = create_test_context("user-123");
         let repository = MockFamilyRepository::new();
 
-        let result = create_family(request_body, &context, &repository);
+        let result = create_family(request_body, &context, &repository).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -340,13 +251,13 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_create_family_empty_name() {
+    #[tokio::test]
+    async fn test_create_family_empty_name() {
         let request_body = r#"{"name": ""}"#;
         let context = create_test_context("user-123");
         let repository = MockFamilyRepository::new();
 
-        let result = create_family(request_body, &context, &repository);
+        let result = create_family(request_body, &context, &repository).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -358,13 +269,13 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_create_family_whitespace_only_name() {
+    #[tokio::test]
+    async fn test_create_family_whitespace_only_name() {
         let request_body = r#"{"name": "   "}"#;
         let context = create_test_context("user-123");
         let repository = MockFamilyRepository::new();
 
-        let result = create_family(request_body, &context, &repository);
+        let result = create_family(request_body, &context, &repository).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -376,14 +287,14 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_create_family_name_too_long() {
+    #[tokio::test]
+    async fn test_create_family_name_too_long() {
         let long_name = "a".repeat(101);
         let request_body = format!(r#"{{"name": "{}"}}"#, long_name);
         let context = create_test_context("user-123");
         let repository = MockFamilyRepository::new();
 
-        let result = create_family(&request_body, &context, &repository);
+        let result = create_family(&request_body, &context, &repository).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -395,14 +306,13 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_create_family_repository_error() {
+    #[tokio::test]
+    async fn test_create_family_repository_error() {
         let request_body = r#"{"name": "Smith Family"}"#;
         let context = create_test_context("user-123");
-        let mut repository = MockFamilyRepository::new();
-        repository.should_fail = true;
+        let repository = MockFamilyRepository::with_failure();
 
-        let result = create_family(request_body, &context, &repository);
+        let result = create_family(request_body, &context, &repository).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -411,27 +321,27 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_create_family_valid_name_at_boundary() {
+    #[tokio::test]
+    async fn test_create_family_valid_name_at_boundary() {
         let name_100_chars = "a".repeat(100);
         let request_body = format!(r#"{{"name": "{}"}}"#, name_100_chars);
         let context = create_test_context("user-123");
         let repository = MockFamilyRepository::new();
 
-        let result = create_family(&request_body, &context, &repository);
+        let result = create_family(&request_body, &context, &repository).await;
 
         assert!(result.is_ok());
         let (status, _) = result.unwrap();
         assert_eq!(status, 201);
     }
-    #[test]
-    fn test_get_family_success() {
+    #[tokio::test]
+    async fn test_get_family_success() {
         let family_id = FamilyId::new();
         let owner_id = IdentityId::new("user-123".to_string());
         let context = create_test_context("user-123");
 
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository;
+        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -445,7 +355,7 @@ mod tests {
             .unwrap()
             .insert(family_id, family);
 
-        let result = get_family(family_id, &context, &repository, &dependent_repo);
+        let result = get_family(family_id, &context, &repository, &dependent_repo).await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -456,14 +366,14 @@ mod tests {
         assert_eq!(response.owner_id, "user-123");
     }
 
-    #[test]
-    fn test_get_family_not_found() {
+    #[tokio::test]
+    async fn test_get_family_not_found() {
         let family_id = FamilyId::new();
         let context = create_test_context("user-123");
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository;
+        let dependent_repo = MockDependentRepository::new();
 
-        let result = get_family(family_id, &context, &repository, &dependent_repo);
+        let result = get_family(family_id, &context, &repository, &dependent_repo).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -474,14 +384,14 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_get_family_unauthorized() {
+    #[tokio::test]
+    async fn test_get_family_unauthorized() {
         let family_id = FamilyId::new();
         let owner_id = IdentityId::new("user-123".to_string());
         let context = create_test_context("user-456"); // Different user
 
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository;
+        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -495,7 +405,7 @@ mod tests {
             .unwrap()
             .insert(family_id, family);
 
-        let result = get_family(family_id, &context, &repository, &dependent_repo);
+        let result = get_family(family_id, &context, &repository, &dependent_repo).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -504,14 +414,14 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_update_family_success() {
+    #[tokio::test]
+    async fn test_update_family_success() {
         let family_id = FamilyId::new();
         let owner_id = IdentityId::new("user-123".to_string());
         let context = create_test_context("user-123");
 
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository;
+        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -532,7 +442,8 @@ mod tests {
             &context,
             &repository,
             &dependent_repo,
-        );
+        )
+        .await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -543,12 +454,12 @@ mod tests {
         assert_eq!(response.owner_id, "user-123");
     }
 
-    #[test]
-    fn test_update_family_not_found() {
+    #[tokio::test]
+    async fn test_update_family_not_found() {
         let family_id = FamilyId::new();
         let context = create_test_context("user-123");
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository;
+        let dependent_repo = MockDependentRepository::new();
 
         let request_body = r#"{"name": "Updated Family Name"}"#;
         let result = update_family(
@@ -557,7 +468,8 @@ mod tests {
             &context,
             &repository,
             &dependent_repo,
-        );
+        )
+        .await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -568,14 +480,14 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_update_family_unauthorized() {
+    #[tokio::test]
+    async fn test_update_family_unauthorized() {
         let family_id = FamilyId::new();
         let owner_id = IdentityId::new("user-123".to_string());
         let context = create_test_context("user-456"); // Different user
 
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository;
+        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -596,7 +508,8 @@ mod tests {
             &context,
             &repository,
             &dependent_repo,
-        );
+        )
+        .await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -605,14 +518,14 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_update_family_invalid_json() {
+    #[tokio::test]
+    async fn test_update_family_invalid_json() {
         let family_id = FamilyId::new();
         let owner_id = IdentityId::new("user-123".to_string());
         let context = create_test_context("user-123");
 
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository;
+        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -633,7 +546,8 @@ mod tests {
             &context,
             &repository,
             &dependent_repo,
-        );
+        )
+        .await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -645,14 +559,14 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_update_family_empty_name() {
+    #[tokio::test]
+    async fn test_update_family_empty_name() {
         let family_id = FamilyId::new();
         let owner_id = IdentityId::new("user-123".to_string());
         let context = create_test_context("user-123");
 
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository;
+        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -673,7 +587,8 @@ mod tests {
             &context,
             &repository,
             &dependent_repo,
-        );
+        )
+        .await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -685,14 +600,14 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_update_family_name_too_long() {
+    #[tokio::test]
+    async fn test_update_family_name_too_long() {
         let family_id = FamilyId::new();
         let owner_id = IdentityId::new("user-123".to_string());
         let context = create_test_context("user-123");
 
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository;
+        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -714,7 +629,8 @@ mod tests {
             &context,
             &repository,
             &dependent_repo,
-        );
+        )
+        .await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -726,14 +642,14 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_update_family_repository_error() {
+    #[tokio::test]
+    async fn test_update_family_repository_error() {
         let family_id = FamilyId::new();
         let owner_id = IdentityId::new("user-123".to_string());
         let context = create_test_context("user-123");
 
         let mut repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository;
+        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -746,7 +662,7 @@ mod tests {
             .lock()
             .unwrap()
             .insert(family_id, family);
-        repository.should_fail = true;
+        repository = MockFamilyRepository::with_failure();
 
         let request_body = r#"{"name": "Updated Family Name"}"#;
         let result = update_family(
@@ -755,7 +671,8 @@ mod tests {
             &context,
             &repository,
             &dependent_repo,
-        );
+        )
+        .await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -763,8 +680,8 @@ mod tests {
             _ => panic!("Expected store error"),
         }
     }
-    #[test]
-    fn test_list_families_success() {
+    #[tokio::test]
+    async fn test_list_families_success() {
         let owner_id = IdentityId::new("user-123".to_string());
         let context = create_test_context("user-123");
         let repository = MockFamilyRepository::new();
@@ -796,7 +713,7 @@ mod tests {
             .unwrap()
             .insert(family2.id, family2);
 
-        let result = list_families(&context, &repository);
+        let result = list_families(&context, &repository).await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -808,12 +725,12 @@ mod tests {
         assert!(response.iter().any(|f| f.name == "Jones Family"));
     }
 
-    #[test]
-    fn test_list_families_empty() {
+    #[tokio::test]
+    async fn test_list_families_empty() {
         let context = create_test_context("user-123");
         let repository = MockFamilyRepository::new();
 
-        let result = list_families(&context, &repository);
+        let result = list_families(&context, &repository).await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -823,13 +740,12 @@ mod tests {
         assert_eq!(response.len(), 0);
     }
 
-    #[test]
-    fn test_list_families_repository_error() {
+    #[tokio::test]
+    async fn test_list_families_repository_error() {
         let context = create_test_context("user-123");
-        let mut repository = MockFamilyRepository::new();
-        repository.should_fail = true;
+        let repository = MockFamilyRepository::with_failure();
 
-        let result = list_families(&context, &repository);
+        let result = list_families(&context, &repository).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
