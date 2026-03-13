@@ -31,6 +31,14 @@ pub struct DependentResponse {
     pub updated_at: String,
 }
 
+/// Response body for listing dependents
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DependentListResponse {
+    pub dependents: Vec<DependentResponse>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_token: Option<String>,
+}
+
 impl From<Dependent> for DependentResponse {
     fn from(dependent: Dependent) -> Self {
         DependentResponse {

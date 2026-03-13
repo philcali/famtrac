@@ -36,6 +36,14 @@ pub struct ActivityResponse {
     pub updated_at: String,
 }
 
+/// Response body for listing activities
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ActivityListResponse {
+    pub activities: Vec<ActivityResponse>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_token: Option<String>,
+}
+
 impl From<Activity> for ActivityResponse {
     fn from(activity: Activity) -> Self {
         ActivityResponse {
@@ -332,9 +340,14 @@ pub async fn query_activities<
 
     let activities = activity_repository.query(params).await?;
 
-    // Convert to response and serialize (Requirement 10.3)
-    let response: Vec<ActivityResponse> =
+    // Convert to response and wrap in list response structure (Requirement 10.3)
+    let activities_response: Vec<ActivityResponse> =
         activities.into_iter().map(ActivityResponse::from).collect();
+
+    let response = ActivityListResponse {
+        activities: activities_response,
+        next_token: None, // Pagination not yet implemented
+    };
 
     let response_json = serde_json::to_string(&response)
         .map_err(|e| HandlerError::InternalError(format!("Failed to serialize response: {}", e)))?;
