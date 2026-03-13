@@ -27,6 +27,14 @@ pub struct FamilyResponse {
     pub updated_at: String,
 }
 
+/// Response body for listing families
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FamilyListResponse {
+    pub families: Vec<FamilyResponse>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_token: Option<String>,
+}
+
 impl From<Family> for FamilyResponse {
     fn from(family: Family) -> Self {
         FamilyResponse {
@@ -192,7 +200,14 @@ pub async fn list_families<R: FamilyRepository>(
     let families = repository.get_by_owner(context.identity_id.clone()).await?;
 
     // Convert to response format
-    let response: Vec<FamilyResponse> = families.into_iter().map(FamilyResponse::from).collect();
+    let families_response: Vec<FamilyResponse> =
+        families.into_iter().map(FamilyResponse::from).collect();
+
+    // Wrap in list response structure
+    let response = FamilyListResponse {
+        families: families_response,
+        next_token: None, // Pagination not yet implemented
+    };
 
     // Serialize response (Requirement 10.3)
     let response_json = serde_json::to_string(&response)
@@ -719,10 +734,10 @@ mod tests {
         let (status, response_json) = result.unwrap();
         assert_eq!(status, 200);
 
-        let response: Vec<FamilyResponse> = serde_json::from_str(&response_json).unwrap();
-        assert_eq!(response.len(), 2);
-        assert!(response.iter().any(|f| f.name == "Smith Family"));
-        assert!(response.iter().any(|f| f.name == "Jones Family"));
+        let response: FamilyListResponse = serde_json::from_str(&response_json).unwrap();
+        assert_eq!(response.families.len(), 2);
+        assert!(response.families.iter().any(|f| f.name == "Smith Family"));
+        assert!(response.families.iter().any(|f| f.name == "Jones Family"));
     }
 
     #[tokio::test]
@@ -736,8 +751,8 @@ mod tests {
         let (status, response_json) = result.unwrap();
         assert_eq!(status, 200);
 
-        let response: Vec<FamilyResponse> = serde_json::from_str(&response_json).unwrap();
-        assert_eq!(response.len(), 0);
+        let response: FamilyListResponse = serde_json::from_str(&response_json).unwrap();
+        assert_eq!(response.families.len(), 0);
     }
 
     #[tokio::test]

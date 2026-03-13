@@ -1,6 +1,11 @@
 import { ApiClient } from './client';
 import type { ApiResponse } from './client';
-import type { CreateDependentRequest, UpdateDependentRequest, DependentResponse } from './types';
+import type {
+  CreateDependentRequest,
+  UpdateDependentRequest,
+  DependentResponse,
+  DependentListResponse,
+} from './types';
 
 /**
  * Get all dependents for a specific family
@@ -8,8 +13,8 @@ import type { CreateDependentRequest, UpdateDependentRequest, DependentResponse 
 export async function getDependents(
   client: ApiClient,
   familyId: string
-): Promise<ApiResponse<{ dependents: DependentResponse[] }>> {
-  return client.get<{ dependents: DependentResponse[] }>(`/families/${familyId}/dependents`);
+): Promise<ApiResponse<DependentListResponse>> {
+  return client.get<DependentListResponse>(`/families/${familyId}/dependents`);
 }
 
 /**

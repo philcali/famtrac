@@ -18,6 +18,7 @@ export interface FamilyResponse {
 
 export interface FamilyListResponse {
   families: FamilyResponse[];
+  next_token?: string;
 }
 
 // Dependent API types
@@ -40,6 +41,11 @@ export interface DependentResponse {
   date_of_birth: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface DependentListResponse {
+  dependents: DependentResponse[];
+  next_token?: string;
 }
 
 // Activity API types
@@ -84,6 +90,7 @@ export interface ActivityResponse {
 
 export interface ActivityListResponse {
   activities: ActivityResponse[];
+  next_token?: string;
 }
 
 // Error response
