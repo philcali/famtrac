@@ -16,5 +16,8 @@ export type { SuccessMessageProps } from './SuccessMessage';
 export { ConfirmDialog } from './ConfirmDialog';
 export type { ConfirmDialogProps } from './ConfirmDialog';
 
+export { SkeletonCard } from './SkeletonCard';
+export type { SkeletonCardProps } from './SkeletonCard';
+
 export { ErrorBoundary } from './ErrorBoundary';
 export { Navigation } from './Navigation';
