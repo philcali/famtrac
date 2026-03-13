@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { ActivityCard } from './ActivityCard';
-import { LoadingSpinner } from '../common/LoadingSpinner';
+import { SkeletonCard } from '../common/SkeletonCard';
 import { ErrorMessage } from '../common/ErrorMessage';
 import type { ActivityResponse } from '../../api/types';
 
@@ -30,7 +30,7 @@ export function ActivityList({ activities, loading, error, onEdit, onDelete }: A
   }, [activities]);
 
   if (loading) {
-    return <LoadingSpinner />;
+    return <SkeletonCard count={3} />;
   }
 
   if (error) {

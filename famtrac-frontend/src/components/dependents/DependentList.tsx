@@ -1,5 +1,6 @@
+import { Row, Col } from 'react-bootstrap';
 import { DependentCard } from './DependentCard';
-import { LoadingSpinner } from '../common/LoadingSpinner';
+import { SkeletonCard } from '../common/SkeletonCard';
 import { ErrorMessage } from '../common/ErrorMessage';
 import type { Dependent } from '../../types/domain';
 
@@ -27,7 +28,13 @@ export function DependentList({
   onView,
 }: DependentListProps) {
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <Row>
+        <Col xs={12} md={6} lg={4}>
+          <SkeletonCard count={3} />
+        </Col>
+      </Row>
+    );
   }
 
   if (error) {
@@ -43,16 +50,17 @@ export function DependentList({
   }
 
   return (
-    <div>
+    <Row>
       {dependents.map((dependent) => (
-        <DependentCard
-          key={dependent.id}
-          dependent={dependent}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onView={onView}
-        />
+        <Col key={dependent.id} xs={12} md={6} lg={4}>
+          <DependentCard
+            dependent={dependent}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onView={onView}
+          />
+        </Col>
       ))}
-    </div>
+    </Row>
   );
 }

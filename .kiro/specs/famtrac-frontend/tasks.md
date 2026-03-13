@@ -307,21 +307,21 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - Create `src/pages/ErrorPage.tsx` for general errors
     - _Requirements: 14.5, 15.4_
 
-- [ ] 13. Responsive design and styling
-  - [ ] 13.1 Set up Bootstrap and custom styles
+- [x] 13. Responsive design and styling
+  - [x] 13.1 Set up Bootstrap and custom styles
     - Import Bootstrap CSS in main.tsx
     - Create `src/styles/custom.css` for custom styling
     - Configure responsive breakpoints
     - _Requirements: 17.1, 17.2, 17.3_
   
-  - [ ] 13.2 Implement responsive layouts
+  - [x] 13.2 Implement responsive layouts
     - Use react-bootstrap Container, Row, Col for grid layouts
     - Implement mobile-first responsive design
     - Ensure touch targets meet minimum size requirements
     - Test layouts at various screen widths (320px to 1920px)
     - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5_
   
-  - [ ] 13.3 Add loading states and placeholders
+  - [x] 13.3 Add loading states and placeholders
     - Implement skeleton loading UI for data fetching
     - Add loading spinners for form submissions
     - Disable buttons during API requests

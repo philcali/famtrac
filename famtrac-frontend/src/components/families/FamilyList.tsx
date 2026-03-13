@@ -1,5 +1,6 @@
+import { Row, Col } from 'react-bootstrap';
 import { FamilyCard } from './FamilyCard';
-import { LoadingSpinner } from '../common/LoadingSpinner';
+import { SkeletonCard } from '../common/SkeletonCard';
 import { ErrorMessage } from '../common/ErrorMessage';
 import type { Family } from '../../types/domain';
 
@@ -27,7 +28,13 @@ export function FamilyList({
   onView,
 }: FamilyListProps) {
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <Row>
+        <Col xs={12} md={6} lg={4}>
+          <SkeletonCard count={3} />
+        </Col>
+      </Row>
+    );
   }
 
   if (error) {
@@ -43,16 +50,12 @@ export function FamilyList({
   }
 
   return (
-    <div>
+    <Row>
       {families.map((family) => (
-        <FamilyCard
-          key={family.id}
-          family={family}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onView={onView}
-        />
+        <Col key={family.id} xs={12} md={6} lg={4}>
+          <FamilyCard family={family} onEdit={onEdit} onDelete={onDelete} onView={onView} />
+        </Col>
       ))}
-    </div>
+    </Row>
   );
 }
