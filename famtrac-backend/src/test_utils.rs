@@ -143,7 +143,11 @@ pub mod mocks {
             Ok(dependent)
         }
 
-        async fn get(&self, id: DependentId) -> Result<Option<Dependent>, StoreError> {
+        async fn get(
+            &self,
+            _family_id: FamilyId,
+            id: DependentId,
+        ) -> Result<Option<Dependent>, StoreError> {
             if self.should_fail {
                 return Err(StoreError::QueryError("Mock failure".to_string()));
             }
@@ -225,7 +229,11 @@ pub mod mocks {
             Ok(activity)
         }
 
-        async fn get(&self, id: ActivityId) -> Result<Option<Activity>, StoreError> {
+        async fn get(
+            &self,
+            _dependent_id: DependentId,
+            id: ActivityId,
+        ) -> Result<Option<Activity>, StoreError> {
             if self.should_fail {
                 return Err(StoreError::QueryError("Mock failure".to_string()));
             }
@@ -243,7 +251,11 @@ pub mod mocks {
             Ok(activity)
         }
 
-        async fn delete(&self, id: ActivityId) -> Result<(), StoreError> {
+        async fn delete(
+            &self,
+            _dependent_id: DependentId,
+            id: ActivityId,
+        ) -> Result<(), StoreError> {
             if self.should_fail {
                 return Err(StoreError::QueryError("Mock failure".to_string()));
             }

@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
 
-use super::{ActivityId, DependentId, Timestamp};
+use super::{ActivityId, DependentId, FamilyId, Timestamp};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Activity {
     pub id: ActivityId,
+    pub family_id: FamilyId,
     pub dependent_id: DependentId,
     pub timestamp: Timestamp,
     pub activity_type: ActivityType,

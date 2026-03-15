@@ -22,12 +22,18 @@ pub trait FamilyRepository: Send + Sync {
 
 /// Repository trait for Dependent operations
 #[async_trait]
+/// Repository trait for Dependent operations
+#[async_trait]
 pub trait DependentRepository: Send + Sync {
     /// Create a new dependent
     async fn create(&self, dependent: Dependent) -> Result<Dependent, StoreError>;
 
-    /// Get a dependent by ID
-    async fn get(&self, id: DependentId) -> Result<Option<Dependent>, StoreError>;
+    /// Get a dependent by family ID and dependent ID
+    async fn get(
+        &self,
+        family_id: FamilyId,
+        id: DependentId,
+    ) -> Result<Option<Dependent>, StoreError>;
 
     /// Update an existing dependent
     async fn update(&self, dependent: Dependent) -> Result<Dependent, StoreError>;
@@ -51,14 +57,22 @@ pub trait ActivityRepository: Send + Sync {
     /// Create a new activity
     async fn create(&self, activity: Activity) -> Result<Activity, StoreError>;
 
-    /// Get an activity by ID
-    async fn get(&self, id: crate::domain::ActivityId) -> Result<Option<Activity>, StoreError>;
+    /// Get an activity by dependent ID and activity ID
+    async fn get(
+        &self,
+        dependent_id: DependentId,
+        id: crate::domain::ActivityId,
+    ) -> Result<Option<Activity>, StoreError>;
 
     /// Update an existing activity
     async fn update(&self, activity: Activity) -> Result<Activity, StoreError>;
 
-    /// Delete an activity by ID
-    async fn delete(&self, id: crate::domain::ActivityId) -> Result<(), StoreError>;
+    /// Delete an activity by dependent ID and activity ID
+    async fn delete(
+        &self,
+        dependent_id: DependentId,
+        id: crate::domain::ActivityId,
+    ) -> Result<(), StoreError>;
 
     /// Query activities with filters
     async fn query(&self, params: ActivityQueryParams) -> Result<Vec<Activity>, StoreError>;
