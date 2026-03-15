@@ -78,8 +78,11 @@ export function parseApiError(error: unknown): ErrorInfo {
     };
   }
 
-  // Timeout error
-  if (error instanceof Error && error.name === 'AbortError') {
+  // Timeout error (AbortError from AbortController)
+  if (
+    (error instanceof Error && error.name === 'AbortError') ||
+    (error instanceof DOMException && error.name === 'AbortError')
+  ) {
     return {
       message: 'Request timed out. Please try again.',
       type: 'network',
