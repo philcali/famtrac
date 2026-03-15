@@ -286,31 +286,27 @@ impl DependentRepository for DynamoDbDependentRepository {
         Ok(dependent)
     }
 
-    async fn get(&self, id: DependentId) -> Result<Option<Dependent>, StoreError> {
-        // We need to query by GSI or scan to find the dependent by ID
-        // For now, we'll use a query on the SK with begins_with
-        // This requires knowing the family_id, which we don't have here
-        // So we'll need to use a different approach - query GSI or scan
+    async fn get(
+        &self,
+        family_id: FamilyId,
+        id: DependentId,
+    ) -> Result<Option<Dependent>, StoreError> {
+        let pk = format!("FAMILY#{}", family_id.0);
+        let sk = format!("DEPENDENT#{}", id.0);
 
-        // For simplicity, we'll scan with a filter (not ideal for production)
         let result = self
             .client
-            .scan()
+            .get_item()
             .table_name(&self.table_name)
-            .filter_expression("id = :id AND #type = :type")
-            .expression_attribute_names("#type", "Type")
-            .expression_attribute_values(":id", AttributeValue::S(id.0.to_string()))
-            .expression_attribute_values(":type", AttributeValue::S("Dependent".to_string()))
+            .key("PK", AttributeValue::S(pk))
+            .key("SK", AttributeValue::S(sk))
             .send()
             .await
             .map_err(|e| StoreError::QueryError(format!("Failed to get dependent: {}", e)))?;
 
-        match result.items {
-            Some(items) if !items.is_empty() => {
-                let item = &items[0];
-                Ok(Some(self.parse_item(item)?))
-            }
-            _ => Ok(None),
+        match result.item {
+            Some(item) => Ok(Some(self.parse_item(&item)?)),
+            None => Ok(None),
         }
     }
 
@@ -396,6 +392,10 @@ impl DynamoDbActivityRepository {
             AttributeValue::S(activity.dependent_id.0.to_string()),
         );
         item.insert(
+            "family_id".to_string(),
+            AttributeValue::S(activity.family_id.0.to_string()),
+        );
+        item.insert(
             "timestamp".to_string(),
             AttributeValue::S(activity.timestamp.0.to_rfc3339()),
         );
@@ -445,6 +445,12 @@ impl DynamoDbActivityRepository {
             .and_then(|s| s.parse().ok())
             .ok_or_else(|| StoreError::QueryError("Missing or invalid dependent_id".to_string()))?;
 
+        let family_id = item
+            .get("family_id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid family_id".to_string()))?;
+
         let timestamp = item
             .get("timestamp")
             .and_then(|v| v.as_s().ok())
@@ -473,6 +479,7 @@ impl DynamoDbActivityRepository {
 
         Ok(Activity {
             id: ActivityId(id),
+            family_id: FamilyId(family_id),
             dependent_id: DependentId(dependent_id),
             timestamp: Timestamp::from_datetime(timestamp),
             activity_type,
@@ -498,16 +505,24 @@ impl ActivityRepository for DynamoDbActivityRepository {
         Ok(activity)
     }
 
-    async fn get(&self, id: ActivityId) -> Result<Option<Activity>, StoreError> {
-        // Similar to dependent, we need to scan to find by ID
+    async fn get(
+        &self,
+        dependent_id: DependentId,
+        id: ActivityId,
+    ) -> Result<Option<Activity>, StoreError> {
+        // Query within the dependent's partition for the specific activity ID
         let result = self
             .client
-            .scan()
+            .query()
             .table_name(&self.table_name)
-            .filter_expression("id = :id AND #type = :type")
-            .expression_attribute_names("#type", "Type")
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+            .filter_expression("id = :id")
+            .expression_attribute_values(
+                ":pk",
+                AttributeValue::S(format!("DEPENDENT#{}", dependent_id.0)),
+            )
+            .expression_attribute_values(":sk_prefix", AttributeValue::S("ACTIVITY#".to_string()))
             .expression_attribute_values(":id", AttributeValue::S(id.0.to_string()))
-            .expression_attribute_values(":type", AttributeValue::S("Activity".to_string()))
             .send()
             .await
             .map_err(|e| StoreError::QueryError(format!("Failed to get activity: {}", e)))?;
@@ -535,10 +550,10 @@ impl ActivityRepository for DynamoDbActivityRepository {
         Ok(activity)
     }
 
-    async fn delete(&self, id: ActivityId) -> Result<(), StoreError> {
-        // First, we need to get the activity to know its PK and SK
+    async fn delete(&self, dependent_id: DependentId, id: ActivityId) -> Result<(), StoreError> {
+        // Look up the activity within the dependent's partition to get the full SK
         let activity = self
-            .get(id)
+            .get(dependent_id, id)
             .await?
             .ok_or_else(|| StoreError::NotFound(format!("Activity with id {} not found", id.0)))?;
 

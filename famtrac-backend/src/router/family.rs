@@ -4,8 +4,11 @@ use crate::context::RequestContext;
 use crate::domain::FamilyId;
 use crate::errors::HandlerError;
 use crate::handlers;
-use crate::repository::{DynamoDbDependentRepository, DynamoDbFamilyRepository};
+use crate::repository::{
+    DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
+};
 use crate::router::extractors::extract_uuid_param;
+use aws_lambda_events::apigw::ApiGatewayV2httpRequest;
 
 /// Route handler for all /families/* routes
 ///
@@ -40,13 +43,16 @@ use crate::router::extractors::extract_uuid_param;
 /// - Requirement 3.6: GET /families/{id}/dependents → list_dependents()
 /// - Requirement 3.7: Invalid UUID → HandlerError::Validation
 /// - Requirement 6.5: Use extractors from extractors.rs
+#[allow(clippy::too_many_arguments)]
 pub async fn route_family(
     method: &str,
     path: &str,
     body: &str,
+    request: &ApiGatewayV2httpRequest,
     context: &RequestContext,
     family_repo: &DynamoDbFamilyRepository,
     dependent_repo: &DynamoDbDependentRepository,
+    activity_repo: &DynamoDbActivityRepository,
 ) -> Result<serde_json::Value, HandlerError> {
     match (method, path) {
         // GET /families - List all families for authenticated identity
@@ -84,7 +90,7 @@ pub async fn route_family(
         }
 
         // PUT /families/{id} - Update a family
-        ("PUT", p) if p.starts_with("/families/") => {
+        ("PUT", p) if p.starts_with("/families/") && !p.contains("/dependents") => {
             let family_id = extract_uuid_param(path, "/families/", "family_id")?;
             let (_status, response_json) = handlers::update_family(
                 FamilyId(family_id),
@@ -102,7 +108,7 @@ pub async fn route_family(
         }
 
         // GET /families/{id}/dependents - List dependents for a family
-        ("GET", p) if p.starts_with("/families/") && p.contains("/dependents") => {
+        ("GET", p) if p.starts_with("/families/") && p.ends_with("/dependents") => {
             let family_id = extract_uuid_param(path, "/families/", "family_id")?;
             let (_status, response_json) = handlers::list_dependents(
                 FamilyId(family_id),
@@ -116,6 +122,26 @@ pub async fn route_family(
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
                 })?;
             Ok(response)
+        }
+
+        // /families/{id}/dependents/* - Delegate to dependent router
+        (_, p) if p.starts_with("/families/") && p.contains("/dependents") => {
+            let family_id = extract_uuid_param(path, "/families/", "family_id")?;
+            // Extract the sub-path after /dependents
+            let dependents_idx = p.find("/dependents").unwrap();
+            let after_dependents = &p[dependents_idx + "/dependents".len()..];
+            super::dependent::route_dependent(
+                method,
+                FamilyId(family_id),
+                after_dependents,
+                body,
+                request,
+                context,
+                family_repo,
+                dependent_repo,
+                activity_repo,
+            )
+            .await
         }
 
         // Unknown route

@@ -64,16 +64,9 @@ pub async fn route_request(
     // Match on path prefix to delegate to appropriate route handler
     let result = if path.starts_with("/families") {
         // Delegate to family route handler
-        family::route_family(method, path, body, context, family_repo, dependent_repo).await
-    } else if path.starts_with("/dependents") && !path.ends_with("/activities") {
-        // Delegate to dependent route handler (but not /dependents/{id}/activities)
-        dependent::route_dependent(method, path, body, context, family_repo, dependent_repo).await
-    } else if path.starts_with("/activities")
-        || (path.contains("/dependents/") && path.ends_with("/activities"))
-    {
-        // Delegate to activity route handler
-        // Handles both /activities/* and /dependents/{id}/activities
-        activity::route_activity(
+        // Handles /families/*, /families/{id}/dependents/*, and
+        // /families/{id}/dependents/{id}/activities/*
+        family::route_family(
             method,
             path,
             body,

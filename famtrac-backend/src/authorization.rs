@@ -85,30 +85,19 @@ impl Authorizable for Activity {
         &self,
         identity: &IdentityId,
         family_repo: &F,
-        dependent_repo: &D,
+        _dependent_repo: &D,
     ) -> Result<(), AuthError>
     where
         F: FamilyRepository,
         D: DependentRepository,
     {
-        // Activity authorization: verify identity owns parent Family via Dependent
-        let dependent = dependent_repo
-            .get(self.dependent_id)
-            .await
-            .map_err(|e| AuthError::Forbidden(format!("Failed to verify dependent access: {}", e)))?
-            .ok_or_else(|| {
-                AuthError::Forbidden(format!(
-                    "Parent dependent {} not found",
-                    self.dependent_id.0
-                ))
-            })?;
-
+        // Activity authorization: verify identity owns parent Family
         let family = family_repo
-            .get(dependent.family_id)
+            .get(self.family_id)
             .await
             .map_err(|e| AuthError::Forbidden(format!("Failed to verify family access: {}", e)))?
             .ok_or_else(|| {
-                AuthError::Forbidden(format!("Parent family {} not found", dependent.family_id.0))
+                AuthError::Forbidden(format!("Parent family {} not found", self.family_id.0))
             })?;
 
         if family.owner_id == *identity {
@@ -207,7 +196,11 @@ mod tests {
             Ok(dependent)
         }
 
-        async fn get(&self, id: DependentId) -> Result<Option<Dependent>, StoreError> {
+        async fn get(
+            &self,
+            _family_id: FamilyId,
+            id: DependentId,
+        ) -> Result<Option<Dependent>, StoreError> {
             Ok(self.dependents.lock().unwrap().get(&id).cloned())
         }
 
@@ -251,9 +244,10 @@ mod tests {
         }
     }
 
-    fn create_test_activity(dependent_id: DependentId) -> Activity {
+    fn create_test_activity(family_id: FamilyId, dependent_id: DependentId) -> Activity {
         Activity {
             id: ActivityId::new(),
+            family_id,
             dependent_id,
             timestamp: Timestamp::now(),
             activity_type: ActivityType::Feeding {
@@ -356,7 +350,7 @@ mod tests {
         let dependent = create_test_dependent(family.id);
         dependent_repo.add_dependent(dependent.clone());
 
-        let activity = create_test_activity(dependent.id);
+        let activity = create_test_activity(family.id, dependent.id);
 
         let result = activity
             .authorize(&owner_id, &family_repo, &dependent_repo)
@@ -376,7 +370,7 @@ mod tests {
         let dependent = create_test_dependent(family.id);
         dependent_repo.add_dependent(dependent.clone());
 
-        let activity = create_test_activity(dependent.id);
+        let activity = create_test_activity(family.id, dependent.id);
 
         let result = activity
             .authorize(&other_identity, &family_repo, &dependent_repo)
@@ -391,7 +385,8 @@ mod tests {
         let dependent_repo = MockDependentRepository::new();
 
         let owner_id = IdentityId::new("user-123".to_string());
-        let activity = create_test_activity(DependentId::new());
+        let family_id = FamilyId::new();
+        let activity = create_test_activity(family_id, DependentId::new());
 
         let result = activity
             .authorize(&owner_id, &family_repo, &dependent_repo)
@@ -406,10 +401,11 @@ mod tests {
         let dependent_repo = MockDependentRepository::new();
 
         let owner_id = IdentityId::new("user-123".to_string());
-        let dependent = create_test_dependent(FamilyId::new());
+        let family_id = FamilyId::new();
+        let dependent = create_test_dependent(family_id);
         dependent_repo.add_dependent(dependent.clone());
 
-        let activity = create_test_activity(dependent.id);
+        let activity = create_test_activity(family_id, dependent.id);
 
         let result = activity
             .authorize(&owner_id, &family_repo, &dependent_repo)

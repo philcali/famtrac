@@ -128,13 +128,14 @@ pub async fn create_dependent<F: FamilyRepository, D: DependentRepository>(
 /// - 2.6: Verify the Identity has access to the associated Family
 /// - 10.3: Serialize response data into valid JSON format
 pub async fn get_dependent<F: FamilyRepository, D: DependentRepository>(
+    family_id: FamilyId,
     dependent_id: DependentId,
     context: &RequestContext,
     family_repository: &F,
     dependent_repository: &D,
 ) -> Result<(u16, String), HandlerError> {
     // Retrieve dependent from repository (Requirement 2.3)
-    let dependent = dependent_repository.get(dependent_id).await?;
+    let dependent = dependent_repository.get(family_id, dependent_id).await?;
 
     // Return 404 if dependent doesn't exist
     let dependent = dependent.ok_or(HandlerError::NotFound(format!(
@@ -169,6 +170,7 @@ pub async fn get_dependent<F: FamilyRepository, D: DependentRepository>(
 /// - 8.1: Return 400 Bad Request for malformed JSON
 /// - 10.1: Parse incoming JSON request bodies into strongly-typed Rust structures
 pub async fn update_dependent<F: FamilyRepository, D: DependentRepository>(
+    family_id: FamilyId,
     dependent_id: DependentId,
     request_body: &str,
     context: &RequestContext,
@@ -191,7 +193,7 @@ pub async fn update_dependent<F: FamilyRepository, D: DependentRepository>(
     validate_date_of_birth(&request.date_of_birth)?;
 
     // Retrieve existing dependent (Requirement 2.4)
-    let dependent = dependent_repository.get(dependent_id).await?;
+    let dependent = dependent_repository.get(family_id, dependent_id).await?;
 
     // Return 404 if dependent doesn't exist
     let mut dependent = dependent.ok_or(HandlerError::NotFound(format!(
@@ -256,11 +258,16 @@ pub async fn list_dependents<F: FamilyRepository, D: DependentRepository>(
     // List all Dependents for Family (Requirement 2.5)
     let dependents = dependent_repository.list_by_family(family_id).await?;
 
-    // Convert to response and serialize (Requirement 10.3)
-    let response: Vec<DependentResponse> = dependents
+    // Convert to response and wrap in list response structure (Requirement 10.3)
+    let dependents_response: Vec<DependentResponse> = dependents
         .into_iter()
         .map(DependentResponse::from)
         .collect();
+
+    let response = DependentListResponse {
+        dependents: dependents_response,
+        next_token: None, // Pagination not yet implemented
+    };
 
     let response_json = serde_json::to_string(&response)
         .map_err(|e| HandlerError::InternalError(format!("Failed to serialize response: {}", e)))?;
@@ -490,7 +497,14 @@ mod tests {
             .unwrap()
             .insert(dependent_id, dependent);
 
-        let result = get_dependent(dependent_id, &context, &family_repo, &dependent_repo).await;
+        let result = get_dependent(
+            family_id,
+            dependent_id,
+            &context,
+            &family_repo,
+            &dependent_repo,
+        )
+        .await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -504,11 +518,19 @@ mod tests {
     #[tokio::test]
     async fn test_get_dependent_not_found() {
         let dependent_id = DependentId::new();
+        let family_id = FamilyId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
         let dependent_repo = MockDependentRepository::new();
 
-        let result = get_dependent(dependent_id, &context, &family_repo, &dependent_repo).await;
+        let result = get_dependent(
+            family_id,
+            dependent_id,
+            &context,
+            &family_repo,
+            &dependent_repo,
+        )
+        .await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -552,7 +574,14 @@ mod tests {
             .unwrap()
             .insert(dependent_id, dependent);
 
-        let result = get_dependent(dependent_id, &context, &family_repo, &dependent_repo).await;
+        let result = get_dependent(
+            family_id,
+            dependent_id,
+            &context,
+            &family_repo,
+            &dependent_repo,
+        )
+        .await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -596,6 +625,7 @@ mod tests {
 
         let request_body = r#"{"name": "Alice Updated", "date_of_birth": "2024-01-20"}"#;
         let result = update_dependent(
+            family_id,
             dependent_id,
             request_body,
             &context,
@@ -615,12 +645,14 @@ mod tests {
     #[tokio::test]
     async fn test_update_dependent_not_found() {
         let dependent_id = DependentId::new();
+        let family_id = FamilyId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
         let dependent_repo = MockDependentRepository::new();
 
         let request_body = r#"{"name": "Alice Updated", "date_of_birth": "2024-01-20"}"#;
         let result = update_dependent(
+            family_id,
             dependent_id,
             request_body,
             &context,
@@ -673,6 +705,7 @@ mod tests {
 
         let request_body = r#"{"name": "Alice Updated", "date_of_birth": "2024-01-20"}"#;
         let result = update_dependent(
+            family_id,
             dependent_id,
             request_body,
             &context,
@@ -723,6 +756,7 @@ mod tests {
 
         let request_body = r#"{"name": invalid}"#;
         let result = update_dependent(
+            family_id,
             dependent_id,
             request_body,
             &context,
@@ -794,8 +828,9 @@ mod tests {
         let (status, response_json) = result.unwrap();
         assert_eq!(status, 200);
 
-        let response: Vec<DependentResponse> = serde_json::from_str(&response_json).unwrap();
-        assert_eq!(response.len(), 2);
+        let response: DependentListResponse = serde_json::from_str(&response_json).unwrap();
+        assert_eq!(response.dependents.len(), 2);
+        assert!(response.next_token.is_none());
     }
 
     #[tokio::test]
@@ -819,8 +854,9 @@ mod tests {
         let (status, response_json) = result.unwrap();
         assert_eq!(status, 200);
 
-        let response: Vec<DependentResponse> = serde_json::from_str(&response_json).unwrap();
-        assert_eq!(response.len(), 0);
+        let response: DependentListResponse = serde_json::from_str(&response_json).unwrap();
+        assert_eq!(response.dependents.len(), 0);
+        assert!(response.next_token.is_none());
     }
 
     #[tokio::test]

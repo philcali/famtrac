@@ -1,6 +1,6 @@
 use crate::authorization::Authorizable;
 use crate::context::RequestContext;
-use crate::domain::{Activity, ActivityId, ActivityType, Date, DependentId, Timestamp};
+use crate::domain::{Activity, ActivityId, ActivityType, Date, DependentId, FamilyId, Timestamp};
 use crate::errors::{validate_activity_timestamp, validate_activity_type, HandlerError};
 use crate::repository::{
     ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository,
@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 /// Request body for creating a new activity
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreateActivityRequest {
+    pub family_id: FamilyId,
     pub dependent_id: DependentId,
     pub timestamp: Timestamp,
     #[serde(flatten)]
@@ -28,6 +29,7 @@ pub struct UpdateActivityRequest {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ActivityResponse {
     pub id: ActivityId,
+    pub family_id: FamilyId,
     pub dependent_id: DependentId,
     pub timestamp: String,
     #[serde(flatten)]
@@ -48,6 +50,7 @@ impl From<Activity> for ActivityResponse {
     fn from(activity: Activity) -> Self {
         ActivityResponse {
             id: activity.id,
+            family_id: activity.family_id,
             dependent_id: activity.dependent_id,
             timestamp: activity.timestamp.to_iso8601(),
             activity_type: activity.activity_type,
@@ -92,7 +95,9 @@ pub async fn create_activity<F: FamilyRepository, D: DependentRepository, A: Act
     validate_activity_type(&request.activity_type)?;
 
     // Retrieve parent Dependent and authorize access to parent Family (Requirement 3.5)
-    let dependent = dependent_repository.get(request.dependent_id).await?;
+    let dependent = dependent_repository
+        .get(request.family_id, request.dependent_id)
+        .await?;
     let dependent = dependent.ok_or(HandlerError::NotFound(format!(
         "Dependent with id {:?} not found",
         request.dependent_id
@@ -110,6 +115,7 @@ pub async fn create_activity<F: FamilyRepository, D: DependentRepository, A: Act
     let now = Timestamp::now();
     let activity = Activity {
         id: ActivityId::new(),
+        family_id: request.family_id,
         dependent_id: request.dependent_id,
         timestamp: request.timestamp,
         activity_type: request.activity_type,
@@ -136,6 +142,7 @@ pub async fn create_activity<F: FamilyRepository, D: DependentRepository, A: Act
 /// - 3.1: Retrieve an Activity by its unique identifier
 /// - 10.3: Serialize response data into valid JSON format
 pub async fn get_activity<F: FamilyRepository, D: DependentRepository, A: ActivityRepository>(
+    dependent_id: DependentId,
     activity_id: ActivityId,
     context: &RequestContext,
     family_repository: &F,
@@ -143,7 +150,7 @@ pub async fn get_activity<F: FamilyRepository, D: DependentRepository, A: Activi
     activity_repository: &A,
 ) -> Result<(u16, String), HandlerError> {
     // Retrieve activity from repository (Requirement 3.1)
-    let activity = activity_repository.get(activity_id).await?;
+    let activity = activity_repository.get(dependent_id, activity_id).await?;
 
     // Return 404 if activity doesn't exist
     let activity = activity.ok_or(HandlerError::NotFound(format!(
@@ -181,6 +188,7 @@ pub async fn get_activity<F: FamilyRepository, D: DependentRepository, A: Activi
 /// - 8.1: Return 400 Bad Request for malformed JSON
 /// - 10.1: Parse incoming JSON request bodies into strongly-typed Rust structures
 pub async fn update_activity<F: FamilyRepository, D: DependentRepository, A: ActivityRepository>(
+    dependent_id: DependentId,
     activity_id: ActivityId,
     request_body: &str,
     context: &RequestContext,
@@ -204,7 +212,7 @@ pub async fn update_activity<F: FamilyRepository, D: DependentRepository, A: Act
     validate_activity_type(&request.activity_type)?;
 
     // Retrieve existing activity (Requirement 5.1, 5.3)
-    let activity = activity_repository.get(activity_id).await?;
+    let activity = activity_repository.get(dependent_id, activity_id).await?;
 
     // Return 404 if activity doesn't exist
     let mut activity = activity.ok_or(HandlerError::NotFound(format!(
@@ -248,6 +256,7 @@ pub async fn update_activity<F: FamilyRepository, D: DependentRepository, A: Act
 /// - 6.3: Remove the Activity from the Data_Store permanently
 /// - 6.4: Verify the Identity has access to the associated Dependent's Family
 pub async fn delete_activity<F: FamilyRepository, D: DependentRepository, A: ActivityRepository>(
+    dependent_id: DependentId,
     activity_id: ActivityId,
     context: &RequestContext,
     family_repository: &F,
@@ -255,7 +264,7 @@ pub async fn delete_activity<F: FamilyRepository, D: DependentRepository, A: Act
     activity_repository: &A,
 ) -> Result<(u16, String), HandlerError> {
     // Retrieve Activity and authorize access to parent Family via Dependent (Requirement 6.4)
-    let activity = activity_repository.get(activity_id).await?;
+    let activity = activity_repository.get(dependent_id, activity_id).await?;
 
     // Return 404 if activity doesn't exist (Requirement 6.2)
     let activity = activity.ok_or(HandlerError::NotFound(format!(
@@ -272,7 +281,9 @@ pub async fn delete_activity<F: FamilyRepository, D: DependentRepository, A: Act
         .await?;
 
     // Delete Activity from repository (Requirement 6.1, 6.3)
-    activity_repository.delete(activity_id).await?;
+    activity_repository
+        .delete(dependent_id, activity_id)
+        .await?;
 
     // Return 204 No Content
     Ok((204, String::new()))
@@ -295,6 +306,7 @@ pub async fn query_activities<
     D: DependentRepository,
     A: ActivityRepository,
 >(
+    family_id: FamilyId,
     dependent_id: DependentId,
     start_date: Option<Date>,
     end_date: Option<Date>,
@@ -305,7 +317,7 @@ pub async fn query_activities<
     activity_repository: &A,
 ) -> Result<(u16, String), HandlerError> {
     // Retrieve Dependent and authorize access to parent Family (Requirement 4.6)
-    let dependent = dependent_repository.get(dependent_id).await?;
+    let dependent = dependent_repository.get(family_id, dependent_id).await?;
     let dependent = dependent.ok_or(HandlerError::NotFound(format!(
         "Dependent with id {:?} not found",
         dependent_id
