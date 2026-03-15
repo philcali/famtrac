@@ -5,6 +5,8 @@ import { AssetCode } from 'aws-cdk-lib/aws-lambda';
 import { FamtracAuthorization, IFamtracAuthorization } from './auth/FamtracAuthorization';
 import { Certificate, ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import { HostedZone, IHostedZone } from 'aws-cdk-lib/aws-route53';
+import { FamtracFrontend, IFamtracFrontend } from './frontend/FamtracFrontend';
+import { Source } from 'aws-cdk-lib/aws-s3-deployment';
 import * as child from 'child_process';
 import * as p from 'path';
 
@@ -132,6 +134,42 @@ class FamtracBackendStack extends Stack {
     }
 }
 
+interface FamtracFrontendStackProps extends StackProps {
+    readonly config: FamtracConfiguration,
+}
+
+class FamtracFrontendStack extends Stack {
+    readonly frontend: IFamtracFrontend;
+
+    constructor(scope: Construct, id: string, props?: FamtracFrontendStackProps) {
+        super(scope, id, props);
+        let certificate: ICertificate | undefined;
+        let hostedZone: IHostedZone | undefined;
+        let domainNames: string[] | undefined;
+        if (props?.config.enableCustomDomain && props.config.certificate && props.config.hostedZone) {
+            certificate = props.config.certificate;
+            hostedZone = props.config.hostedZone;
+            domainNames = [
+                `app.${props.config.domainName}`,
+            ];
+        }
+        let asset = new LocalModuleAsset(p.join(__dirname, '..', '..', 'famtrac-frontend'), {
+            buildCommand: 'npm run build',
+            buildOutput: 'dist',
+        });
+        let frontend = new FamtracFrontend(this, 'Frontend', {
+            bucketName: 'famtrac-frontend-resources',
+            certificate,
+            hostedZone,
+            domainNames,
+            sources: [
+                Source.asset(asset.path),
+            ],
+        });
+        this.frontend = frontend;
+    }
+}
+
 export class FamtracInfraStack extends Stack {
     constructor(scope: Construct, id: string, props?: StackProps) {
         super(scope, id, props);
@@ -147,6 +185,11 @@ export class FamtracInfraStack extends Stack {
         new FamtracBackendStack(this, 'BackendStack', {
             stackName: 'FamtracBackendStack',
             authorization: authStack.auth,
+            config,
+        });
+
+        new FamtracFrontendStack(this, 'FrontendStack', {
+            stackName: 'FamtracFrontendStack',
             config,
         });
     }
