@@ -1,4 +1,5 @@
 import { config } from '../config/environment';
+import { parseApiError, parseHttpError } from '../utils/errorHandling';
 
 export interface ApiClientConfig {
   baseURL: string;
@@ -57,7 +58,7 @@ export class ApiClient {
 
       clearTimeout(timeoutId);
 
-      // Handle 401 specially - trigger re-authentication
+      // Handle 401 specially - trigger re-authentication (Requirement 15.2)
       if (response.status === 401) {
         window.dispatchEvent(new CustomEvent('auth:expired'));
         return { error: 'Authentication required' };
@@ -66,32 +67,25 @@ export class ApiClient {
       // Parse JSON response
       const data = await response.json();
 
-      // Handle error responses
+      // Handle error responses using centralized error handling (Requirements 15.1, 15.3, 15.4, 15.5)
       if (!response.ok) {
+        const errorInfo = parseHttpError({
+          response: {
+            status: response.status,
+            data: data,
+          },
+        });
         console.error(`API error ${response.status}:`, data);
-        return {
-          error: data.error || `Request failed with status ${response.status}`,
-        };
+        return { error: errorInfo.message };
       }
 
       return { data };
     } catch (error) {
       console.error('Request failed:', error);
 
-      // Handle timeout errors
-      if (error instanceof Error && error.name === 'AbortError') {
-        return { error: 'Request timed out. Please try again.' };
-      }
-
-      // Handle network errors
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        return {
-          error: 'Connection failed. Please check your network and try again.',
-        };
-      }
-
-      // Handle unknown errors
-      return { error: 'An unexpected error occurred. Please try again.' };
+      // Use centralized error parsing for network/timeout errors (Requirements 15.6, 16.6)
+      const errorInfo = parseApiError(error);
+      return { error: errorInfo.message };
     }
   }
 

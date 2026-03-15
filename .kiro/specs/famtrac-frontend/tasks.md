@@ -332,8 +332,8 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 50: Loading Placeholder Display**
     - **Validates: Requirements 19.2, 19.3**
 
-- [ ] 14. Error handling integration
-  - [ ] 14.1 Implement global error handling
+- [x] 14. Error handling integration
+  - [x] 14.1 Implement global error handling
     - Add ErrorBoundary to App.tsx
     - Set up global error event listener for auth expiration
     - Ensure all errors are logged to console
@@ -343,7 +343,7 @@ This plan implements a modern single-page application (SPA) using Vite, React 18
     - **Property 37: Error Logging**
     - **Validates: Requirements 15.7**
   
-  - [ ] 14.3 Add HTTP status-specific error handling
+  - [x] 14.3 Add HTTP status-specific error handling
     - Implement error message mapping for each status code
     - Add 401 handling with auth redirect
     - Add 403, 404, 500 error displays
