@@ -23,12 +23,6 @@ fn test_auth_error_missing_identity_status_code() {
 }
 
 #[test]
-fn test_auth_error_forbidden_status_code() {
-    let err = HandlerError::Auth(AuthError::Forbidden("Access denied".to_string()));
-    assert_eq!(err.status_code(), 403);
-}
-
-#[test]
 fn test_not_found_error_status_code() {
     let err = HandlerError::NotFound("Resource not found".to_string());
     assert_eq!(err.status_code(), 404);
@@ -108,16 +102,6 @@ fn test_missing_identity_error_response() {
     let response = err.to_error_response();
     assert_eq!(response.error.code, "UNAUTHORIZED");
     assert_eq!(response.error.message, "Missing authentication credentials");
-    assert!(response.error.details.is_none());
-}
-
-#[test]
-fn test_forbidden_error_response() {
-    let err = HandlerError::Auth(AuthError::Forbidden("Access denied".to_string()));
-
-    let response = err.to_error_response();
-    assert_eq!(response.error.code, "FORBIDDEN");
-    assert_eq!(response.error.message, "Access denied");
     assert!(response.error.details.is_none());
 }
 
@@ -225,7 +209,7 @@ fn test_store_error_from_conversion() {
 
 #[test]
 fn test_auth_error_from_conversion() {
-    let auth_err = AuthError::Forbidden("Access denied".to_string());
+    let auth_err = AuthError::Unauthorized("Access denied".to_string());
     let handler_err: HandlerError = auth_err.into();
     assert!(matches!(handler_err, HandlerError::Auth(_)));
 }

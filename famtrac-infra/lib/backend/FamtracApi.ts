@@ -67,11 +67,11 @@ export class FamtracApi extends Construct implements IFamtracApi {
             newTable.addGlobalSecondaryIndex({
                 indexName,
                 partitionKey: {
-                    name: 'owner_id',
+                    name: 'PK',
                     type: AttributeType.STRING,
                 },
                 sortKey: {
-                    name: 'created_at',
+                    name: 'timestamp',
                     type: AttributeType.STRING,
                 },
                 projectionType: ProjectionType.ALL,
@@ -109,13 +109,15 @@ export class FamtracApi extends Construct implements IFamtracApi {
             ]
         }));
 
-        backendFunction.addToRolePolicy(new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: [
-                'dynamodb:Query',
-            ],
-            resources: indexes.map(indexName => `${this.table.tableArn}/index/${indexName}`),
-        }));
+        if (indexes.length > 0) {
+            backendFunction.addToRolePolicy(new PolicyStatement({
+                effect: Effect.ALLOW,
+                actions: [
+                    'dynamodb:Query',
+                ],
+                resources: indexes.map(indexName => `${this.table.tableArn}/index/${indexName}`),
+            }));
+        }
 
         let allowOrigins = [];
         if (props.enableDevelopmentOrigin === true) {

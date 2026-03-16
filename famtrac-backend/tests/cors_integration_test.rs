@@ -2,7 +2,7 @@
 /// Requirements: 11.1, 11.2, 11.3, 11.4
 mod common;
 
-use common::mocks::{MockDependentRepository, MockFamilyRepository};
+use common::mocks::MockFamilyRepository;
 use famtrac_backend::context::RequestContext;
 use famtrac_backend::domain::{FamilyId, IdentityId};
 use famtrac_backend::handlers::{create_family, get_family};
@@ -105,13 +105,7 @@ async fn test_not_found_response_includes_cors_headers() {
     };
 
     let non_existent_id = FamilyId::new();
-    let result = get_family(
-        non_existent_id,
-        &context,
-        &repository,
-        &MockDependentRepository::new(),
-    )
-    .await;
+    let result = get_family(non_existent_id, &context, &repository).await;
 
     // Convert handler result to HttpResponse with CORS
     let cors_config = CorsConfig::default();

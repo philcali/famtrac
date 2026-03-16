@@ -10,8 +10,8 @@ pub trait FamilyRepository: Send + Sync {
     /// Create a new family
     async fn create(&self, family: Family) -> Result<Family, StoreError>;
 
-    /// Get a family by ID
-    async fn get(&self, id: FamilyId) -> Result<Option<Family>, StoreError>;
+    /// Get a family by owner ID and family ID (tenant-isolated lookup)
+    async fn get(&self, owner_id: IdentityId, id: FamilyId) -> Result<Option<Family>, StoreError>;
 
     /// Update an existing family
     async fn update(&self, family: Family) -> Result<Family, StoreError>;
@@ -20,8 +20,6 @@ pub trait FamilyRepository: Send + Sync {
     async fn get_by_owner(&self, owner_id: IdentityId) -> Result<Vec<Family>, StoreError>;
 }
 
-/// Repository trait for Dependent operations
-#[async_trait]
 /// Repository trait for Dependent operations
 #[async_trait]
 pub trait DependentRepository: Send + Sync {
@@ -40,11 +38,15 @@ pub trait DependentRepository: Send + Sync {
 
     /// List all dependents for a specific family
     async fn list_by_family(&self, family_id: FamilyId) -> Result<Vec<Dependent>, StoreError>;
+
+    /// Delete a dependent by family ID and dependent ID
+    async fn delete(&self, family_id: FamilyId, id: DependentId) -> Result<(), StoreError>;
 }
 
 /// Query parameters for activity queries
 #[derive(Debug, Clone)]
 pub struct ActivityQueryParams {
+    pub family_id: FamilyId,
     pub dependent_id: DependentId,
     pub start_date: Option<Date>,
     pub end_date: Option<Date>,
@@ -57,9 +59,10 @@ pub trait ActivityRepository: Send + Sync {
     /// Create a new activity
     async fn create(&self, activity: Activity) -> Result<Activity, StoreError>;
 
-    /// Get an activity by dependent ID and activity ID
+    /// Get an activity by family ID, dependent ID, and activity ID
     async fn get(
         &self,
+        family_id: FamilyId,
         dependent_id: DependentId,
         id: crate::domain::ActivityId,
     ) -> Result<Option<Activity>, StoreError>;
@@ -67,9 +70,10 @@ pub trait ActivityRepository: Send + Sync {
     /// Update an existing activity
     async fn update(&self, activity: Activity) -> Result<Activity, StoreError>;
 
-    /// Delete an activity by dependent ID and activity ID
+    /// Delete an activity by family ID, dependent ID, and activity ID
     async fn delete(
         &self,
+        family_id: FamilyId,
         dependent_id: DependentId,
         id: crate::domain::ActivityId,
     ) -> Result<(), StoreError>;

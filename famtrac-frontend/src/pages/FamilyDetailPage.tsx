@@ -58,18 +58,18 @@ export function FamilyDetailPage() {
   // Create dependent mutation
   const { mutate: createDependentMutation, loading: createLoading } = useApiMutation(
     (data: { name: string; date_of_birth: string; family_id: string }) =>
-      createDependent(apiClient, data)
+      createDependent(apiClient, familyId ?? 'NA', data)
   );
 
   // Update dependent mutation
   const { mutate: updateDependentMutation, loading: updateLoading } = useApiMutation(
     ({ id, data }: { id: string; data: { name: string; date_of_birth: string } }) =>
-      updateDependent(apiClient, id, data)
+      updateDependent(apiClient, familyId ?? 'NA', id, data)
   );
 
   // Delete dependent mutation
   const { mutate: deleteDependentMutation, loading: deleteLoading } = useApiMutation((id: string) =>
-    deleteDependent(apiClient, id)
+    deleteDependent(apiClient, familyId ?? 'NA', id)
   );
 
   // Handlers
@@ -88,7 +88,7 @@ export function FamilyDetailPage() {
   };
 
   const handleViewClick = (dependent: Dependent) => {
-    navigate(`/dependents/${dependent.id}`);
+    navigate(`/families/${familyId}/dependents/${dependent.id}`);
   };
 
   const handleFormSubmit = async (data: {

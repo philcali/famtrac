@@ -116,6 +116,24 @@ pub async fn route_dependent(
             Ok(response)
         }
 
+        // DELETE /families/{family_id}/dependents/{id} - Delete a dependent
+        ("DELETE", p) if !p.is_empty() && p != "/" && !p.contains("/activities") => {
+            let dependent_id = extract_uuid_param(
+                &format!("/dependents{}", sub_path),
+                "/dependents/",
+                "dependent_id",
+            )?;
+            handlers::delete_dependent(
+                family_id,
+                DependentId(dependent_id),
+                context,
+                family_repo,
+                dependent_repo,
+            )
+            .await?;
+            Ok(serde_json::Value::Null)
+        }
+
         // Unknown route
         _ => Err(HandlerError::NotFound(format!(
             "Route not found: {} /families/{}/dependents{}",

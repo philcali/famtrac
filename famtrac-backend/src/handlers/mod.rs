@@ -8,8 +8,8 @@ pub use activity::{
     ActivityListResponse, ActivityResponse, CreateActivityRequest, UpdateActivityRequest,
 };
 pub use dependent::{
-    create_dependent, get_dependent, list_dependents, update_dependent, CreateDependentRequest,
-    DependentListResponse, DependentResponse, UpdateDependentRequest,
+    create_dependent, delete_dependent, get_dependent, list_dependents, update_dependent,
+    CreateDependentRequest, DependentListResponse, DependentResponse, UpdateDependentRequest,
 };
 pub use family::{
     create_family, get_family, list_families, update_family, CreateFamilyRequest,

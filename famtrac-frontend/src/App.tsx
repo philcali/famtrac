@@ -41,7 +41,7 @@ function App() {
           }
         />
         <Route
-          path="/dependents/:dependentId"
+          path="/families/:familyId/dependents/:dependentId"
           element={
             <ProtectedRoute>
               <DependentDetailPage />

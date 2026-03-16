@@ -30,9 +30,12 @@ impl DynamoDbFamilyRepository {
         let mut item = HashMap::new();
         item.insert(
             "PK".to_string(),
+            AttributeValue::S(format!("OWNER#{}", family.owner_id.0)),
+        );
+        item.insert(
+            "SK".to_string(),
             AttributeValue::S(format!("FAMILY#{}", family.id.0)),
         );
-        item.insert("SK".to_string(), AttributeValue::S("METADATA".to_string()));
         item.insert("Type".to_string(), AttributeValue::S("Family".to_string()));
         item.insert("id".to_string(), AttributeValue::S(family.id.0.to_string()));
         item.insert("name".to_string(), AttributeValue::S(family.name.clone()));
@@ -109,13 +112,13 @@ impl FamilyRepository for DynamoDbFamilyRepository {
         Ok(family)
     }
 
-    async fn get(&self, id: FamilyId) -> Result<Option<Family>, StoreError> {
+    async fn get(&self, owner_id: IdentityId, id: FamilyId) -> Result<Option<Family>, StoreError> {
         let result = self
             .client
             .get_item()
             .table_name(&self.table_name)
-            .key("PK", AttributeValue::S(format!("FAMILY#{}", id.0)))
-            .key("SK", AttributeValue::S("METADATA".to_string()))
+            .key("PK", AttributeValue::S(format!("OWNER#{}", owner_id.0)))
+            .key("SK", AttributeValue::S(format!("FAMILY#{}", id.0)))
             .send()
             .await
             .map_err(|e| StoreError::QueryError(format!("Failed to get family: {}", e)))?;
@@ -145,9 +148,9 @@ impl FamilyRepository for DynamoDbFamilyRepository {
             .client
             .query()
             .table_name(&self.table_name)
-            .index_name("GSI-1")
-            .key_condition_expression("owner_id = :owner_id")
-            .expression_attribute_values(":owner_id", AttributeValue::S(owner_id.0.clone()))
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+            .expression_attribute_values(":pk", AttributeValue::S(format!("OWNER#{}", owner_id.0)))
+            .expression_attribute_values(":sk_prefix", AttributeValue::S("FAMILY#".to_string()))
             .send()
             .await
             .map_err(|e| {
@@ -350,6 +353,19 @@ impl DependentRepository for DynamoDbDependentRepository {
 
         Ok(dependents)
     }
+
+    async fn delete(&self, family_id: FamilyId, id: DependentId) -> Result<(), StoreError> {
+        self.client
+            .delete_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("FAMILY#{}", family_id.0)))
+            .key("SK", AttributeValue::S(format!("DEPENDENT#{}", id.0)))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to delete dependent: {}", e)))?;
+
+        Ok(())
+    }
 }
 
 /// DynamoDB implementation of ActivityRepository
@@ -369,15 +385,14 @@ impl DynamoDbActivityRepository {
         let mut item = HashMap::new();
         item.insert(
             "PK".to_string(),
-            AttributeValue::S(format!("DEPENDENT#{}", activity.dependent_id.0)),
+            AttributeValue::S(format!(
+                "FAMILY#{}#DEPENDENT#{}",
+                activity.family_id.0, activity.dependent_id.0
+            )),
         );
         item.insert(
             "SK".to_string(),
-            AttributeValue::S(format!(
-                "ACTIVITY#{}#{}",
-                activity.timestamp.0.to_rfc3339(),
-                activity.id.0
-            )),
+            AttributeValue::S(format!("ACTIVITY#{}", activity.id.0)),
         );
         item.insert(
             "Type".to_string(),
@@ -507,32 +522,26 @@ impl ActivityRepository for DynamoDbActivityRepository {
 
     async fn get(
         &self,
+        family_id: FamilyId,
         dependent_id: DependentId,
         id: ActivityId,
     ) -> Result<Option<Activity>, StoreError> {
-        // Query within the dependent's partition for the specific activity ID
+        let pk = format!("FAMILY#{}#DEPENDENT#{}", family_id.0, dependent_id.0);
+        let sk = format!("ACTIVITY#{}", id.0);
+
         let result = self
             .client
-            .query()
+            .get_item()
             .table_name(&self.table_name)
-            .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
-            .filter_expression("id = :id")
-            .expression_attribute_values(
-                ":pk",
-                AttributeValue::S(format!("DEPENDENT#{}", dependent_id.0)),
-            )
-            .expression_attribute_values(":sk_prefix", AttributeValue::S("ACTIVITY#".to_string()))
-            .expression_attribute_values(":id", AttributeValue::S(id.0.to_string()))
+            .key("PK", AttributeValue::S(pk))
+            .key("SK", AttributeValue::S(sk))
             .send()
             .await
             .map_err(|e| StoreError::QueryError(format!("Failed to get activity: {}", e)))?;
 
-        match result.items {
-            Some(items) if !items.is_empty() => {
-                let item = &items[0];
-                Ok(Some(self.parse_item(item)?))
-            }
-            _ => Ok(None),
+        match result.item {
+            Some(item) => Ok(Some(self.parse_item(&item)?)),
+            None => Ok(None),
         }
     }
 
@@ -550,28 +559,20 @@ impl ActivityRepository for DynamoDbActivityRepository {
         Ok(activity)
     }
 
-    async fn delete(&self, dependent_id: DependentId, id: ActivityId) -> Result<(), StoreError> {
-        // Look up the activity within the dependent's partition to get the full SK
-        let activity = self
-            .get(dependent_id, id)
-            .await?
-            .ok_or_else(|| StoreError::NotFound(format!("Activity with id {} not found", id.0)))?;
+    async fn delete(
+        &self,
+        family_id: FamilyId,
+        dependent_id: DependentId,
+        id: ActivityId,
+    ) -> Result<(), StoreError> {
+        let pk = format!("FAMILY#{}#DEPENDENT#{}", family_id.0, dependent_id.0);
+        let sk = format!("ACTIVITY#{}", id.0);
 
         self.client
             .delete_item()
             .table_name(&self.table_name)
-            .key(
-                "PK",
-                AttributeValue::S(format!("DEPENDENT#{}", activity.dependent_id.0)),
-            )
-            .key(
-                "SK",
-                AttributeValue::S(format!(
-                    "ACTIVITY#{}#{}",
-                    activity.timestamp.0.to_rfc3339(),
-                    activity.id.0
-                )),
-            )
+            .key("PK", AttributeValue::S(pk))
+            .key("SK", AttributeValue::S(sk))
             .send()
             .await
             .map_err(|e| StoreError::QueryError(format!("Failed to delete activity: {}", e)))?;
@@ -580,19 +581,24 @@ impl ActivityRepository for DynamoDbActivityRepository {
     }
 
     async fn query(&self, params: ActivityQueryParams) -> Result<Vec<Activity>, StoreError> {
-        let key_condition = "PK = :pk AND begins_with(SK, :sk_prefix".to_string();
+        let pk = format!(
+            "FAMILY#{}#DEPENDENT#{}",
+            params.family_id.0, params.dependent_id.0
+        );
+
+        // Build key condition for GSI: PK + optional timestamp range
+        let mut key_condition = "PK = :pk".to_string();
         let mut filter_expressions = Vec::new();
 
-        // Build filter expression for date range
         if params.start_date.is_some() && params.end_date.is_some() {
-            filter_expressions.push("#timestamp BETWEEN :start_date AND :end_date");
+            key_condition.push_str(" AND #timestamp BETWEEN :start_date AND :end_date");
         } else if params.start_date.is_some() {
-            filter_expressions.push("#timestamp >= :start_date");
+            key_condition.push_str(" AND #timestamp >= :start_date");
         } else if params.end_date.is_some() {
-            filter_expressions.push("#timestamp <= :end_date");
+            key_condition.push_str(" AND #timestamp <= :end_date");
         }
 
-        // Build filter expression for activity type
+        // Activity type filter stays as a filter expression
         if params.activity_type.is_some() {
             filter_expressions.push("activity_type_name = :activity_type");
         }
@@ -601,19 +607,14 @@ impl ActivityRepository for DynamoDbActivityRepository {
             .client
             .query()
             .table_name(&self.table_name)
-            .key_condition_expression(key_condition)
-            .expression_attribute_values(
-                ":pk",
-                AttributeValue::S(format!("DEPENDENT#{}", params.dependent_id.0)),
-            )
-            .expression_attribute_values(":sk_prefix", AttributeValue::S("ACTIVITY#".to_string()))
+            .index_name("GSI-1")
+            .key_condition_expression(&key_condition)
+            .expression_attribute_values(":pk", AttributeValue::S(pk))
             .scan_index_forward(false); // Sort descending by timestamp
 
-        // Add filter expression if needed
-        if !filter_expressions.is_empty() {
-            query_builder = query_builder
-                .filter_expression(filter_expressions.join(" AND "))
-                .expression_attribute_names("#timestamp", "timestamp");
+        // Add timestamp attribute name alias (reserved word)
+        if params.start_date.is_some() || params.end_date.is_some() {
+            query_builder = query_builder.expression_attribute_names("#timestamp", "timestamp");
 
             if let Some(start_date) = params.start_date {
                 let start_datetime = start_date
@@ -636,6 +637,10 @@ impl ActivityRepository for DynamoDbActivityRepository {
                 query_builder = query_builder
                     .expression_attribute_values(":end_date", AttributeValue::S(end_datetime));
             }
+        }
+
+        if !filter_expressions.is_empty() {
+            query_builder = query_builder.filter_expression(filter_expressions.join(" AND "));
 
             if let Some(activity_type) = &params.activity_type {
                 let type_name = match activity_type {

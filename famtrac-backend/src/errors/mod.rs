@@ -38,7 +38,6 @@ pub struct ValidationError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuthError {
     Unauthorized(String),
-    Forbidden(String),
     MissingIdentity,
 }
 
@@ -65,7 +64,6 @@ impl HandlerError {
             HandlerError::Store(_) => 500,
             HandlerError::Auth(AuthError::Unauthorized(_)) => 401,
             HandlerError::Auth(AuthError::MissingIdentity) => 401,
-            HandlerError::Auth(AuthError::Forbidden(_)) => 403,
             HandlerError::NotFound(_) => 404,
             HandlerError::InternalError(_) => 500,
         }
@@ -122,13 +120,6 @@ impl HandlerError {
                     details: None,
                 },
             },
-            HandlerError::Auth(AuthError::Forbidden(msg)) => ErrorResponse {
-                error: ErrorDetail {
-                    code: "FORBIDDEN".to_string(),
-                    message: msg.clone(),
-                    details: None,
-                },
-            },
             HandlerError::NotFound(msg) => ErrorResponse {
                 error: ErrorDetail {
                     code: "NOT_FOUND".to_string(),
@@ -174,7 +165,6 @@ impl fmt::Display for AuthError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AuthError::Unauthorized(msg) => write!(f, "Unauthorized: {}", msg),
-            AuthError::Forbidden(msg) => write!(f, "Forbidden: {}", msg),
             AuthError::MissingIdentity => write!(f, "Missing identity"),
         }
     }

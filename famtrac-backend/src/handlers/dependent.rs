@@ -1,4 +1,3 @@
-use crate::authorization::Authorizable;
 use crate::context::RequestContext;
 use crate::domain::{Date, Dependent, DependentId, FamilyId, Timestamp};
 use crate::errors::{validate_date_of_birth, validate_dependent_name, HandlerError};
@@ -82,20 +81,14 @@ pub async fn create_dependent<F: FamilyRepository, D: DependentRepository>(
     // Validate date of birth (Requirement 2.2)
     validate_date_of_birth(&request.date_of_birth)?;
 
-    // Retrieve parent Family and authorize access (Requirement 2.6)
-    let family = family_repository.get(request.family_id).await?;
-    let family = family.ok_or(HandlerError::NotFound(format!(
+    // Retrieve parent Family with owner-scoped key (implicit authorization) (Requirement 2.6, 4.3)
+    let _family = family_repository
+        .get(context.identity_id.clone(), request.family_id)
+        .await?;
+    let _family = _family.ok_or(HandlerError::NotFound(format!(
         "Family with id {:?} not found",
         request.family_id
     )))?;
-
-    family
-        .authorize(
-            &context.identity_id,
-            family_repository,
-            dependent_repository,
-        )
-        .await?;
 
     // Create dependent (Requirement 2.1)
     let now = Timestamp::now();
@@ -134,6 +127,15 @@ pub async fn get_dependent<F: FamilyRepository, D: DependentRepository>(
     family_repository: &F,
     dependent_repository: &D,
 ) -> Result<(u16, String), HandlerError> {
+    // Verify Family ownership with owner-scoped key (implicit authorization) (Requirement 2.6, 4.4)
+    let _family = family_repository
+        .get(context.identity_id.clone(), family_id)
+        .await?;
+    _family.ok_or(HandlerError::NotFound(format!(
+        "Family with id {:?} not found",
+        family_id
+    )))?;
+
     // Retrieve dependent from repository (Requirement 2.3)
     let dependent = dependent_repository.get(family_id, dependent_id).await?;
 
@@ -142,15 +144,6 @@ pub async fn get_dependent<F: FamilyRepository, D: DependentRepository>(
         "Dependent with id {:?} not found",
         dependent_id
     )))?;
-
-    // Authorize identity has access to parent Family (Requirement 2.6)
-    dependent
-        .authorize(
-            &context.identity_id,
-            family_repository,
-            dependent_repository,
-        )
-        .await?;
 
     // Convert to response and serialize (Requirement 10.3)
     let response = DependentResponse::from(dependent);
@@ -192,6 +185,15 @@ pub async fn update_dependent<F: FamilyRepository, D: DependentRepository>(
     // Validate date of birth
     validate_date_of_birth(&request.date_of_birth)?;
 
+    // Verify Family ownership with owner-scoped key (implicit authorization) (Requirement 2.6, 4.4)
+    let _family = family_repository
+        .get(context.identity_id.clone(), family_id)
+        .await?;
+    _family.ok_or(HandlerError::NotFound(format!(
+        "Family with id {:?} not found",
+        family_id
+    )))?;
+
     // Retrieve existing dependent (Requirement 2.4)
     let dependent = dependent_repository.get(family_id, dependent_id).await?;
 
@@ -200,15 +202,6 @@ pub async fn update_dependent<F: FamilyRepository, D: DependentRepository>(
         "Dependent with id {:?} not found",
         dependent_id
     )))?;
-
-    // Authorize identity has access to parent Family (Requirement 2.6)
-    dependent
-        .authorize(
-            &context.identity_id,
-            family_repository,
-            dependent_repository,
-        )
-        .await?;
 
     // Update dependent data
     dependent.name = request.name;
@@ -227,6 +220,40 @@ pub async fn update_dependent<F: FamilyRepository, D: DependentRepository>(
     Ok((200, response_json))
 }
 
+/// Handler for DELETE /families/{family_id}/dependents/{dependent_id}
+/// Deletes a dependent with authorization check
+pub async fn delete_dependent<F: FamilyRepository, D: DependentRepository>(
+    family_id: FamilyId,
+    dependent_id: DependentId,
+    context: &RequestContext,
+    family_repository: &F,
+    dependent_repository: &D,
+) -> Result<(u16, String), HandlerError> {
+    // Verify Family ownership with owner-scoped key (implicit authorization)
+    let _family = family_repository
+        .get(context.identity_id.clone(), family_id)
+        .await?;
+    _family.ok_or(HandlerError::NotFound(format!(
+        "Family with id {:?} not found",
+        family_id
+    )))?;
+
+    // Retrieve dependent
+    let dependent = dependent_repository.get(family_id, dependent_id).await?;
+
+    // Return 404 if dependent doesn't exist
+    let _dependent = dependent.ok_or(HandlerError::NotFound(format!(
+        "Dependent with id {:?} not found",
+        dependent_id
+    )))?;
+
+    // Delete from repository
+    dependent_repository.delete(family_id, dependent_id).await?;
+
+    // Return 204 No Content
+    Ok((204, String::new()))
+}
+
 /// Handler for GET /families/{family_id}/dependents
 /// Lists all dependents for a family with authorization check
 ///
@@ -240,20 +267,14 @@ pub async fn list_dependents<F: FamilyRepository, D: DependentRepository>(
     family_repository: &F,
     dependent_repository: &D,
 ) -> Result<(u16, String), HandlerError> {
-    // Retrieve Family and authorize access (Requirement 2.6)
-    let family = family_repository.get(family_id).await?;
-    let family = family.ok_or(HandlerError::NotFound(format!(
+    // Retrieve Family with owner-scoped key (implicit authorization) (Requirement 2.6, 4.5)
+    let _family = family_repository
+        .get(context.identity_id.clone(), family_id)
+        .await?;
+    _family.ok_or(HandlerError::NotFound(format!(
         "Family with id {:?} not found",
         family_id
     )))?;
-
-    family
-        .authorize(
-            &context.identity_id,
-            family_repository,
-            dependent_repository,
-        )
-        .await?;
 
     // List all Dependents for Family (Requirement 2.5)
     let dependents = dependent_repository.list_by_family(family_id).await?;
@@ -459,8 +480,8 @@ mod tests {
 
         assert!(result.is_err());
         match result.unwrap_err() {
-            HandlerError::Auth(crate::errors::AuthError::Forbidden(_)) => {}
-            _ => panic!("Expected forbidden error"),
+            HandlerError::NotFound(_) => {}
+            _ => panic!("Expected not found error"),
         }
     }
 
@@ -585,8 +606,8 @@ mod tests {
 
         assert!(result.is_err());
         match result.unwrap_err() {
-            HandlerError::Auth(crate::errors::AuthError::Forbidden(_)) => {}
-            _ => panic!("Expected forbidden error"),
+            HandlerError::NotFound(_) => {}
+            _ => panic!("Expected not found error"),
         }
     }
 
@@ -716,8 +737,8 @@ mod tests {
 
         assert!(result.is_err());
         match result.unwrap_err() {
-            HandlerError::Auth(crate::errors::AuthError::Forbidden(_)) => {}
-            _ => panic!("Expected forbidden error"),
+            HandlerError::NotFound(_) => {}
+            _ => panic!("Expected not found error"),
         }
     }
 
@@ -896,8 +917,8 @@ mod tests {
 
         assert!(result.is_err());
         match result.unwrap_err() {
-            HandlerError::Auth(crate::errors::AuthError::Forbidden(_)) => {}
-            _ => panic!("Expected forbidden error"),
+            HandlerError::NotFound(_) => {}
+            _ => panic!("Expected not found error"),
         }
     }
 }

@@ -1,4 +1,3 @@
-use crate::authorization::Authorizable;
 use crate::context::RequestContext;
 use crate::domain::{Activity, ActivityId, ActivityType, Date, DependentId, FamilyId, Timestamp};
 use crate::errors::{validate_activity_timestamp, validate_activity_type, HandlerError};
@@ -94,22 +93,23 @@ pub async fn create_activity<F: FamilyRepository, D: DependentRepository, A: Act
     // Validate type-specific attributes (Requirements 7.1, 7.2, 7.3, 7.4)
     validate_activity_type(&request.activity_type)?;
 
-    // Retrieve parent Dependent and authorize access to parent Family (Requirement 3.5)
-    let dependent = dependent_repository
+    // Retrieve parent Family with owner-scoped key (implicit authorization) (Requirement 3.5, 4.6)
+    let _family = family_repository
+        .get(context.identity_id.clone(), request.family_id)
+        .await?;
+    let _family = _family.ok_or(HandlerError::NotFound(format!(
+        "Family with id {:?} not found",
+        request.family_id
+    )))?;
+
+    // Verify dependent exists
+    let _dependent = dependent_repository
         .get(request.family_id, request.dependent_id)
         .await?;
-    let dependent = dependent.ok_or(HandlerError::NotFound(format!(
+    let _dependent = _dependent.ok_or(HandlerError::NotFound(format!(
         "Dependent with id {:?} not found",
         request.dependent_id
     )))?;
-
-    dependent
-        .authorize(
-            &context.identity_id,
-            family_repository,
-            dependent_repository,
-        )
-        .await?;
 
     // Create activity (Requirement 3.1, 3.2)
     let now = Timestamp::now();
@@ -142,30 +142,33 @@ pub async fn create_activity<F: FamilyRepository, D: DependentRepository, A: Act
 /// - 3.1: Retrieve an Activity by its unique identifier
 /// - 10.3: Serialize response data into valid JSON format
 pub async fn get_activity<F: FamilyRepository, D: DependentRepository, A: ActivityRepository>(
+    family_id: FamilyId,
     dependent_id: DependentId,
     activity_id: ActivityId,
     context: &RequestContext,
     family_repository: &F,
-    dependent_repository: &D,
+    _dependent_repository: &D,
     activity_repository: &A,
 ) -> Result<(u16, String), HandlerError> {
+    // Authorize access via owner-scoped family get (implicit authorization) (Requirement 4.6)
+    let _family = family_repository
+        .get(context.identity_id.clone(), family_id)
+        .await?;
+    let _family = _family.ok_or(HandlerError::NotFound(format!(
+        "Family with id {:?} not found",
+        family_id
+    )))?;
+
     // Retrieve activity from repository (Requirement 3.1)
-    let activity = activity_repository.get(dependent_id, activity_id).await?;
+    let activity = activity_repository
+        .get(family_id, dependent_id, activity_id)
+        .await?;
 
     // Return 404 if activity doesn't exist
     let activity = activity.ok_or(HandlerError::NotFound(format!(
         "Activity with id {:?} not found",
         activity_id
     )))?;
-
-    // Authorize identity has access to parent Family via Dependent
-    activity
-        .authorize(
-            &context.identity_id,
-            family_repository,
-            dependent_repository,
-        )
-        .await?;
 
     // Convert to response and serialize (Requirement 10.3)
     let response = ActivityResponse::from(activity);
@@ -187,13 +190,15 @@ pub async fn get_activity<F: FamilyRepository, D: DependentRepository, A: Activi
 /// - 5.5: Verify the Identity has access to the associated Dependent's Family
 /// - 8.1: Return 400 Bad Request for malformed JSON
 /// - 10.1: Parse incoming JSON request bodies into strongly-typed Rust structures
+#[allow(clippy::too_many_arguments)]
 pub async fn update_activity<F: FamilyRepository, D: DependentRepository, A: ActivityRepository>(
+    family_id: FamilyId,
     dependent_id: DependentId,
     activity_id: ActivityId,
     request_body: &str,
     context: &RequestContext,
     family_repository: &F,
-    dependent_repository: &D,
+    _dependent_repository: &D,
     activity_repository: &A,
 ) -> Result<(u16, String), HandlerError> {
     // Parse request body (Requirement 8.1, 10.1)
@@ -211,23 +216,25 @@ pub async fn update_activity<F: FamilyRepository, D: DependentRepository, A: Act
     // Validate type-specific attributes (Requirement 5.2)
     validate_activity_type(&request.activity_type)?;
 
+    // Authorize access via owner-scoped family get (implicit authorization) (Requirement 5.5, 4.6)
+    let _family = family_repository
+        .get(context.identity_id.clone(), family_id)
+        .await?;
+    let _family = _family.ok_or(HandlerError::NotFound(format!(
+        "Family with id {:?} not found",
+        family_id
+    )))?;
+
     // Retrieve existing activity (Requirement 5.1, 5.3)
-    let activity = activity_repository.get(dependent_id, activity_id).await?;
+    let activity = activity_repository
+        .get(family_id, dependent_id, activity_id)
+        .await?;
 
     // Return 404 if activity doesn't exist
     let mut activity = activity.ok_or(HandlerError::NotFound(format!(
         "Activity with id {:?} not found",
         activity_id
     )))?;
-
-    // Authorize identity has access to parent Family via Dependent (Requirement 5.5)
-    activity
-        .authorize(
-            &context.identity_id,
-            family_repository,
-            dependent_repository,
-        )
-        .await?;
 
     // Update activity data (preserve created_at per Requirement 5.4)
     activity.timestamp = request.timestamp;
@@ -256,33 +263,37 @@ pub async fn update_activity<F: FamilyRepository, D: DependentRepository, A: Act
 /// - 6.3: Remove the Activity from the Data_Store permanently
 /// - 6.4: Verify the Identity has access to the associated Dependent's Family
 pub async fn delete_activity<F: FamilyRepository, D: DependentRepository, A: ActivityRepository>(
+    family_id: FamilyId,
     dependent_id: DependentId,
     activity_id: ActivityId,
     context: &RequestContext,
     family_repository: &F,
-    dependent_repository: &D,
+    _dependent_repository: &D,
     activity_repository: &A,
 ) -> Result<(u16, String), HandlerError> {
-    // Retrieve Activity and authorize access to parent Family via Dependent (Requirement 6.4)
-    let activity = activity_repository.get(dependent_id, activity_id).await?;
+    // Authorize access via owner-scoped family get (implicit authorization) (Requirement 6.4, 4.6)
+    let _family = family_repository
+        .get(context.identity_id.clone(), family_id)
+        .await?;
+    let _family = _family.ok_or(HandlerError::NotFound(format!(
+        "Family with id {:?} not found",
+        family_id
+    )))?;
+
+    // Retrieve Activity (Requirement 6.2)
+    let activity = activity_repository
+        .get(family_id, dependent_id, activity_id)
+        .await?;
 
     // Return 404 if activity doesn't exist (Requirement 6.2)
-    let activity = activity.ok_or(HandlerError::NotFound(format!(
+    let _activity = activity.ok_or(HandlerError::NotFound(format!(
         "Activity with id {:?} not found",
         activity_id
     )))?;
 
-    activity
-        .authorize(
-            &context.identity_id,
-            family_repository,
-            dependent_repository,
-        )
-        .await?;
-
     // Delete Activity from repository (Requirement 6.1, 6.3)
     activity_repository
-        .delete(dependent_id, activity_id)
+        .delete(family_id, dependent_id, activity_id)
         .await?;
 
     // Return 204 No Content
@@ -316,20 +327,21 @@ pub async fn query_activities<
     dependent_repository: &D,
     activity_repository: &A,
 ) -> Result<(u16, String), HandlerError> {
-    // Retrieve Dependent and authorize access to parent Family (Requirement 4.6)
-    let dependent = dependent_repository.get(family_id, dependent_id).await?;
-    let dependent = dependent.ok_or(HandlerError::NotFound(format!(
+    // Authorize access via owner-scoped family get (implicit authorization) (Requirement 4.6)
+    let _family = family_repository
+        .get(context.identity_id.clone(), family_id)
+        .await?;
+    let _family = _family.ok_or(HandlerError::NotFound(format!(
+        "Family with id {:?} not found",
+        family_id
+    )))?;
+
+    // Verify dependent exists
+    let _dependent = dependent_repository.get(family_id, dependent_id).await?;
+    let _dependent = _dependent.ok_or(HandlerError::NotFound(format!(
         "Dependent with id {:?} not found",
         dependent_id
     )))?;
-
-    dependent
-        .authorize(
-            &context.identity_id,
-            family_repository,
-            dependent_repository,
-        )
-        .await?;
 
     // Validate date range (Requirement 4.5)
     if let (Some(start), Some(end)) = (start_date, end_date) {
@@ -344,6 +356,7 @@ pub async fn query_activities<
 
     // Query activities from repository with filters (Requirements 4.1, 4.2, 4.3, 4.4)
     let params = ActivityQueryParams {
+        family_id,
         dependent_id,
         start_date,
         end_date,

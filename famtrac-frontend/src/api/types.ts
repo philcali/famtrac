@@ -55,8 +55,9 @@ export type DiaperContents = 'wet' | 'dirty' | 'both';
 export type ActivityType = 'feeding' | 'diaper_change' | 'sleep' | 'pumping';
 
 export interface CreateActivityRequest {
+  family_id: string;
   dependent_id: string;
-  activity_type: ActivityType;
+  type: ActivityType;
   timestamp: string;
   feeding_type?: FeedingType;
   contents?: DiaperContents;
@@ -77,7 +78,7 @@ export interface UpdateActivityRequest {
 export interface ActivityResponse {
   id: string;
   dependent_id: string;
-  activity_type: ActivityType;
+  type: ActivityType;
   timestamp: string;
   created_at: string;
   updated_at: string;
