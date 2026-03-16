@@ -1,4 +1,3 @@
-use crate::authorization::Authorizable;
 use crate::context::RequestContext;
 use crate::domain::{Family, FamilyId, Timestamp};
 use crate::errors::{validate_family_name, HandlerError};
@@ -100,25 +99,21 @@ pub async fn create_family<R: FamilyRepository>(
 /// - 1.3: Retrieve a Family by its unique identifier
 /// - 1.5: Verify the Identity has access to that Family
 /// - 10.3: Serialize response data into valid JSON format
-pub async fn get_family<R: FamilyRepository, D: crate::repository::DependentRepository>(
+pub async fn get_family<R: FamilyRepository>(
     family_id: FamilyId,
     context: &RequestContext,
     repository: &R,
-    dependent_repo: &D,
 ) -> Result<(u16, String), HandlerError> {
-    // Retrieve family from repository (Requirement 1.3)
-    let family = repository.get(family_id).await?;
+    // Retrieve family from repository with owner-scoped key (Requirement 1.3, 4.1)
+    let family = repository
+        .get(context.identity_id.clone(), family_id)
+        .await?;
 
-    // Return 404 if family doesn't exist
+    // Return 404 if family doesn't exist or owner doesn't match (implicit authorization)
     let family = family.ok_or(HandlerError::NotFound(format!(
         "Family with id {:?} not found",
         family_id
     )))?;
-
-    // Authorize identity has access to family (Requirement 1.5)
-    family
-        .authorize(&context.identity_id, repository, dependent_repo)
-        .await?;
 
     // Convert to response and serialize (Requirement 10.3)
     let response = FamilyResponse::from(family);
@@ -137,12 +132,11 @@ pub async fn get_family<R: FamilyRepository, D: crate::repository::DependentRepo
 /// - 1.5: Verify the Identity has access to that Family
 /// - 8.1: Return 400 Bad Request for malformed JSON
 /// - 10.1: Parse incoming JSON request bodies into strongly-typed Rust structures
-pub async fn update_family<R: FamilyRepository, D: crate::repository::DependentRepository>(
+pub async fn update_family<R: FamilyRepository>(
     family_id: FamilyId,
     request_body: &str,
     context: &RequestContext,
     repository: &R,
-    dependent_repo: &D,
 ) -> Result<(u16, String), HandlerError> {
     // Parse request body (Requirement 8.1, 10.1)
     let request: UpdateFamilyRequest = serde_json::from_str(request_body).map_err(|e| {
@@ -156,19 +150,16 @@ pub async fn update_family<R: FamilyRepository, D: crate::repository::DependentR
     // Validate family name
     validate_family_name(&request.name)?;
 
-    // Retrieve existing family (Requirement 1.4)
-    let family = repository.get(family_id).await?;
+    // Retrieve existing family with owner-scoped key (Requirement 1.4, 4.2)
+    let family = repository
+        .get(context.identity_id.clone(), family_id)
+        .await?;
 
-    // Return 404 if family doesn't exist
+    // Return 404 if family doesn't exist or owner doesn't match (implicit authorization)
     let mut family = family.ok_or(HandlerError::NotFound(format!(
         "Family with id {:?} not found",
         family_id
     )))?;
-
-    // Authorize identity has access to family (Requirement 1.5)
-    family
-        .authorize(&context.identity_id, repository, dependent_repo)
-        .await?;
 
     // Update family data
     family.name = request.name;
@@ -222,8 +213,7 @@ mod tests {
     use super::*;
     use crate::domain::IdentityId;
 
-    // Import common test mocks
-    use crate::test_utils::mocks::{MockDependentRepository, MockFamilyRepository};
+    use crate::test_utils::mocks::MockFamilyRepository;
 
     fn create_test_context(identity_id: &str) -> RequestContext {
         RequestContext {
@@ -356,7 +346,6 @@ mod tests {
         let context = create_test_context("user-123");
 
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -370,7 +359,7 @@ mod tests {
             .unwrap()
             .insert(family_id, family);
 
-        let result = get_family(family_id, &context, &repository, &dependent_repo).await;
+        let result = get_family(family_id, &context, &repository).await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -386,9 +375,8 @@ mod tests {
         let family_id = FamilyId::new();
         let context = create_test_context("user-123");
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository::new();
 
-        let result = get_family(family_id, &context, &repository, &dependent_repo).await;
+        let result = get_family(family_id, &context, &repository).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -406,7 +394,6 @@ mod tests {
         let context = create_test_context("user-456"); // Different user
 
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -420,12 +407,12 @@ mod tests {
             .unwrap()
             .insert(family_id, family);
 
-        let result = get_family(family_id, &context, &repository, &dependent_repo).await;
+        let result = get_family(family_id, &context, &repository).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
-            HandlerError::Auth(crate::errors::AuthError::Forbidden(_)) => {}
-            _ => panic!("Expected forbidden error"),
+            HandlerError::NotFound(_) => {}
+            _ => panic!("Expected not found error"),
         }
     }
 
@@ -436,7 +423,6 @@ mod tests {
         let context = create_test_context("user-123");
 
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -451,14 +437,7 @@ mod tests {
             .insert(family_id, family);
 
         let request_body = r#"{"name": "Updated Family Name"}"#;
-        let result = update_family(
-            family_id,
-            request_body,
-            &context,
-            &repository,
-            &dependent_repo,
-        )
-        .await;
+        let result = update_family(family_id, request_body, &context, &repository).await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -474,17 +453,9 @@ mod tests {
         let family_id = FamilyId::new();
         let context = create_test_context("user-123");
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository::new();
 
         let request_body = r#"{"name": "Updated Family Name"}"#;
-        let result = update_family(
-            family_id,
-            request_body,
-            &context,
-            &repository,
-            &dependent_repo,
-        )
-        .await;
+        let result = update_family(family_id, request_body, &context, &repository).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -502,7 +473,6 @@ mod tests {
         let context = create_test_context("user-456"); // Different user
 
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -517,19 +487,12 @@ mod tests {
             .insert(family_id, family);
 
         let request_body = r#"{"name": "Updated Family Name"}"#;
-        let result = update_family(
-            family_id,
-            request_body,
-            &context,
-            &repository,
-            &dependent_repo,
-        )
-        .await;
+        let result = update_family(family_id, request_body, &context, &repository).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
-            HandlerError::Auth(crate::errors::AuthError::Forbidden(_)) => {}
-            _ => panic!("Expected forbidden error"),
+            HandlerError::NotFound(_) => {}
+            _ => panic!("Expected not found error"),
         }
     }
 
@@ -540,7 +503,6 @@ mod tests {
         let context = create_test_context("user-123");
 
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -555,14 +517,7 @@ mod tests {
             .insert(family_id, family);
 
         let request_body = r#"{"name": invalid}"#;
-        let result = update_family(
-            family_id,
-            request_body,
-            &context,
-            &repository,
-            &dependent_repo,
-        )
-        .await;
+        let result = update_family(family_id, request_body, &context, &repository).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -581,7 +536,6 @@ mod tests {
         let context = create_test_context("user-123");
 
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -596,14 +550,7 @@ mod tests {
             .insert(family_id, family);
 
         let request_body = r#"{"name": ""}"#;
-        let result = update_family(
-            family_id,
-            request_body,
-            &context,
-            &repository,
-            &dependent_repo,
-        )
-        .await;
+        let result = update_family(family_id, request_body, &context, &repository).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -622,7 +569,6 @@ mod tests {
         let context = create_test_context("user-123");
 
         let repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -638,14 +584,7 @@ mod tests {
 
         let long_name = "a".repeat(101);
         let request_body = format!(r#"{{"name": "{}"}}"#, long_name);
-        let result = update_family(
-            family_id,
-            &request_body,
-            &context,
-            &repository,
-            &dependent_repo,
-        )
-        .await;
+        let result = update_family(family_id, &request_body, &context, &repository).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -664,7 +603,6 @@ mod tests {
         let context = create_test_context("user-123");
 
         let mut repository = MockFamilyRepository::new();
-        let dependent_repo = MockDependentRepository::new();
         let family = Family {
             id: family_id,
             name: "Smith Family".to_string(),
@@ -680,14 +618,7 @@ mod tests {
         repository = MockFamilyRepository::with_failure();
 
         let request_body = r#"{"name": "Updated Family Name"}"#;
-        let result = update_family(
-            family_id,
-            request_body,
-            &context,
-            &repository,
-            &dependent_repo,
-        )
-        .await;
+        let result = update_family(family_id, request_body, &context, &repository).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {

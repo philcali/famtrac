@@ -14,6 +14,7 @@ import type {
  */
 export async function getActivities(
   client: ApiClient,
+  familyId: string,
   dependentId: string,
   options?: {
     startDate?: string; // ISO 8601 format
@@ -21,7 +22,7 @@ export async function getActivities(
     activityType?: ActivityType;
   }
 ): Promise<ApiResponse<ActivityListResponse>> {
-  let path = `/dependents/${dependentId}/activities`;
+  let path = `/families/${familyId}/dependents/${dependentId}/activities`;
 
   // Build query parameters for filtering
   const params = new URLSearchParams();
@@ -49,9 +50,13 @@ export async function getActivities(
  */
 export async function getActivity(
   client: ApiClient,
+  familyId: string,
+  dependentId: string,
   activityId: string
 ): Promise<ApiResponse<ActivityResponse>> {
-  return client.get<ActivityResponse>(`/activities/${activityId}`);
+  return client.get<ActivityResponse>(
+    `/families/${familyId}/dependents/${dependentId}/activities/${activityId}`
+  );
 }
 
 /**
@@ -59,9 +64,14 @@ export async function getActivity(
  */
 export async function createActivity(
   client: ApiClient,
+  familyId: string,
+  dependentId: string,
   request: CreateActivityRequest
 ): Promise<ApiResponse<ActivityResponse>> {
-  return client.post<ActivityResponse>('/activities', request);
+  return client.post<ActivityResponse>(
+    `/families/${familyId}/dependents/${dependentId}/activities`,
+    request
+  );
 }
 
 /**
@@ -69,10 +79,15 @@ export async function createActivity(
  */
 export async function updateActivity(
   client: ApiClient,
+  familyId: string,
+  dependentId: string,
   activityId: string,
   request: UpdateActivityRequest
 ): Promise<ApiResponse<ActivityResponse>> {
-  return client.put<ActivityResponse>(`/activities/${activityId}`, request);
+  return client.put<ActivityResponse>(
+    `/families/${familyId}/dependents/${dependentId}/activities/${activityId}`,
+    request
+  );
 }
 
 /**
@@ -80,7 +95,11 @@ export async function updateActivity(
  */
 export async function deleteActivity(
   client: ApiClient,
+  familyId: string,
+  dependentId: string,
   activityId: string
 ): Promise<ApiResponse<void>> {
-  return client.delete<void>(`/activities/${activityId}`);
+  return client.delete<void>(
+    `/families/${familyId}/dependents/${dependentId}/activities/${activityId}`
+  );
 }

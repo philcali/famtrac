@@ -114,6 +114,7 @@ pub async fn route_activity(
                 "activity_id",
             )?;
             let (_status, response_json) = handlers::get_activity(
+                family_id,
                 dependent_id,
                 ActivityId(activity_id),
                 context,
@@ -137,6 +138,7 @@ pub async fn route_activity(
                 "activity_id",
             )?;
             let (_status, response_json) = handlers::update_activity(
+                family_id,
                 dependent_id,
                 ActivityId(activity_id),
                 body,
@@ -161,6 +163,7 @@ pub async fn route_activity(
                 "activity_id",
             )?;
             let (_status, response_json) = handlers::delete_activity(
+                family_id,
                 dependent_id,
                 ActivityId(activity_id),
                 context,

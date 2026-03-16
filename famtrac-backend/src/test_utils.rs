@@ -61,11 +61,21 @@ pub mod mocks {
             Ok(family)
         }
 
-        async fn get(&self, id: FamilyId) -> Result<Option<Family>, StoreError> {
+        async fn get(
+            &self,
+            owner_id: IdentityId,
+            id: FamilyId,
+        ) -> Result<Option<Family>, StoreError> {
             if self.should_fail {
                 return Err(StoreError::QueryError("Mock failure".to_string()));
             }
-            Ok(self.families.lock().unwrap().get(&id).cloned())
+            Ok(self
+                .families
+                .lock()
+                .unwrap()
+                .get(&id)
+                .filter(|f| f.owner_id == owner_id)
+                .cloned())
         }
 
         async fn update(&self, family: Family) -> Result<Family, StoreError> {
@@ -178,6 +188,14 @@ pub mod mocks {
                 .cloned()
                 .collect())
         }
+
+        async fn delete(&self, _family_id: FamilyId, id: DependentId) -> Result<(), StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            self.dependents.lock().unwrap().remove(&id);
+            Ok(())
+        }
     }
 
     /// Mock implementation of ActivityRepository for testing
@@ -231,6 +249,7 @@ pub mod mocks {
 
         async fn get(
             &self,
+            _family_id: FamilyId,
             _dependent_id: DependentId,
             id: ActivityId,
         ) -> Result<Option<Activity>, StoreError> {
@@ -253,6 +272,7 @@ pub mod mocks {
 
         async fn delete(
             &self,
+            _family_id: FamilyId,
             _dependent_id: DependentId,
             id: ActivityId,
         ) -> Result<(), StoreError> {
@@ -267,14 +287,17 @@ pub mod mocks {
             if self.should_fail {
                 return Err(StoreError::QueryError("Mock failure".to_string()));
             }
-            Ok(self
+            let mut activities: Vec<Activity> = self
                 .activities
                 .lock()
                 .unwrap()
                 .values()
                 .filter(|a| a.dependent_id == params.dependent_id)
                 .cloned()
-                .collect())
+                .collect();
+            // Sort by timestamp descending to match GSI behavior
+            activities.sort_by(|a, b| b.timestamp.0.cmp(&a.timestamp.0));
+            Ok(activities)
         }
     }
 }

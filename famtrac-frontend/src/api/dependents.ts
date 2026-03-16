@@ -22,9 +22,10 @@ export async function getDependents(
  */
 export async function getDependent(
   client: ApiClient,
+  familyId: string,
   dependentId: string
 ): Promise<ApiResponse<DependentResponse>> {
-  return client.get<DependentResponse>(`/dependents/${dependentId}`);
+  return client.get<DependentResponse>(`/families/${familyId}/dependents/${dependentId}`);
 }
 
 /**
@@ -32,9 +33,10 @@ export async function getDependent(
  */
 export async function createDependent(
   client: ApiClient,
+  familyId: string,
   request: CreateDependentRequest
 ): Promise<ApiResponse<DependentResponse>> {
-  return client.post<DependentResponse>('/dependents', request);
+  return client.post<DependentResponse>(`/families/${familyId}/dependents`, request);
 }
 
 /**
@@ -42,10 +44,11 @@ export async function createDependent(
  */
 export async function updateDependent(
   client: ApiClient,
+  familyId: string,
   dependentId: string,
   request: UpdateDependentRequest
 ): Promise<ApiResponse<DependentResponse>> {
-  return client.put<DependentResponse>(`/dependents/${dependentId}`, request);
+  return client.put<DependentResponse>(`/families/${familyId}/dependents/${dependentId}`, request);
 }
 
 /**
@@ -53,7 +56,8 @@ export async function updateDependent(
  */
 export async function deleteDependent(
   client: ApiClient,
+  familyId: string,
   dependentId: string
 ): Promise<ApiResponse<void>> {
-  return client.delete<void>(`/dependents/${dependentId}`);
+  return client.delete<void>(`/families/${familyId}/dependents/${dependentId}`);
 }

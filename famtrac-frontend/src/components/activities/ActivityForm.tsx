@@ -10,10 +10,12 @@ import type { ValidationRule } from '../../hooks/useValidation';
 
 export interface ActivityFormProps {
   activity?: ActivityResponse;
+  familyId: string;
   dependentId: string;
   onSubmit: (data: {
+    family_id: string;
     dependent_id: string;
-    activity_type: ActivityType;
+    type: ActivityType;
     timestamp: string;
     feeding_type?: FeedingType;
     contents?: DiaperContents;
@@ -40,15 +42,14 @@ export interface ActivityFormProps {
  */
 export function ActivityForm({
   activity,
+  familyId,
   dependentId,
   onSubmit,
   onCancel,
   loading = false,
 }: ActivityFormProps) {
   // Form state
-  const [activityType, setActivityType] = useState<ActivityType>(
-    activity?.activity_type || 'feeding'
-  );
+  const [activityType, setActivityType] = useState<ActivityType>(activity?.type || 'feeding');
   const [timestamp, setTimestamp] = useState(() => {
     if (activity?.timestamp) {
       return new Date(activity.timestamp).toISOString().slice(0, 16);
@@ -58,27 +59,25 @@ export function ActivityForm({
 
   // Activity-specific fields
   const [feedingType, setFeedingType] = useState<FeedingType>(
-    activity?.activity_type === 'feeding' && activity.feeding_type
-      ? activity.feeding_type
-      : 'breast'
+    activity?.type === 'feeding' && activity.feeding_type ? activity.feeding_type : 'breast'
   );
   const [contents, setContents] = useState<DiaperContents>(
-    activity?.activity_type === 'diaper_change' && activity.contents ? activity.contents : 'wet'
+    activity?.type === 'diaper_change' && activity.contents ? activity.contents : 'wet'
   );
   const [startTime, setStartTime] = useState(() => {
-    if (activity?.activity_type === 'sleep' && activity.start_time) {
+    if (activity?.type === 'sleep' && activity.start_time) {
       return new Date(activity.start_time).toISOString().slice(0, 16);
     }
     return new Date().toISOString().slice(0, 16);
   });
   const [endTime, setEndTime] = useState(() => {
-    if (activity?.activity_type === 'sleep' && activity.end_time) {
+    if (activity?.type === 'sleep' && activity.end_time) {
       return new Date(activity.end_time).toISOString().slice(0, 16);
     }
     return new Date().toISOString().slice(0, 16);
   });
   const [volumeMl, setVolumeMl] = useState(
-    activity?.activity_type === 'pumping' && activity.volume_ml ? activity.volume_ml.toString() : ''
+    activity?.type === 'pumping' && activity.volume_ml ? activity.volume_ml.toString() : ''
   );
 
   // Custom validation rule for sleep time range
@@ -154,8 +153,9 @@ export function ActivityForm({
 
     // Build submission data
     const data: {
+      family_id: string;
       dependent_id: string;
-      activity_type: ActivityType;
+      type: ActivityType;
       timestamp: string;
       feeding_type?: FeedingType;
       contents?: DiaperContents;
@@ -163,8 +163,9 @@ export function ActivityForm({
       end_time?: string;
       volume_ml?: number;
     } = {
+      family_id: familyId,
       dependent_id: dependentId,
-      activity_type: activityType,
+      type: activityType,
       timestamp: new Date(timestamp).toISOString(),
     };
 

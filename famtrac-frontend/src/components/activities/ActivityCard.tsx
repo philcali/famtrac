@@ -56,7 +56,7 @@ export function ActivityCard({ activity, onEdit, onDelete }: ActivityCardProps) 
   };
 
   const renderActivityDetails = () => {
-    switch (activity.activity_type) {
+    switch (activity.type) {
       case 'feeding':
         return (
           <div>
@@ -108,8 +108,8 @@ export function ActivityCard({ activity, onEdit, onDelete }: ActivityCardProps) 
     <Card className="mb-3">
       <Card.Body>
         <div className="d-flex justify-content-between align-items-start mb-2">
-          <Badge bg={getActivityTypeBadgeVariant(activity.activity_type)}>
-            {getActivityTypeLabel(activity.activity_type)}
+          <Badge bg={getActivityTypeBadgeVariant(activity.type)}>
+            {getActivityTypeLabel(activity.type)}
           </Badge>
           <span className="text-muted small">{formatDateTime(activity.timestamp)}</span>
         </div>

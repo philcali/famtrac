@@ -27,7 +27,7 @@ import type { CreateActivityRequest, UpdateActivityRequest, ActivityResponse } f
  * - Provides navigation back to family (Requirement 14.3)
  */
 export function DependentDetailPage() {
-  const { dependentId } = useParams<{ dependentId: string }>();
+  const { familyId, dependentId } = useParams<{ familyId: string; dependentId: string }>();
   const navigate = useNavigate();
   const { getToken } = useAuth();
 
@@ -49,7 +49,10 @@ export function DependentDetailPage() {
     data: dependent,
     loading: dependentLoading,
     error: dependentError,
-  } = useApi(() => getDependent(apiClient, dependentId ?? 'NA'), [dependentId]);
+  } = useApi(
+    () => getDependent(apiClient, familyId ?? 'NA', dependentId ?? 'NA'),
+    [familyId, dependentId]
+  );
 
   // Fetch activities with filters
   const {
@@ -59,33 +62,33 @@ export function DependentDetailPage() {
     refetch: refetchActivities,
   } = useApi(
     () =>
-      getActivities(apiClient, dependentId ?? 'NA', {
+      getActivities(apiClient, familyId ?? 'NA', dependentId ?? 'NA', {
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         activityType: activityTypeFilter || undefined,
       }),
-    [dependentId, startDate, endDate, activityTypeFilter]
+    [familyId, dependentId, startDate, endDate, activityTypeFilter]
   );
 
   // Mutations
   const { mutate: createActivityMutation, loading: createLoading } = useApiMutation<
     ActivityResponse,
     CreateActivityRequest
-  >((data) => createActivity(apiClient, data));
+  >((data) => createActivity(apiClient, familyId ?? 'NA', dependentId ?? 'NA', data));
 
   const { mutate: updateActivityMutation, loading: updateLoading } = useApiMutation<
     ActivityResponse,
     { id: string; data: UpdateActivityRequest }
-  >(({ id, data }) => updateActivity(apiClient, id, data));
+  >(({ id, data }) => updateActivity(apiClient, familyId ?? 'NA', dependentId ?? 'NA', id, data));
 
   const { mutate: deleteActivityMutation, loading: deleteLoading } = useApiMutation<void, string>(
-    (id) => deleteActivity(apiClient, id)
+    (id) => deleteActivity(apiClient, familyId ?? 'NA', dependentId ?? 'NA', id)
   );
 
   // Handlers
   const handleBackClick = () => {
-    if (dependent) {
-      navigate(`/families/${dependent.family_id}`);
+    if (familyId) {
+      navigate(`/families/${familyId}`);
     } else {
       navigate('/');
     }
@@ -279,6 +282,7 @@ export function DependentDetailPage() {
         <Modal.Body>
           <ActivityForm
             activity={editingActivity}
+            familyId={familyId!}
             dependentId={dependentId!}
             onSubmit={handleActivityFormSubmit}
             onCancel={handleActivityFormCancel}
