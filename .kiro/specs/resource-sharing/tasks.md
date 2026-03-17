@@ -192,8 +192,9 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Generate random shares in active/expired status, attempt accept, verify validation error
     - **Validates: Requirements 9.3**
 
-  - [x] 9.13 Implement `list_shared_families` handler
-    - Query shares by accepter identity ID (via GSI)
+  - [x] 9.13 Implement `list_shares_for_accepter` handler
+    - Query shares by accepter email (pending) and accepter identity ID via GSI (active)
+    - Merge results, deduplicating by share ID
     - Return share records with family identifier and permission scope
     - Return empty list when no shares exist
     - _Requirements: 8.1, 8.2_
@@ -216,24 +217,24 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Generate random non-JSON strings, attempt parse, verify 400 error
     - **Validates: Requirements 11.2**
 
-- [ ] 10. Add share routes to the router
-  - [ ] 10.1 Create `famtrac-backend/src/router/share.rs` with route matching for share endpoints
+- [x] 10. Add share routes to the router
+  - [x] 10.1 Create `famtrac-backend/src/router/share.rs` with route matching for share endpoints
     - `POST /families/{fid}/shares` → `create_share`
     - `GET /families/{fid}/shares` → `list_shares`
     - `PUT /shares/{sid}` → `update_share`
     - `DELETE /shares/{sid}` → `revoke_share`
     - `POST /shares/{sid}/accept` → `accept_share`
-    - `GET /shared-families` → `list_shared_families`
+    - `GET /shares` → `list_shares_for_accepter`
     - Follow existing router patterns (extract path params, delegate to handlers)
     - _Requirements: 1.1, 5.1, 6.1, 7.1, 8.1, 9.1_
 
-  - [ ] 10.2 Update `famtrac-backend/src/router/mod.rs` to wire in share routes
+  - [x] 10.2 Update `famtrac-backend/src/router/mod.rs` to wire in share routes
     - Add `DynamoDbShareRepository` parameter to `route_request`
     - Add path matching for `/shares` and `/shared-families` prefixes
     - Wire `/families/{fid}/shares` through the existing family path prefix
     - _Requirements: 1.1, 5.1, 6.1, 7.1, 8.1, 9.1_
 
-  - [ ] 10.3 Update `famtrac-backend/src/main.rs` to instantiate `DynamoDbShareRepository` and pass it to `route_request`
+  - [x] 10.3 Update `famtrac-backend/src/main.rs` to instantiate `DynamoDbShareRepository` and pass it to `route_request`
     - _Requirements: 1.1_
 
 - [ ] 11. Checkpoint - Ensure all tests pass

@@ -194,7 +194,7 @@ pub async fn accept_share<SR: ShareRepository>(
     share_repo: &SR,
 ) -> Result<(u16, String), HandlerError>;
 
-pub async fn list_shared_families<SR: ShareRepository>(
+pub async fn list_shares_for_accepter<SR: ShareRepository>(
     context: &RequestContext,
     share_repo: &SR,
 ) -> Result<(u16, String), HandlerError>;
@@ -211,7 +211,7 @@ New routes added under the existing routing structure:
 | PUT | `/shares/{sid}` | `update_share` | Owner |
 | DELETE | `/shares/{sid}` | `revoke_share` | Owner |
 | POST | `/shares/{sid}/accept` | `accept_share` | Accepter |
-| GET | `/shared-families` | `list_shared_families` | Accepter |
+| GET | `/shares` | `list_shares_for_accepter` | Accepter |
 
 ### Stream Handler (Separate Lambda)
 

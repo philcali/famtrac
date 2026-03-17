@@ -8,6 +8,7 @@ use famtrac_backend::context::RequestContext;
 use famtrac_backend::errors::{AuthError, HandlerError};
 use famtrac_backend::repository::{
     DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
+    DynamoDbShareRepository,
 };
 use famtrac_backend::router;
 use famtrac_backend::utils::cors::CorsConfig;
@@ -30,7 +31,9 @@ async fn main() -> Result<(), Error> {
     let family_repo = DynamoDbFamilyRepository::new(dynamodb_client.clone(), table_name.clone());
     let dependent_repo =
         DynamoDbDependentRepository::new(dynamodb_client.clone(), table_name.clone());
-    let activity_repo = DynamoDbActivityRepository::new(dynamodb_client, table_name);
+    let activity_repo =
+        DynamoDbActivityRepository::new(dynamodb_client.clone(), table_name.clone());
+    let share_repo = DynamoDbShareRepository::new(dynamodb_client, table_name);
 
     // Initialize CORS config
     let cors_config = CorsConfig::default();
@@ -40,6 +43,7 @@ async fn main() -> Result<(), Error> {
         let family_repo = family_repo.clone();
         let dependent_repo = dependent_repo.clone();
         let activity_repo = activity_repo.clone();
+        let share_repo = share_repo.clone();
         let cors_config = cors_config.clone();
 
         async move {
@@ -48,6 +52,7 @@ async fn main() -> Result<(), Error> {
                 &family_repo,
                 &dependent_repo,
                 &activity_repo,
+                &share_repo,
                 &cors_config,
             )
             .await
@@ -64,6 +69,7 @@ async fn handle_request(
     family_repo: &DynamoDbFamilyRepository,
     dependent_repo: &DynamoDbDependentRepository,
     activity_repo: &DynamoDbActivityRepository,
+    share_repo: &DynamoDbShareRepository,
     cors_config: &CorsConfig,
 ) -> Result<ApiGatewayV2httpResponse, Error> {
     // Log request for debugging (Requirement 9.4)
@@ -101,6 +107,7 @@ async fn handle_request(
         family_repo,
         dependent_repo,
         activity_repo,
+        share_repo,
         cors_config,
     )
     .await;
