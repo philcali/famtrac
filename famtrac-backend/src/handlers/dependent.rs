@@ -1,5 +1,6 @@
+use super::permission::check_permission;
 use crate::context::RequestContext;
-use crate::domain::{Date, Dependent, DependentId, FamilyId, Timestamp};
+use crate::domain::{Date, Dependent, DependentId, FamilyId, PermissionAction, Timestamp};
 use crate::errors::{validate_date_of_birth, validate_dependent_name, HandlerError};
 use crate::repository::{DependentRepository, FamilyRepository};
 use serde::{Deserialize, Serialize};
@@ -90,6 +91,13 @@ pub async fn create_dependent<F: FamilyRepository, D: DependentRepository>(
         request.family_id
     )))?;
 
+    // Enforce permission on mirrored resources (Requirement 4.2, 4.5)
+    check_permission(
+        _family.share_id.as_ref(),
+        _family.permission_scope.as_ref(),
+        PermissionAction::DependentWrite,
+    )?;
+
     // Create dependent (Requirement 2.1)
     let now = Timestamp::now();
     let dependent = Dependent {
@@ -146,6 +154,13 @@ pub async fn get_dependent<F: FamilyRepository, D: DependentRepository>(
         "Dependent with id {:?} not found",
         dependent_id
     )))?;
+
+    // Enforce permission on mirrored resources (Requirement 4.1, 4.5)
+    check_permission(
+        dependent.share_id.as_ref(),
+        dependent.permission_scope.as_ref(),
+        PermissionAction::DependentRead,
+    )?;
 
     // Convert to response and serialize (Requirement 10.3)
     let response = DependentResponse::from(dependent);
@@ -205,6 +220,13 @@ pub async fn update_dependent<F: FamilyRepository, D: DependentRepository>(
         dependent_id
     )))?;
 
+    // Enforce permission on mirrored resources (Requirement 4.2, 4.5)
+    check_permission(
+        dependent.share_id.as_ref(),
+        dependent.permission_scope.as_ref(),
+        PermissionAction::DependentWrite,
+    )?;
+
     // Update dependent data
     dependent.name = request.name;
     dependent.date_of_birth = request.date_of_birth;
@@ -249,6 +271,13 @@ pub async fn delete_dependent<F: FamilyRepository, D: DependentRepository>(
         dependent_id
     )))?;
 
+    // Enforce permission on mirrored resources (Requirement 4.2, 4.5)
+    check_permission(
+        _dependent.share_id.as_ref(),
+        _dependent.permission_scope.as_ref(),
+        PermissionAction::DependentWrite,
+    )?;
+
     // Delete from repository
     dependent_repository.delete(family_id, dependent_id).await?;
 
@@ -273,10 +302,17 @@ pub async fn list_dependents<F: FamilyRepository, D: DependentRepository>(
     let _family = family_repository
         .get(context.identity_id.clone(), family_id)
         .await?;
-    _family.ok_or(HandlerError::NotFound(format!(
+    let family = _family.ok_or(HandlerError::NotFound(format!(
         "Family with id {:?} not found",
         family_id
     )))?;
+
+    // Enforce permission on mirrored resources (Requirement 4.1, 4.5)
+    check_permission(
+        family.share_id.as_ref(),
+        family.permission_scope.as_ref(),
+        PermissionAction::DependentRead,
+    )?;
 
     // List all Dependents for Family (Requirement 2.5)
     let dependents = dependent_repository.list_by_family(family_id).await?;

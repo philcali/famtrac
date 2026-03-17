@@ -1,5 +1,8 @@
+use super::permission::check_permission;
 use crate::context::RequestContext;
-use crate::domain::{Activity, ActivityId, ActivityType, Date, DependentId, FamilyId, Timestamp};
+use crate::domain::{
+    Activity, ActivityId, ActivityType, Date, DependentId, FamilyId, PermissionAction, Timestamp,
+};
 use crate::errors::{validate_activity_timestamp, validate_activity_type, HandlerError};
 use crate::repository::{
     ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository,
@@ -102,6 +105,13 @@ pub async fn create_activity<F: FamilyRepository, D: DependentRepository, A: Act
         request.family_id
     )))?;
 
+    // Enforce permission on mirrored resources (Requirement 4.2, 4.5)
+    check_permission(
+        _family.share_id.as_ref(),
+        _family.permission_scope.as_ref(),
+        PermissionAction::ActivityWrite,
+    )?;
+
     // Verify dependent exists
     let _dependent = dependent_repository
         .get(request.family_id, request.dependent_id)
@@ -172,6 +182,13 @@ pub async fn get_activity<F: FamilyRepository, D: DependentRepository, A: Activi
         activity_id
     )))?;
 
+    // Enforce permission on mirrored resources (Requirement 4.1, 4.5)
+    check_permission(
+        activity.share_id.as_ref(),
+        activity.permission_scope.as_ref(),
+        PermissionAction::ActivityRead,
+    )?;
+
     // Convert to response and serialize (Requirement 10.3)
     let response = ActivityResponse::from(activity);
     let response_json = serde_json::to_string(&response)
@@ -238,6 +255,13 @@ pub async fn update_activity<F: FamilyRepository, D: DependentRepository, A: Act
         activity_id
     )))?;
 
+    // Enforce permission on mirrored resources (Requirement 4.2, 4.5)
+    check_permission(
+        activity.share_id.as_ref(),
+        activity.permission_scope.as_ref(),
+        PermissionAction::ActivityWrite,
+    )?;
+
     // Update activity data (preserve created_at per Requirement 5.4)
     activity.timestamp = request.timestamp;
     activity.activity_type = request.activity_type;
@@ -293,6 +317,13 @@ pub async fn delete_activity<F: FamilyRepository, D: DependentRepository, A: Act
         activity_id
     )))?;
 
+    // Enforce permission on mirrored resources (Requirement 4.2, 4.5)
+    check_permission(
+        _activity.share_id.as_ref(),
+        _activity.permission_scope.as_ref(),
+        PermissionAction::ActivityWrite,
+    )?;
+
     // Delete Activity from repository (Requirement 6.1, 6.3)
     activity_repository
         .delete(family_id, dependent_id, activity_id)
@@ -337,6 +368,13 @@ pub async fn query_activities<
         "Family with id {:?} not found",
         family_id
     )))?;
+
+    // Enforce permission on mirrored resources (Requirement 4.1, 4.5)
+    check_permission(
+        _family.share_id.as_ref(),
+        _family.permission_scope.as_ref(),
+        PermissionAction::ActivityRead,
+    )?;
 
     // Verify dependent exists
     let _dependent = dependent_repository.get(family_id, dependent_id).await?;

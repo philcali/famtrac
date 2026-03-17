@@ -1,5 +1,6 @@
+use super::permission::check_permission;
 use crate::context::RequestContext;
-use crate::domain::{Family, FamilyId, Timestamp};
+use crate::domain::{Family, FamilyId, PermissionAction, Timestamp};
 use crate::errors::{validate_family_name, HandlerError};
 use crate::repository::FamilyRepository;
 use serde::{Deserialize, Serialize};
@@ -117,6 +118,13 @@ pub async fn get_family<R: FamilyRepository>(
         family_id
     )))?;
 
+    // Enforce permission on mirrored resources (Requirement 4.1, 4.5)
+    check_permission(
+        family.share_id.as_ref(),
+        family.permission_scope.as_ref(),
+        PermissionAction::FamilyRead,
+    )?;
+
     // Convert to response and serialize (Requirement 10.3)
     let response = FamilyResponse::from(family);
     let response_json = serde_json::to_string(&response)
@@ -162,6 +170,13 @@ pub async fn update_family<R: FamilyRepository>(
         "Family with id {:?} not found",
         family_id
     )))?;
+
+    // Enforce permission on mirrored resources (Requirement 4.1, 4.5)
+    check_permission(
+        family.share_id.as_ref(),
+        family.permission_scope.as_ref(),
+        PermissionAction::FamilyRead,
+    )?;
 
     // Update family data
     family.name = request.name;

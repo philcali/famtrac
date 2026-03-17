@@ -94,8 +94,8 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - In-memory implementation matching the trait
     - _Requirements: 1.1_
 
-- [ ] 7. Implement permission enforcement utility
-  - [ ] 7.1 Create `check_permission` function (in `famtrac-backend/src/handlers/` or a shared utils module)
+- [x] 7. Implement permission enforcement utility
+  - [x] 7.1 Create `check_permission` function (in `famtrac-backend/src/handlers/` or a shared utils module)
     - If `share_id` is `None`, resource is owned — allow full access
     - If `share_id` is `Some`, check `permission_scope` contains the required `PermissionAction`
     - Return `HandlerError::Forbidden` if not permitted
@@ -111,8 +111,8 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Generate resources with `share_id=None`, verify all operations succeed
     - **Validates: Requirements 4.5**
 
-- [ ] 8. Integrate permission checks into existing handlers
-  - [ ] 8.1 Add `check_permission` calls to existing Family, Dependent, and Activity handlers in `famtrac-backend/src/handlers/`
+- [x] 8. Integrate permission checks into existing handlers
+  - [x] 8.1 Add `check_permission` calls to existing Family, Dependent, and Activity handlers in `famtrac-backend/src/handlers/`
     - After fetching a resource, check if it's mirrored (has `share_id`) and enforce permissions
     - Read operations require the corresponding read action (`family:read`, `dependent:read`, `activity:read`)
     - Write operations require the corresponding write action (`dependent:write`, `activity:write`)
