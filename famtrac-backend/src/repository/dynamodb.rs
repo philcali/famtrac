@@ -1153,29 +1153,6 @@ impl ShareRepository for DynamoDbShareRepository {
             .collect()
     }
 
-    async fn list_by_accepter_id(&self, accepter_id: IdentityId) -> Result<Vec<Share>, StoreError> {
-        let result = self
-            .client
-            .query()
-            .table_name(&self.table_name)
-            .index_name("GSI-AccepterShares")
-            .key_condition_expression("accepter_id = :aid AND begins_with(SK, :sk_prefix)")
-            .expression_attribute_values(":aid", AttributeValue::S(accepter_id.0.clone()))
-            .expression_attribute_values(":sk_prefix", AttributeValue::S("SHARE#".to_string()))
-            .send()
-            .await
-            .map_err(|e| {
-                StoreError::QueryError(format!("Failed to list shares by accepter id: {}", e))
-            })?;
-
-        result
-            .items
-            .unwrap_or_default()
-            .iter()
-            .map(|item| self.parse_share_item(item))
-            .collect()
-    }
-
     async fn get_by_family_and_email(
         &self,
         family_id: FamilyId,
