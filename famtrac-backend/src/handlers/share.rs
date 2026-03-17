@@ -313,21 +313,39 @@ pub async fn accept_share<SR: ShareRepository>(
     Ok((200, response_json))
 }
 
-/// Handler for GET /shared-families
-/// Lists all shares where the authenticated user is the accepter
+/// Handler for GET /shares
+/// Lists all shares where the authenticated user is the accepter.
+/// Returns both pending shares (looked up by email) and active shares (looked up by identity ID)
+/// so the accepter can discover invitations and see current access in a single call.
 ///
 /// Requirements: 8.1, 8.2
-pub async fn list_shared_families<SR: ShareRepository>(
+pub async fn list_shares_for_accepter<SR: ShareRepository>(
     context: &RequestContext,
     share_repo: &SR,
 ) -> Result<(u16, String), HandlerError> {
-    // Query shares by accepter identity ID via GSI (Requirement 8.1)
-    let shares = share_repo
+    let mut all_shares: Vec<Share> = Vec::new();
+
+    // Query pending shares by accepter email (discoverable invitations)
+    if let Some(ref email) = context.email {
+        let pending = share_repo.list_by_accepter_email(email).await?;
+        all_shares.extend(pending);
+    }
+
+    // Query active shares by accepter identity ID via GSI
+    let active = share_repo
         .list_by_accepter_id(context.identity_id.clone())
         .await?;
 
-    // Convert to response (Requirement 8.2)
-    let shares_response: Vec<ShareResponse> = shares.into_iter().map(ShareResponse::from).collect();
+    // Merge, deduplicating by share ID (a share transitioning from pending to active
+    // could appear in both queries during the brief window)
+    for share in active {
+        if !all_shares.iter().any(|s| s.id == share.id) {
+            all_shares.push(share);
+        }
+    }
+
+    let shares_response: Vec<ShareResponse> =
+        all_shares.into_iter().map(ShareResponse::from).collect();
     let response = ShareListResponse {
         shares: shares_response,
     };

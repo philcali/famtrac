@@ -7,6 +7,7 @@ use crate::context::RequestContext;
 use crate::errors::HandlerError;
 use crate::repository::{
     DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
+    DynamoDbShareRepository,
 };
 use crate::utils::cors::CorsConfig;
 use crate::utils::response::HttpResponse;
@@ -16,6 +17,7 @@ pub mod activity;
 pub mod dependent;
 pub mod extractors;
 pub mod family;
+pub mod share;
 
 /// Main routing function that dispatches requests to appropriate route handlers
 ///
@@ -51,6 +53,7 @@ pub async fn route_request(
     family_repo: &DynamoDbFamilyRepository,
     dependent_repo: &DynamoDbDependentRepository,
     activity_repo: &DynamoDbActivityRepository,
+    share_repo: &DynamoDbShareRepository,
     cors_config: &CorsConfig,
 ) -> HttpResponse {
     // Extract HTTP method, path, and body from request
@@ -61,8 +64,41 @@ pub async fn route_request(
     // Log routing information (Requirement 7.4)
     eprintln!("Routing: {} {}", method, path);
 
+    // Check for share routes first (top-level /shares paths)
+    if path == "/shares" || (path.starts_with("/shares/") && !path.starts_with("/shared-families"))
+    {
+        let handler_result =
+            share::route_shares(method, path, body, context, share_repo, family_repo).await;
+        return HttpResponse::from_handler_result(handler_result, cors_config);
+    }
+
     // Match on path prefix to delegate to appropriate route handler
     let result = if path.starts_with("/families") {
+        // Check if this is a /families/{fid}/shares route
+        if let Some(shares_idx) = path.find("/shares") {
+            let family_id_str = &path["/families/".len()..shares_idx];
+            let family_id = match crate::router::extractors::extract_uuid_param(
+                &format!("/families/{}", family_id_str),
+                "/families/",
+                "family_id",
+            ) {
+                Ok(id) => id,
+                Err(e) => return HttpResponse::from_handler_result(Err(e), cors_config),
+            };
+            let sub_path = &path[shares_idx + "/shares".len()..];
+            let handler_result = share::route_family_shares(
+                method,
+                crate::domain::FamilyId(family_id),
+                sub_path,
+                body,
+                context,
+                share_repo,
+                family_repo,
+            )
+            .await;
+            return HttpResponse::from_handler_result(handler_result, cors_config);
+        }
+
         // Delegate to family route handler
         // Handles /families/*, /families/{id}/dependents/*, and
         // /families/{id}/dependents/{id}/activities/*
