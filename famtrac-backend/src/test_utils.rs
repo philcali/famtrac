@@ -451,23 +451,6 @@ pub mod mocks {
                 .collect())
         }
 
-        async fn list_by_accepter_id(
-            &self,
-            accepter_id: IdentityId,
-        ) -> Result<Vec<Share>, StoreError> {
-            if self.should_fail {
-                return Err(StoreError::QueryError("Mock failure".to_string()));
-            }
-            Ok(self
-                .shares
-                .lock()
-                .unwrap()
-                .values()
-                .filter(|s| s.accepter_id.as_ref() == Some(&accepter_id))
-                .cloned()
-                .collect())
-        }
-
         async fn get_by_family_and_email(
             &self,
             family_id: FamilyId,

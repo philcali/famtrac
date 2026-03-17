@@ -119,9 +119,6 @@ pub trait ShareRepository: Send + Sync {
     /// List all shares by accepter email (email partition lookup)
     async fn list_by_accepter_email(&self, email: &str) -> Result<Vec<Share>, StoreError>;
 
-    /// List all shares by accepter identity ID (GSI-AccepterShares)
-    async fn list_by_accepter_id(&self, accepter_id: IdentityId) -> Result<Vec<Share>, StoreError>;
-
     /// Get a share by family ID and accepter email (email partition, filtered by family_id)
     async fn get_by_family_and_email(
         &self,

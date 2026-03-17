@@ -250,12 +250,12 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - _Requirements: 8.1_
 
 - [ ] 13. Implement stream handler Lambda for mirroring
-  - [ ] 13.1 Create `famtrac-stream-handler/` Rust project with Cargo.toml
+  - [x] 13.1 Create `famtrac-stream-handler/` Rust project with Cargo.toml
     - Add dependencies: `aws-lambda-events`, `lambda_runtime`, `aws-sdk-dynamodb`, `serde`, `serde_json`, `tokio`
     - Share domain types from `famtrac-backend` or duplicate minimal types needed
     - _Requirements: 3.1, 3.2, 3.3, 3.6_
 
-  - [ ] 13.2 Implement stream event classification in `famtrac-stream-handler/src/main.rs`
+  - [x] 13.2 Implement stream event classification in `famtrac-stream-handler/src/main.rs`
     - Parse DynamoDB Stream records
     - Classify into: `ShareActivated`, `ShareRevoked`, `SharePermissionUpdated`, `ResourceChanged`, `Ignored`
     - _Requirements: 3.1, 3.6, 6.2, 7.2_
