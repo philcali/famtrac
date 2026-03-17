@@ -6,8 +6,8 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
 
 ## Tasks
 
-- [ ] 1. Define share domain types and permission validation
-  - [ ] 1.1 Create `famtrac-backend/src/domain/share.rs` with `ShareId`, `ShareStatus`, `PermissionAction`, `PermissionScope`, and `Share` structs
+- [x] 1. Define share domain types and permission validation
+  - [x] 1.1 Create `famtrac-backend/src/domain/share.rs` with `ShareId`, `ShareStatus`, `PermissionAction`, `PermissionScope`, and `Share` structs
     - `ShareId` wraps `Uuid` (like `FamilyId`)
     - `ShareStatus` enum: `Pending`, `Active`, `Expired`
     - `PermissionAction` enum: `FamilyRead`, `DependentRead`, `DependentWrite`, `ActivityRead`, `ActivityWrite`
@@ -16,7 +16,7 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Derive `Serialize`, `Deserialize`, `Debug`, `Clone`, `PartialEq`, `Eq` as appropriate
     - _Requirements: 1.5, 2.1_
 
-  - [ ] 1.2 Implement `PermissionScope::validate()` method on `PermissionScope`
+  - [x] 1.2 Implement `PermissionScope::validate()` method on `PermissionScope`
     - Must contain at least one action
     - Must include `FamilyRead`
     - `DependentWrite` requires `DependentRead`
@@ -24,7 +24,7 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Return `ValidationError` with descriptive messages on failure
     - _Requirements: 2.2, 2.3, 2.4, 2.5, 2.6_
 
-  - [ ] 1.3 Register the share module in `famtrac-backend/src/domain/mod.rs` and re-export the new types
+  - [x] 1.3 Register the share module in `famtrac-backend/src/domain/mod.rs` and re-export the new types
     - _Requirements: 1.5, 2.1_
 
   - [ ]* 1.4 Write property test for permission scope validation (Property 3)
@@ -333,6 +333,7 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
 
 ## Notes
 
+- **IMPORTANT**: Files may change between task runs. Always read a file before editing it — never assume its contents match what was seen in a previous task.
 - Tasks marked with `*` are optional and can be skipped for faster MVP
 - Each task references specific requirements for traceability
 - Checkpoints ensure incremental validation
