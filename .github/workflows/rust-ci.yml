@@ -5,32 +5,81 @@ on:
     branches: [main]
     paths:
       - 'famtrac-backend/**'
+      - 'famtrac-stream-handler/**'
       - '.github/workflows/rust-ci.yml'
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  check:
-    name: Check
+  detect-changes:
+    name: Detect Changes
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      has_changes: ${{ steps.set-matrix.outputs.has_changes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'famtrac-backend/**'
+            stream-handler:
+              - 'famtrac-stream-handler/**'
+      - name: Build matrix
+        id: set-matrix
+        run: |
+          CRATES="[]"
+
+          # Backend changes trigger both (stream-handler depends on backend)
+          if [ "${{ steps.filter.outputs.backend }}" == "true" ]; then
+            CRATES=$(echo "$CRATES" | jq -c '. + ["famtrac-backend", "famtrac-stream-handler"]')
+          elif [ "${{ steps.filter.outputs.stream-handler }}" == "true" ]; then
+            CRATES=$(echo "$CRATES" | jq -c '. + ["famtrac-stream-handler"]')
+          fi
+
+          # Deduplicate
+          CRATES=$(echo "$CRATES" | jq -c 'unique')
+
+          echo "matrix={\"crate\":$CRATES}" >> "$GITHUB_OUTPUT"
+          if [ "$CRATES" == "[]" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  check:
+    name: Check (${{ matrix.crate }})
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
     defaults:
       run:
-        working-directory: ./famtrac-backend
+        working-directory: ./${{ matrix.crate }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: famtrac-backend
+          workspaces: ${{ matrix.crate }}
       - run: cargo check --all-features
 
   clippy:
-    name: Clippy
+    name: Clippy (${{ matrix.crate }})
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
     defaults:
       run:
-        working-directory: ./famtrac-backend
+        working-directory: ./${{ matrix.crate }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -38,31 +87,43 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: famtrac-backend
+          workspaces: ${{ matrix.crate }}
       - run: cargo clippy --all-features --all-targets -- -D warnings
 
   test:
-    name: Test
+    name: Test (${{ matrix.crate }})
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: famtrac-backend
-      - run: ./scripts/setup-dynamodb-local.sh
-      - run: cargo test --manifest-path ./famtrac-backend/Cargo.toml
+          workspaces: ${{ matrix.crate }}
+      - name: Setup DynamoDB Local
+        if: matrix.crate == 'famtrac-backend'
+        run: ./scripts/setup-dynamodb-local.sh
+      - run: cargo test --manifest-path ./${{ matrix.crate }}/Cargo.toml
 
   build:
-    name: Build
+    name: Build (${{ matrix.crate }})
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_changes == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
     defaults:
       run:
-        working-directory: ./famtrac-backend
+        working-directory: ./${{ matrix.crate }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: famtrac-backend
+          workspaces: ${{ matrix.crate }}
       - run: cargo build --release
