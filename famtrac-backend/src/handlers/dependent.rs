@@ -99,6 +99,8 @@ pub async fn create_dependent<F: FamilyRepository, D: DependentRepository>(
         date_of_birth: request.date_of_birth,
         created_at: now,
         updated_at: now,
+        share_id: None,
+        permission_scope: None,
     };
 
     // Persist to repository
@@ -306,6 +308,7 @@ mod tests {
     fn create_test_context(identity_id: &str) -> RequestContext {
         RequestContext {
             identity_id: IdentityId::new(identity_id.to_string()),
+            email: None,
         }
     }
 
@@ -316,6 +319,8 @@ mod tests {
             owner_id: IdentityId::new(owner_id.to_string()),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         }
     }
 
@@ -511,6 +516,8 @@ mod tests {
             ),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         dependent_repo
             .dependents
@@ -588,6 +595,8 @@ mod tests {
             ),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         dependent_repo
             .dependents
@@ -637,6 +646,8 @@ mod tests {
             ),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         dependent_repo
             .dependents
@@ -717,6 +728,8 @@ mod tests {
             ),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         dependent_repo
             .dependents
@@ -768,6 +781,8 @@ mod tests {
             ),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         dependent_repo
             .dependents
@@ -821,6 +836,8 @@ mod tests {
             ),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         let dependent2 = Dependent {
             id: DependentId::new(),
@@ -831,6 +848,8 @@ mod tests {
             ),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         dependent_repo
             .dependents

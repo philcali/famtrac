@@ -42,6 +42,8 @@ fn test_family_serialization() {
                 .unwrap()
                 .with_timezone(&Utc),
         ),
+        share_id: None,
+        permission_scope: None,
     };
 
     let json = serde_json::to_string(&family).unwrap();

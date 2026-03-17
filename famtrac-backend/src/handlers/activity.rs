@@ -121,6 +121,8 @@ pub async fn create_activity<F: FamilyRepository, D: DependentRepository, A: Act
         activity_type: request.activity_type,
         created_at: now,
         updated_at: now,
+        share_id: None,
+        permission_scope: None,
     };
 
     // Persist to repository

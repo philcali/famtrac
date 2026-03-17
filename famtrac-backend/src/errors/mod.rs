@@ -17,6 +17,8 @@ pub enum HandlerError {
     Store(StoreError),
     Auth(AuthError),
     NotFound(String),
+    Conflict(String),
+    Forbidden(String),
     InternalError(String),
 }
 
@@ -65,6 +67,8 @@ impl HandlerError {
             HandlerError::Auth(AuthError::Unauthorized(_)) => 401,
             HandlerError::Auth(AuthError::MissingIdentity) => 401,
             HandlerError::NotFound(_) => 404,
+            HandlerError::Conflict(_) => 409,
+            HandlerError::Forbidden(_) => 403,
             HandlerError::InternalError(_) => 500,
         }
     }
@@ -127,6 +131,20 @@ impl HandlerError {
                     details: None,
                 },
             },
+            HandlerError::Conflict(msg) => ErrorResponse {
+                error: ErrorDetail {
+                    code: "CONFLICT_ERROR".to_string(),
+                    message: msg.clone(),
+                    details: None,
+                },
+            },
+            HandlerError::Forbidden(msg) => ErrorResponse {
+                error: ErrorDetail {
+                    code: "FORBIDDEN".to_string(),
+                    message: msg.clone(),
+                    details: None,
+                },
+            },
             HandlerError::InternalError(_) => ErrorResponse {
                 error: ErrorDetail {
                     code: "INTERNAL_ERROR".to_string(),
@@ -145,6 +163,8 @@ impl fmt::Display for HandlerError {
             HandlerError::Store(err) => write!(f, "Store error: {}", err),
             HandlerError::Auth(err) => write!(f, "Auth error: {}", err),
             HandlerError::NotFound(msg) => write!(f, "Not found: {}", msg),
+            HandlerError::Conflict(msg) => write!(f, "Conflict: {}", msg),
+            HandlerError::Forbidden(msg) => write!(f, "Forbidden: {}", msg),
             HandlerError::InternalError(msg) => write!(f, "Internal error: {}", msg),
         }
     }

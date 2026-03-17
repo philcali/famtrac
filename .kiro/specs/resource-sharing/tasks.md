@@ -37,30 +37,30 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Generate random valid `Share` objects, serialize to JSON, deserialize, assert equality
     - **Validates: Requirements 11.4**
 
-- [ ] 2. Extend error types for sharing
-  - [ ] 2.1 Add `Conflict(String)` and `Forbidden(String)` variants to `HandlerError` in `famtrac-backend/src/errors/mod.rs`
+- [x] 2. Extend error types for sharing
+  - [x] 2.1 Add `Conflict(String)` and `Forbidden(String)` variants to `HandlerError` in `famtrac-backend/src/errors/mod.rs`
     - `Conflict` maps to HTTP 409 with code `CONFLICT_ERROR`
     - `Forbidden` maps to HTTP 403 with code `FORBIDDEN`
     - Update `status_code()` and `to_error_response()` implementations
     - Update `Display` impl
     - _Requirements: 1.3, 4.3, 9.2_
 
-- [ ] 3. Extend existing domain types with share metadata
-  - [ ] 3.1 Add optional `share_id: Option<ShareId>` and `permission_scope: Option<PermissionScope>` fields to `Family`, `Dependent`, and `Activity` structs in `famtrac-backend/src/domain/`
+- [x] 3. Extend existing domain types with share metadata
+  - [x] 3.1 Add optional `share_id: Option<ShareId>` and `permission_scope: Option<PermissionScope>` fields to `Family`, `Dependent`, and `Activity` structs in `famtrac-backend/src/domain/`
     - Use `#[serde(skip_serializing_if = "Option::is_none")]` to keep existing API responses unchanged for owned resources
     - Default to `None` for owned resources
     - _Requirements: 3.4, 3.5, 4.1, 4.2_
 
-  - [ ] 3.2 Update `DynamoDbFamilyRepository`, `DynamoDbDependentRepository`, and `DynamoDbActivityRepository` `to_item` and `parse_item` methods in `famtrac-backend/src/repository/dynamodb.rs` to handle the new optional `share_id` and `permission_scope` fields
+  - [x] 3.2 Update `DynamoDbFamilyRepository`, `DynamoDbDependentRepository`, and `DynamoDbActivityRepository` `to_item` and `parse_item` methods in `famtrac-backend/src/repository/dynamodb.rs` to handle the new optional `share_id` and `permission_scope` fields
     - Write `share_id` and `permission_scope` to DynamoDB only when `Some`
     - Parse them from DynamoDB items, defaulting to `None` when absent
     - _Requirements: 3.4, 3.5_
 
-  - [ ] 3.3 Update `MockFamilyRepository`, `MockDependentRepository`, and `MockActivityRepository` in `famtrac-backend/src/test_utils.rs` to handle the new optional fields
+  - [x] 3.3 Update `MockFamilyRepository`, `MockDependentRepository`, and `MockActivityRepository` in `famtrac-backend/src/test_utils.rs` to handle the new optional fields
     - _Requirements: 3.4, 3.5_
 
-- [ ] 4. Extend RequestContext with email claim
-  - [ ] 4.1 Add `email: Option<String>` field to `RequestContext` in `famtrac-backend/src/context.rs`
+- [x] 4. Extend RequestContext with email claim
+  - [x] 4.1 Add `email: Option<String>` field to `RequestContext` in `famtrac-backend/src/context.rs`
     - Extract from JWT `email` claim in `from_api_gateway_context`
     - Needed for the accept share flow to verify email match
     - _Requirements: 9.1, 9.2_
