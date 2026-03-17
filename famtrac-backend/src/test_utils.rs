@@ -5,11 +5,12 @@
 
 pub mod mocks {
     use crate::domain::{
-        Activity, ActivityId, Dependent, DependentId, Family, FamilyId, IdentityId,
+        Activity, ActivityId, Dependent, DependentId, Family, FamilyId, IdentityId, Share, ShareId,
     };
     use crate::errors::StoreError;
     use crate::repository::{
         ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository,
+        ShareRepository,
     };
     use async_trait::async_trait;
     use std::collections::HashMap;
@@ -298,6 +299,190 @@ pub mod mocks {
             // Sort by timestamp descending to match GSI behavior
             activities.sort_by(|a, b| b.timestamp.0.cmp(&a.timestamp.0));
             Ok(activities)
+        }
+    }
+
+    /// Mock implementation of ShareRepository for testing
+    #[derive(Clone)]
+    pub struct MockShareRepository {
+        pub should_fail: bool,
+        pub shares: Arc<Mutex<HashMap<ShareId, Share>>>,
+    }
+
+    impl MockShareRepository {
+        pub fn new() -> Self {
+            MockShareRepository {
+                should_fail: false,
+                shares: Arc::new(Mutex::new(HashMap::new())),
+            }
+        }
+
+        pub fn with_failure() -> Self {
+            MockShareRepository {
+                should_fail: true,
+                shares: Arc::new(Mutex::new(HashMap::new())),
+            }
+        }
+
+        pub fn insert(&self, share: Share) {
+            self.shares.lock().unwrap().insert(share.id, share);
+        }
+    }
+
+    impl Default for MockShareRepository {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    #[async_trait]
+    impl ShareRepository for MockShareRepository {
+        async fn create(&self, share: Share) -> Result<Share, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            // Check for duplicate (same family + email)
+            let exists = self.shares.lock().unwrap().values().any(|s| {
+                s.family_id == share.family_id && s.accepter_email == share.accepter_email
+            });
+            if exists {
+                return Err(StoreError::ConflictError(
+                    "Share already exists for this family and email".to_string(),
+                ));
+            }
+            self.shares.lock().unwrap().insert(share.id, share.clone());
+            Ok(share)
+        }
+
+        async fn get(
+            &self,
+            requester_id: IdentityId,
+            share_id: ShareId,
+        ) -> Result<Option<Share>, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            Ok(self
+                .shares
+                .lock()
+                .unwrap()
+                .get(&share_id)
+                .filter(|s| s.requester_id == requester_id)
+                .cloned())
+        }
+
+        async fn get_by_email_and_share_id(
+            &self,
+            accepter_email: &str,
+            share_id: ShareId,
+        ) -> Result<Option<Share>, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            Ok(self
+                .shares
+                .lock()
+                .unwrap()
+                .get(&share_id)
+                .filter(|s| s.accepter_email == accepter_email)
+                .cloned())
+        }
+
+        async fn update(&self, share: Share) -> Result<Share, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            self.shares.lock().unwrap().insert(share.id, share.clone());
+            Ok(share)
+        }
+
+        async fn delete(
+            &self,
+            requester_id: IdentityId,
+            share_id: ShareId,
+        ) -> Result<(), StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            let should_remove = self
+                .shares
+                .lock()
+                .unwrap()
+                .get(&share_id)
+                .map(|s| s.requester_id == requester_id)
+                .unwrap_or(false);
+            if should_remove {
+                self.shares.lock().unwrap().remove(&share_id);
+                Ok(())
+            } else {
+                Err(StoreError::NotFound("Share not found".to_string()))
+            }
+        }
+
+        async fn list_by_family(
+            &self,
+            requester_id: IdentityId,
+            family_id: FamilyId,
+        ) -> Result<Vec<Share>, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            Ok(self
+                .shares
+                .lock()
+                .unwrap()
+                .values()
+                .filter(|s| s.requester_id == requester_id && s.family_id == family_id)
+                .cloned()
+                .collect())
+        }
+
+        async fn list_by_accepter_email(&self, email: &str) -> Result<Vec<Share>, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            Ok(self
+                .shares
+                .lock()
+                .unwrap()
+                .values()
+                .filter(|s| s.accepter_email == email)
+                .cloned()
+                .collect())
+        }
+
+        async fn list_by_accepter_id(
+            &self,
+            accepter_id: IdentityId,
+        ) -> Result<Vec<Share>, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            Ok(self
+                .shares
+                .lock()
+                .unwrap()
+                .values()
+                .filter(|s| s.accepter_id.as_ref() == Some(&accepter_id))
+                .cloned()
+                .collect())
+        }
+
+        async fn get_by_family_and_email(
+            &self,
+            family_id: FamilyId,
+            accepter_email: &str,
+        ) -> Result<Option<Share>, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            Ok(self
+                .shares
+                .lock()
+                .unwrap()
+                .values()
+                .find(|s| s.family_id == family_id && s.accepter_email == accepter_email)
+                .cloned())
         }
     }
 }

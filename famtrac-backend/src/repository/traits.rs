@@ -1,5 +1,6 @@
 use crate::domain::{
-    Activity, ActivityType, Date, Dependent, DependentId, Family, FamilyId, IdentityId,
+    Activity, ActivityType, Date, Dependent, DependentId, Family, FamilyId, IdentityId, Share,
+    ShareId,
 };
 use crate::errors::StoreError;
 use async_trait::async_trait;
@@ -80,4 +81,51 @@ pub trait ActivityRepository: Send + Sync {
 
     /// Query activities with filters
     async fn query(&self, params: ActivityQueryParams) -> Result<Vec<Activity>, StoreError>;
+}
+
+/// Repository trait for Share operations
+#[async_trait]
+pub trait ShareRepository: Send + Sync {
+    /// Create a new share (dual-write to owner and email partitions)
+    async fn create(&self, share: Share) -> Result<Share, StoreError>;
+
+    /// Get a share by requester ID and share ID (owner partition lookup)
+    async fn get(
+        &self,
+        requester_id: IdentityId,
+        share_id: ShareId,
+    ) -> Result<Option<Share>, StoreError>;
+
+    /// Get a share by accepter email and share ID (email partition direct lookup)
+    async fn get_by_email_and_share_id(
+        &self,
+        accepter_email: &str,
+        share_id: ShareId,
+    ) -> Result<Option<Share>, StoreError>;
+
+    /// Update an existing share (dual-write transaction)
+    async fn update(&self, share: Share) -> Result<Share, StoreError>;
+
+    /// Delete a share by requester ID and share ID (dual-delete transaction)
+    async fn delete(&self, requester_id: IdentityId, share_id: ShareId) -> Result<(), StoreError>;
+
+    /// List all shares for a family (owner partition, filtered by family_id)
+    async fn list_by_family(
+        &self,
+        requester_id: IdentityId,
+        family_id: FamilyId,
+    ) -> Result<Vec<Share>, StoreError>;
+
+    /// List all shares by accepter email (email partition lookup)
+    async fn list_by_accepter_email(&self, email: &str) -> Result<Vec<Share>, StoreError>;
+
+    /// List all shares by accepter identity ID (GSI-AccepterShares)
+    async fn list_by_accepter_id(&self, accepter_id: IdentityId) -> Result<Vec<Share>, StoreError>;
+
+    /// Get a share by family ID and accepter email (email partition, filtered by family_id)
+    async fn get_by_family_and_email(
+        &self,
+        family_id: FamilyId,
+        accepter_email: &str,
+    ) -> Result<Option<Share>, StoreError>;
 }
