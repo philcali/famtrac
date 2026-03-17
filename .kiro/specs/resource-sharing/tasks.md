@@ -68,17 +68,17 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
 - [ ] 5. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Implement ShareRepository trait and DynamoDB implementation
-  - [ ] 6.1 Define `ShareRepository` trait in `famtrac-backend/src/repository/traits.rs`
-    - Methods: `create`, `get`, `get_by_id`, `update`, `delete`, `list_by_family`, `list_by_accepter_email`, `list_by_accepter_id`, `get_by_family_and_email`
+- [x] 6. Implement ShareRepository trait and DynamoDB implementation
+  - [x] 6.1 Define `ShareRepository` trait in `famtrac-backend/src/repository/traits.rs`
+    - Methods: `create`, `get`, `get_by_email_and_share_id`, `update`, `delete`, `list_by_family`, `list_by_accepter_email`, `list_by_accepter_id`, `get_by_family_and_email`
     - Follow existing trait patterns (async_trait, Send + Sync)
     - _Requirements: 1.1, 1.3, 5.1, 6.1, 7.1, 8.1, 9.1_
 
-  - [ ] 6.2 Implement `DynamoDbShareRepository` in `famtrac-backend/src/repository/dynamodb.rs`
+  - [x] 6.2 Implement `DynamoDbShareRepository` in `famtrac-backend/src/repository/dynamodb.rs`
     - Dual-write pattern: each Share writes to both `OWNER#{requester_id}/SHARE#{share_id}` and `SHARE_EMAIL#{accepter_email}/SHARE#{share_id}` using TransactWriteItems
     - `create` uses condition expression to prevent duplicates (conflict detection)
     - `get` retrieves from owner partition
-    - `get_by_id` queries by share_id (may need scan or secondary approach)
+    - `get_by_email_and_share_id` does a direct GetItem on the email partition (`SHARE_EMAIL#{accepter_email}/SHARE#{share_id}`)
     - `list_by_family` queries owner partition with SK prefix `SHARE#` and filters by `family_id`
     - `list_by_accepter_email` queries `SHARE_EMAIL#{email}` partition
     - `list_by_accepter_id` queries GSI-AccepterShares
@@ -87,10 +87,10 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - `delete` deletes both items in a transaction
     - _Requirements: 1.1, 1.3, 1.5, 5.1, 6.1, 7.1, 8.1_
 
-  - [ ] 6.3 Register `DynamoDbShareRepository` in `famtrac-backend/src/repository/mod.rs` and re-export
+  - [x] 6.3 Register `DynamoDbShareRepository` in `famtrac-backend/src/repository/mod.rs` and re-export
     - _Requirements: 1.1_
 
-  - [ ] 6.4 Create `MockShareRepository` in `famtrac-backend/src/test_utils.rs` for unit testing
+  - [x] 6.4 Create `MockShareRepository` in `famtrac-backend/src/test_utils.rs` for unit testing
     - In-memory implementation matching the trait
     - _Requirements: 1.1_
 
@@ -170,7 +170,7 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - **Validates: Requirements 7.1**
 
   - [ ] 9.9 Implement `accept_share` handler
-    - Look up share by ID
+    - Look up share by accepter email (from RequestContext) and share ID via `get_by_email_and_share_id`
     - Verify accepter email matches authenticated user's email (from RequestContext)
     - Verify share is in `Pending` status (reject `Active`/`Expired`)
     - Check expiration: if past expiration period, return validation error

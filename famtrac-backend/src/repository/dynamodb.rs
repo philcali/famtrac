@@ -5,12 +5,12 @@ use std::collections::HashMap;
 
 use crate::domain::{
     Activity, ActivityId, ActivityType, Date, Dependent, DependentId, Family, FamilyId, IdentityId,
-    PermissionScope, ShareId, Timestamp,
+    PermissionScope, Share, ShareId, ShareStatus, Timestamp,
 };
 use crate::errors::StoreError;
 
 use super::traits::{
-    ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository,
+    ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository, ShareRepository,
 };
 
 /// DynamoDB implementation of FamilyRepository
@@ -751,5 +751,458 @@ impl ActivityRepository for DynamoDbActivityRepository {
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok(activities)
+    }
+}
+
+/// DynamoDB implementation of ShareRepository
+///
+/// Uses a dual-write pattern: each Share is stored in both the owner partition
+/// (`OWNER#{requester_id}/SHARE#{share_id}`) and the email partition
+/// (`SHARE_EMAIL#{accepter_email}/SHARE#{share_id}`). All create/update/delete
+/// operations use TransactWriteItems for consistency.
+#[derive(Clone)]
+pub struct DynamoDbShareRepository {
+    client: Client,
+    table_name: String,
+}
+
+impl DynamoDbShareRepository {
+    pub fn new(client: Client, table_name: String) -> Self {
+        Self { client, table_name }
+    }
+
+    /// Build the common set of share attributes (shared between owner and email items)
+    fn share_attributes(&self, share: &Share) -> HashMap<String, AttributeValue> {
+        let mut item = HashMap::new();
+        item.insert("id".to_string(), AttributeValue::S(share.id.0.to_string()));
+        item.insert(
+            "family_id".to_string(),
+            AttributeValue::S(share.family_id.0.to_string()),
+        );
+        item.insert(
+            "requester_id".to_string(),
+            AttributeValue::S(share.requester_id.0.clone()),
+        );
+        item.insert(
+            "accepter_email".to_string(),
+            AttributeValue::S(share.accepter_email.clone()),
+        );
+        if let Some(ref accepter_id) = share.accepter_id {
+            item.insert(
+                "accepter_id".to_string(),
+                AttributeValue::S(accepter_id.0.clone()),
+            );
+        }
+        let scope_json =
+            serde_json::to_string(&share.permission_scope).unwrap_or_else(|_| "{}".to_string());
+        item.insert(
+            "permission_scope".to_string(),
+            AttributeValue::S(scope_json),
+        );
+        let status_str = serde_json::to_string(&share.status)
+            .unwrap_or_else(|_| "\"pending\"".to_string())
+            .trim_matches('"')
+            .to_string();
+        item.insert("status".to_string(), AttributeValue::S(status_str));
+        item.insert(
+            "created_at".to_string(),
+            AttributeValue::S(share.created_at.0.to_rfc3339()),
+        );
+        item.insert(
+            "updated_at".to_string(),
+            AttributeValue::S(share.updated_at.0.to_rfc3339()),
+        );
+        if let Some(ref expires_at) = share.expires_at {
+            item.insert(
+                "expires_at".to_string(),
+                AttributeValue::S(expires_at.0.to_rfc3339()),
+            );
+        }
+        item
+    }
+
+    /// Build the owner partition item for a Share
+    fn to_owner_item(&self, share: &Share) -> HashMap<String, AttributeValue> {
+        let mut item = self.share_attributes(share);
+        item.insert(
+            "PK".to_string(),
+            AttributeValue::S(format!("OWNER#{}", share.requester_id.0)),
+        );
+        item.insert(
+            "SK".to_string(),
+            AttributeValue::S(format!("SHARE#{}", share.id.0)),
+        );
+        item.insert("Type".to_string(), AttributeValue::S("Share".to_string()));
+        item
+    }
+
+    /// Build the email partition item for a Share
+    fn to_email_item(&self, share: &Share) -> HashMap<String, AttributeValue> {
+        let mut item = self.share_attributes(share);
+        item.insert(
+            "PK".to_string(),
+            AttributeValue::S(format!("SHARE_EMAIL#{}", share.accepter_email)),
+        );
+        item.insert(
+            "SK".to_string(),
+            AttributeValue::S(format!("SHARE#{}", share.id.0)),
+        );
+        item.insert(
+            "Type".to_string(),
+            AttributeValue::S("ShareEmailIndex".to_string()),
+        );
+        item
+    }
+
+    /// Parse a DynamoDB item into a Share
+    fn parse_share_item(
+        &self,
+        item: &HashMap<String, AttributeValue>,
+    ) -> Result<Share, StoreError> {
+        let id = item
+            .get("id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid share id".to_string()))?;
+
+        let family_id = item
+            .get("family_id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| {
+                StoreError::QueryError("Missing or invalid share family_id".to_string())
+            })?;
+
+        let requester_id = item
+            .get("requester_id")
+            .and_then(|v| v.as_s().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing share requester_id".to_string()))?
+            .clone();
+
+        let accepter_email = item
+            .get("accepter_email")
+            .and_then(|v| v.as_s().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing share accepter_email".to_string()))?
+            .clone();
+
+        let accepter_id = item
+            .get("accepter_id")
+            .and_then(|v| v.as_s().ok())
+            .map(|s| IdentityId(s.clone()));
+
+        let permission_scope_json = item
+            .get("permission_scope")
+            .and_then(|v| v.as_s().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing share permission_scope".to_string()))?;
+        let permission_scope: PermissionScope = serde_json::from_str(permission_scope_json)
+            .map_err(|e| StoreError::QueryError(format!("Invalid permission_scope JSON: {}", e)))?;
+
+        let status_str = item
+            .get("status")
+            .and_then(|v| v.as_s().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing share status".to_string()))?;
+        let status: ShareStatus =
+            serde_json::from_str(&format!("\"{}\"", status_str)).map_err(|e| {
+                StoreError::QueryError(format!("Invalid share status '{}': {}", status_str, e))
+            })?;
+
+        let created_at = item
+            .get("created_at")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| {
+                StoreError::QueryError("Missing or invalid share created_at".to_string())
+            })?;
+
+        let updated_at = item
+            .get("updated_at")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| {
+                StoreError::QueryError("Missing or invalid share updated_at".to_string())
+            })?;
+
+        let expires_at = item
+            .get("expires_at")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .map(Timestamp::from_datetime);
+
+        Ok(Share {
+            id: ShareId(id),
+            family_id: FamilyId(family_id),
+            requester_id: IdentityId(requester_id),
+            accepter_email,
+            accepter_id,
+            permission_scope,
+            status,
+            created_at: Timestamp::from_datetime(created_at),
+            updated_at: Timestamp::from_datetime(updated_at),
+            expires_at,
+        })
+    }
+}
+
+#[async_trait]
+impl ShareRepository for DynamoDbShareRepository {
+    async fn create(&self, share: Share) -> Result<Share, StoreError> {
+        use aws_sdk_dynamodb::types::{Put, TransactWriteItem};
+
+        let owner_item = self.to_owner_item(&share);
+        let email_item = self.to_email_item(&share);
+
+        let owner_put = Put::builder()
+            .table_name(&self.table_name)
+            .set_item(Some(owner_item))
+            .condition_expression("attribute_not_exists(PK) AND attribute_not_exists(SK)")
+            .build()
+            .map_err(|e| StoreError::QueryError(format!("Failed to build owner put: {}", e)))?;
+
+        let email_put = Put::builder()
+            .table_name(&self.table_name)
+            .set_item(Some(email_item))
+            .condition_expression("attribute_not_exists(PK) AND attribute_not_exists(SK)")
+            .build()
+            .map_err(|e| StoreError::QueryError(format!("Failed to build email put: {}", e)))?;
+
+        self.client
+            .transact_write_items()
+            .transact_items(TransactWriteItem::builder().put(owner_put).build())
+            .transact_items(TransactWriteItem::builder().put(email_put).build())
+            .send()
+            .await
+            .map_err(|e| {
+                let err_str = format!("{}", e);
+                if err_str.contains("ConditionalCheckFailed")
+                    || err_str.contains("TransactionCanceledException")
+                {
+                    StoreError::ConflictError(
+                        "Share already exists for this family and email".to_string(),
+                    )
+                } else {
+                    StoreError::QueryError(format!("Failed to create share: {}", e))
+                }
+            })?;
+
+        Ok(share)
+    }
+
+    async fn get(
+        &self,
+        requester_id: IdentityId,
+        share_id: ShareId,
+    ) -> Result<Option<Share>, StoreError> {
+        let result = self
+            .client
+            .get_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("OWNER#{}", requester_id.0)))
+            .key("SK", AttributeValue::S(format!("SHARE#{}", share_id.0)))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to get share: {}", e)))?;
+
+        match result.item {
+            Some(item) => Ok(Some(self.parse_share_item(&item)?)),
+            None => Ok(None),
+        }
+    }
+
+    async fn get_by_email_and_share_id(
+        &self,
+        accepter_email: &str,
+        share_id: ShareId,
+    ) -> Result<Option<Share>, StoreError> {
+        let result = self
+            .client
+            .get_item()
+            .table_name(&self.table_name)
+            .key(
+                "PK",
+                AttributeValue::S(format!("SHARE_EMAIL#{}", accepter_email)),
+            )
+            .key("SK", AttributeValue::S(format!("SHARE#{}", share_id.0)))
+            .send()
+            .await
+            .map_err(|e| {
+                StoreError::QueryError(format!("Failed to get share by email and id: {}", e))
+            })?;
+
+        match result.item {
+            Some(item) => Ok(Some(self.parse_share_item(&item)?)),
+            None => Ok(None),
+        }
+    }
+
+    async fn update(&self, share: Share) -> Result<Share, StoreError> {
+        use aws_sdk_dynamodb::types::{Put, TransactWriteItem};
+
+        let owner_item = self.to_owner_item(&share);
+        let email_item = self.to_email_item(&share);
+
+        let owner_put = Put::builder()
+            .table_name(&self.table_name)
+            .set_item(Some(owner_item))
+            .build()
+            .map_err(|e| StoreError::QueryError(format!("Failed to build owner put: {}", e)))?;
+
+        let email_put = Put::builder()
+            .table_name(&self.table_name)
+            .set_item(Some(email_item))
+            .build()
+            .map_err(|e| StoreError::QueryError(format!("Failed to build email put: {}", e)))?;
+
+        self.client
+            .transact_write_items()
+            .transact_items(TransactWriteItem::builder().put(owner_put).build())
+            .transact_items(TransactWriteItem::builder().put(email_put).build())
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to update share: {}", e)))?;
+
+        Ok(share)
+    }
+
+    async fn delete(&self, requester_id: IdentityId, share_id: ShareId) -> Result<(), StoreError> {
+        use aws_sdk_dynamodb::types::{Delete, TransactWriteItem};
+
+        // First retrieve the share to get the accepter_email for the email partition key
+        let share = self
+            .get(requester_id.clone(), share_id)
+            .await?
+            .ok_or_else(|| StoreError::NotFound("Share not found".to_string()))?;
+
+        let owner_delete = Delete::builder()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("OWNER#{}", requester_id.0)))
+            .key("SK", AttributeValue::S(format!("SHARE#{}", share_id.0)))
+            .build()
+            .map_err(|e| StoreError::QueryError(format!("Failed to build owner delete: {}", e)))?;
+
+        let email_delete = Delete::builder()
+            .table_name(&self.table_name)
+            .key(
+                "PK",
+                AttributeValue::S(format!("SHARE_EMAIL#{}", share.accepter_email)),
+            )
+            .key("SK", AttributeValue::S(format!("SHARE#{}", share_id.0)))
+            .build()
+            .map_err(|e| StoreError::QueryError(format!("Failed to build email delete: {}", e)))?;
+
+        self.client
+            .transact_write_items()
+            .transact_items(TransactWriteItem::builder().delete(owner_delete).build())
+            .transact_items(TransactWriteItem::builder().delete(email_delete).build())
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to delete share: {}", e)))?;
+
+        Ok(())
+    }
+
+    async fn list_by_family(
+        &self,
+        requester_id: IdentityId,
+        family_id: FamilyId,
+    ) -> Result<Vec<Share>, StoreError> {
+        let result = self
+            .client
+            .query()
+            .table_name(&self.table_name)
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+            .filter_expression("family_id = :fid")
+            .expression_attribute_values(
+                ":pk",
+                AttributeValue::S(format!("OWNER#{}", requester_id.0)),
+            )
+            .expression_attribute_values(":sk_prefix", AttributeValue::S("SHARE#".to_string()))
+            .expression_attribute_values(":fid", AttributeValue::S(family_id.0.to_string()))
+            .send()
+            .await
+            .map_err(|e| {
+                StoreError::QueryError(format!("Failed to list shares by family: {}", e))
+            })?;
+
+        result
+            .items
+            .unwrap_or_default()
+            .iter()
+            .map(|item| self.parse_share_item(item))
+            .collect()
+    }
+
+    async fn list_by_accepter_email(&self, email: &str) -> Result<Vec<Share>, StoreError> {
+        let result = self
+            .client
+            .query()
+            .table_name(&self.table_name)
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+            .expression_attribute_values(":pk", AttributeValue::S(format!("SHARE_EMAIL#{}", email)))
+            .expression_attribute_values(":sk_prefix", AttributeValue::S("SHARE#".to_string()))
+            .send()
+            .await
+            .map_err(|e| {
+                StoreError::QueryError(format!("Failed to list shares by accepter email: {}", e))
+            })?;
+
+        result
+            .items
+            .unwrap_or_default()
+            .iter()
+            .map(|item| self.parse_share_item(item))
+            .collect()
+    }
+
+    async fn list_by_accepter_id(&self, accepter_id: IdentityId) -> Result<Vec<Share>, StoreError> {
+        let result = self
+            .client
+            .query()
+            .table_name(&self.table_name)
+            .index_name("GSI-AccepterShares")
+            .key_condition_expression("accepter_id = :aid AND begins_with(SK, :sk_prefix)")
+            .expression_attribute_values(":aid", AttributeValue::S(accepter_id.0.clone()))
+            .expression_attribute_values(":sk_prefix", AttributeValue::S("SHARE#".to_string()))
+            .send()
+            .await
+            .map_err(|e| {
+                StoreError::QueryError(format!("Failed to list shares by accepter id: {}", e))
+            })?;
+
+        result
+            .items
+            .unwrap_or_default()
+            .iter()
+            .map(|item| self.parse_share_item(item))
+            .collect()
+    }
+
+    async fn get_by_family_and_email(
+        &self,
+        family_id: FamilyId,
+        accepter_email: &str,
+    ) -> Result<Option<Share>, StoreError> {
+        let result = self
+            .client
+            .query()
+            .table_name(&self.table_name)
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+            .filter_expression("family_id = :fid")
+            .expression_attribute_values(
+                ":pk",
+                AttributeValue::S(format!("SHARE_EMAIL#{}", accepter_email)),
+            )
+            .expression_attribute_values(":sk_prefix", AttributeValue::S("SHARE#".to_string()))
+            .expression_attribute_values(":fid", AttributeValue::S(family_id.0.to_string()))
+            .send()
+            .await
+            .map_err(|e| {
+                StoreError::QueryError(format!("Failed to get share by family and email: {}", e))
+            })?;
+
+        let items = result.items.unwrap_or_default();
+        match items.first() {
+            Some(item) => Ok(Some(self.parse_share_item(item)?)),
+            None => Ok(None),
+        }
     }
 }

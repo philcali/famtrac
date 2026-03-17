@@ -135,7 +135,7 @@ impl PermissionScope {
 pub trait ShareRepository: Send + Sync {
     async fn create(&self, share: Share) -> Result<Share, StoreError>;
     async fn get(&self, requester_id: IdentityId, share_id: ShareId) -> Result<Option<Share>, StoreError>;
-    async fn get_by_id(&self, share_id: ShareId) -> Result<Option<Share>, StoreError>;
+    async fn get_by_email_and_share_id(&self, accepter_email: &str, share_id: ShareId) -> Result<Option<Share>, StoreError>;
     async fn update(&self, share: Share) -> Result<Share, StoreError>;
     async fn delete(&self, requester_id: IdentityId, share_id: ShareId) -> Result<(), StoreError>;
     async fn list_by_family(&self, requester_id: IdentityId, family_id: FamilyId) -> Result<Vec<Share>, StoreError>;
