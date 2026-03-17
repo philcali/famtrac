@@ -2,6 +2,7 @@ mod activity;
 mod dependent;
 mod family;
 mod pagination;
+mod permission;
 
 pub use activity::{
     create_activity, delete_activity, get_activity, query_activities, update_activity,
@@ -16,3 +17,4 @@ pub use family::{
     FamilyListResponse, FamilyResponse, UpdateFamilyRequest,
 };
 pub use pagination::{PaginatedResponse, PaginationParams};
+pub use permission::check_permission;
