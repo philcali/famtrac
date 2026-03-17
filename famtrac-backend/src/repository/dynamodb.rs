@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use crate::domain::{
     Activity, ActivityId, ActivityType, Date, Dependent, DependentId, Family, FamilyId, IdentityId,
-    Timestamp,
+    PermissionScope, ShareId, Timestamp,
 };
 use crate::errors::StoreError;
 
@@ -51,6 +51,20 @@ impl DynamoDbFamilyRepository {
             "updated_at".to_string(),
             AttributeValue::S(family.updated_at.0.to_rfc3339()),
         );
+        if let Some(ref share_id) = family.share_id {
+            item.insert(
+                "share_id".to_string(),
+                AttributeValue::S(share_id.0.to_string()),
+            );
+        }
+        if let Some(ref permission_scope) = family.permission_scope {
+            let scope_json =
+                serde_json::to_string(permission_scope).unwrap_or_else(|_| "{}".to_string());
+            item.insert(
+                "permission_scope".to_string(),
+                AttributeValue::S(scope_json),
+            );
+        }
         item
     }
 
@@ -86,12 +100,25 @@ impl DynamoDbFamilyRepository {
             .and_then(|s| s.parse().ok())
             .ok_or_else(|| StoreError::QueryError("Missing or invalid updated_at".to_string()))?;
 
+        let share_id = item
+            .get("share_id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .map(ShareId);
+
+        let permission_scope = item
+            .get("permission_scope")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| serde_json::from_str::<PermissionScope>(s).ok());
+
         Ok(Family {
             id: FamilyId(id),
             name,
             owner_id: IdentityId(owner_id),
             created_at: Timestamp::from_datetime(created_at),
             updated_at: Timestamp::from_datetime(updated_at),
+            share_id,
+            permission_scope,
         })
     }
 }
@@ -219,6 +246,20 @@ impl DynamoDbDependentRepository {
             "updated_at".to_string(),
             AttributeValue::S(dependent.updated_at.0.to_rfc3339()),
         );
+        if let Some(ref share_id) = dependent.share_id {
+            item.insert(
+                "share_id".to_string(),
+                AttributeValue::S(share_id.0.to_string()),
+            );
+        }
+        if let Some(ref permission_scope) = dependent.permission_scope {
+            let scope_json =
+                serde_json::to_string(permission_scope).unwrap_or_else(|_| "{}".to_string());
+            item.insert(
+                "permission_scope".to_string(),
+                AttributeValue::S(scope_json),
+            );
+        }
         item
     }
 
@@ -262,6 +303,17 @@ impl DynamoDbDependentRepository {
             .and_then(|s| s.parse().ok())
             .ok_or_else(|| StoreError::QueryError("Missing or invalid updated_at".to_string()))?;
 
+        let share_id = item
+            .get("share_id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .map(ShareId);
+
+        let permission_scope = item
+            .get("permission_scope")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| serde_json::from_str::<PermissionScope>(s).ok());
+
         Ok(Dependent {
             id: DependentId(id),
             family_id: FamilyId(family_id),
@@ -269,6 +321,8 @@ impl DynamoDbDependentRepository {
             date_of_birth: Date::from_naive_date(date_of_birth),
             created_at: Timestamp::from_datetime(created_at),
             updated_at: Timestamp::from_datetime(updated_at),
+            share_id,
+            permission_scope,
         })
     }
 }
@@ -443,6 +497,21 @@ impl DynamoDbActivityRepository {
             AttributeValue::S(type_name.to_string()),
         );
 
+        if let Some(ref share_id) = activity.share_id {
+            item.insert(
+                "share_id".to_string(),
+                AttributeValue::S(share_id.0.to_string()),
+            );
+        }
+        if let Some(ref permission_scope) = activity.permission_scope {
+            let scope_json =
+                serde_json::to_string(permission_scope).unwrap_or_else(|_| "{}".to_string());
+            item.insert(
+                "permission_scope".to_string(),
+                AttributeValue::S(scope_json),
+            );
+        }
+
         item
     }
 
@@ -492,6 +561,17 @@ impl DynamoDbActivityRepository {
         let activity_type: ActivityType = serde_json::from_str(activity_type_json)
             .map_err(|e| StoreError::QueryError(format!("Invalid activity_type JSON: {}", e)))?;
 
+        let share_id = item
+            .get("share_id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .map(ShareId);
+
+        let permission_scope = item
+            .get("permission_scope")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| serde_json::from_str::<PermissionScope>(s).ok());
+
         Ok(Activity {
             id: ActivityId(id),
             family_id: FamilyId(family_id),
@@ -500,6 +580,8 @@ impl DynamoDbActivityRepository {
             activity_type,
             created_at: Timestamp::from_datetime(created_at),
             updated_at: Timestamp::from_datetime(updated_at),
+            share_id,
+            permission_scope,
         })
     }
 }

@@ -79,6 +79,8 @@ pub async fn create_family<R: FamilyRepository>(
         owner_id: context.identity_id.clone(),
         created_at: now,
         updated_at: now,
+        share_id: None,
+        permission_scope: None,
     };
 
     // Persist to repository
@@ -218,6 +220,7 @@ mod tests {
     fn create_test_context(identity_id: &str) -> RequestContext {
         RequestContext {
             identity_id: IdentityId::new(identity_id.to_string()),
+            email: None,
         }
     }
 
@@ -352,6 +355,8 @@ mod tests {
             owner_id: owner_id.clone(),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         repository
             .families
@@ -400,6 +405,8 @@ mod tests {
             owner_id: owner_id.clone(),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         repository
             .families
@@ -429,6 +436,8 @@ mod tests {
             owner_id: owner_id.clone(),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         repository
             .families
@@ -479,6 +488,8 @@ mod tests {
             owner_id: owner_id.clone(),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         repository
             .families
@@ -509,6 +520,8 @@ mod tests {
             owner_id: owner_id.clone(),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         repository
             .families
@@ -542,6 +555,8 @@ mod tests {
             owner_id: owner_id.clone(),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         repository
             .families
@@ -575,6 +590,8 @@ mod tests {
             owner_id: owner_id.clone(),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         repository
             .families
@@ -609,6 +626,8 @@ mod tests {
             owner_id: owner_id.clone(),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         repository
             .families
@@ -639,6 +658,8 @@ mod tests {
             owner_id: owner_id.clone(),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
         let family2 = Family {
             id: FamilyId::new(),
@@ -646,6 +667,8 @@ mod tests {
             owner_id: owner_id.clone(),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
+            share_id: None,
+            permission_scope: None,
         };
 
         repository

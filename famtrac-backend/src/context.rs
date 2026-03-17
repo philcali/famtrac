@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RequestContext {
     pub identity_id: IdentityId,
+    pub email: Option<String>,
 }
 
 impl RequestContext {
@@ -17,17 +18,22 @@ impl RequestContext {
     ) -> Result<Self, AuthError> {
         // Extract identity from authorizer context
         // API Gateway with JWT authorizer puts the identity in the authorizer.jwt.claims
-        let identity_id = context
-            .authorizer
-            .as_ref()
-            .and_then(|a| a.jwt.clone())
+        let jwt = context.authorizer.as_ref().and_then(|a| a.jwt.clone());
+
+        let identity_id = jwt
             .as_ref()
             .and_then(|jwt| jwt.claims.get("sub"))
             .map(|s| s.to_string())
             .ok_or(AuthError::MissingIdentity)?;
 
+        let email = jwt
+            .as_ref()
+            .and_then(|jwt| jwt.claims.get("email"))
+            .map(|s| s.to_string());
+
         Ok(RequestContext {
             identity_id: IdentityId::new(identity_id),
+            email,
         })
     }
 
@@ -49,6 +55,7 @@ mod tests {
     fn create_test_context_with_identity(identity_id: &str) -> ApiGatewayV2httpRequestContext {
         let mut claims = HashMap::new();
         claims.insert("sub".to_string(), identity_id.to_string());
+        claims.insert("email".to_string(), "test@example.com".to_string());
 
         let jwt = aws_lambda_events::apigw::ApiGatewayRequestAuthorizerJwtDescription {
             claims,
@@ -82,6 +89,7 @@ mod tests {
         assert!(result.is_ok());
         let context = result.unwrap();
         assert_eq!(context.identity_id.0, "user-123");
+        assert_eq!(context.email, Some("test@example.com".to_string()));
     }
 
     #[test]
@@ -135,8 +143,45 @@ mod tests {
     fn test_validate_always_succeeds() {
         let context = RequestContext {
             identity_id: IdentityId::new("user-123".to_string()),
+            email: None,
         };
 
         assert!(context.validate().is_ok());
+    }
+
+    #[test]
+    fn test_extract_email_success() {
+        let api_context = create_test_context_with_identity("user-123");
+        let result = RequestContext::from_api_gateway_context(&api_context);
+
+        assert!(result.is_ok());
+        let context = result.unwrap();
+        assert_eq!(context.email, Some("test@example.com".to_string()));
+    }
+
+    #[test]
+    fn test_extract_email_missing() {
+        let mut claims = HashMap::new();
+        claims.insert("sub".to_string(), "user-123".to_string());
+        // No email claim inserted
+
+        let jwt = aws_lambda_events::apigw::ApiGatewayRequestAuthorizerJwtDescription {
+            claims,
+            scopes: None,
+        };
+
+        let api_context = ApiGatewayV2httpRequestContext {
+            authorizer: Some(ApiGatewayRequestAuthorizer {
+                jwt: Some(jwt),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let result = RequestContext::from_api_gateway_context(&api_context);
+        assert!(result.is_ok());
+        let context = result.unwrap();
+        assert_eq!(context.identity_id.0, "user-123");
+        assert_eq!(context.email, None);
     }
 }
