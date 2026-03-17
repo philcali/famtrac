@@ -119,8 +119,8 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Owner resources (`share_id=None`) bypass permission checks
     - _Requirements: 4.1, 4.2, 4.3, 4.5_
 
-- [ ] 9. Implement share handlers
-  - [ ] 9.1 Create `famtrac-backend/src/handlers/share.rs` with `create_share` handler
+- [x] 9. Implement share handlers
+  - [x] 9.1 Create `famtrac-backend/src/handlers/share.rs` with `create_share` handler
     - Parse JSON request body into `CreateShareRequest` (accepter_email, permission_scope)
     - Validate permission scope
     - Verify requester owns the family via `FamilyRepository::get`
@@ -135,7 +135,7 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Generate random valid emails and permission scopes, call `create_share`, verify all fields
     - **Validates: Requirements 1.1, 1.5**
 
-  - [ ] 9.3 Implement `list_shares` handler
+  - [x] 9.3 Implement `list_shares` handler
     - Verify requester owns the family
     - Query shares by family, include status (pending/active/expired)
     - Return empty list when no shares exist
@@ -146,7 +146,7 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Generate random sets of shares for a family, list them, verify count and data completeness
     - **Validates: Requirements 5.1, 10.3**
 
-  - [ ] 9.5 Implement `update_share` handler
+  - [x] 9.5 Implement `update_share` handler
     - Verify requester owns the family associated with the share
     - Validate new permission scope using same rules as creation
     - Replace existing permission scope
@@ -158,7 +158,7 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Generate random shares and new valid scopes, update, verify scope is replaced
     - **Validates: Requirements 6.1, 6.5**
 
-  - [ ] 9.7 Implement `revoke_share` handler
+  - [x] 9.7 Implement `revoke_share` handler
     - Verify requester owns the family associated with the share
     - Delete the share record
     - Return 404 if share or family not found
@@ -169,7 +169,7 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Generate random shares, revoke, verify share is deleted
     - **Validates: Requirements 7.1**
 
-  - [ ] 9.9 Implement `accept_share` handler
+  - [x] 9.9 Implement `accept_share` handler
     - Look up share by accepter email (from RequestContext) and share ID via `get_by_email_and_share_id`
     - Verify accepter email matches authenticated user's email (from RequestContext)
     - Verify share is in `Pending` status (reject `Active`/`Expired`)
@@ -192,7 +192,7 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Generate random shares in active/expired status, attempt accept, verify validation error
     - **Validates: Requirements 9.3**
 
-  - [ ] 9.13 Implement `list_shared_families` handler
+  - [x] 9.13 Implement `list_shared_families` handler
     - Query shares by accepter identity ID (via GSI)
     - Return share records with family identifier and permission scope
     - Return empty list when no shares exist
@@ -203,7 +203,7 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Generate random shares across families for an accepter, list, verify count and data
     - **Validates: Requirements 8.1**
 
-  - [ ] 9.15 Register share handlers in `famtrac-backend/src/handlers/mod.rs`
+  - [x] 9.15 Register share handlers in `famtrac-backend/src/handlers/mod.rs`
     - _Requirements: 1.1_
 
   - [ ]* 9.16 Write property test for ownership enforcement (Property 2)

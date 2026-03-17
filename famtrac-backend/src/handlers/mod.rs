@@ -3,6 +3,7 @@ mod dependent;
 mod family;
 mod pagination;
 mod permission;
+mod share;
 
 pub use activity::{
     create_activity, delete_activity, get_activity, query_activities, update_activity,
@@ -18,3 +19,7 @@ pub use family::{
 };
 pub use pagination::{PaginatedResponse, PaginationParams};
 pub use permission::check_permission;
+pub use share::{
+    accept_share, create_share, list_shared_families, list_shares, revoke_share, update_share,
+    CreateShareRequest, ShareListResponse, ShareResponse, UpdateShareRequest,
+};
