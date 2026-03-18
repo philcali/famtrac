@@ -272,7 +272,7 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Generate random families with dependents/activities, activate a share, verify all mirrored records exist with correct metadata
     - **Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5**
 
-  - [ ] 13.5 Implement `propagate_change` for resource change propagation
+  - [x] 13.5 Implement `propagate_change` for resource change propagation
     - On resource create/update/delete, find all active shares for the affected family
     - Propagate the change to all mirrored copies in accepter partitions
     - Handle write-back: changes on mirrored resources propagate to original partition
@@ -288,7 +288,7 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Generate random writes on mirrored resources, verify propagation to original partition
     - **Validates: Requirements 4.4**
 
-  - [ ] 13.8 Implement `cleanup_mirrored` for share revocation
+  - [x] 13.8 Implement `cleanup_mirrored` for share revocation
     - On share deletion, query all mirrored records with matching `share_id`
     - Delete all mirrored records from the accepter's partition
     - _Requirements: 7.2_
@@ -298,11 +298,11 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Generate random shares with mirrored records, revoke, verify all mirrored records deleted
     - **Validates: Requirements 7.2**
 
-  - [ ] 13.10 Implement `update_mirrored_permissions` for permission scope updates
+  - [x] 13.10 Implement `update_mirrored_permissions` for permission scope updates
     - On share permission_scope change, update all mirrored records with matching `share_id`
     - _Requirements: 6.2_
 
-  - [ ] 13.11 Add error handling with `ReportBatchItemFailures` support
+  - [x] 13.11 Add error handling with `ReportBatchItemFailures` support
     - Return partial failure responses so only failed records are retried
     - Ensure all operations are idempotent
     - _Requirements: 3.6_
