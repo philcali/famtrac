@@ -1,9 +1,10 @@
 import { ArnFormat, Duration, Stack } from "aws-cdk-lib";
 import { CfnApi, CfnApiMapping, CfnAuthorizer, CfnDomainName, CfnIntegration, CfnRoute, CfnRouteProps, CfnStage } from "aws-cdk-lib/aws-apigatewayv2";
 import { ICertificate } from "aws-cdk-lib/aws-certificatemanager";
-import { AttributeType, BillingMode, ITable, ProjectionType, Table } from "aws-cdk-lib/aws-dynamodb";
+import { AttributeType, BillingMode, ITable, ProjectionType, StreamViewType, Table } from "aws-cdk-lib/aws-dynamodb";
 import { Effect, PolicyStatement, ServicePrincipal } from "aws-cdk-lib/aws-iam";
-import { Architecture, Code, Function, Runtime } from "aws-cdk-lib/aws-lambda";
+import { Architecture, Code, Function, Runtime, StartingPosition } from "aws-cdk-lib/aws-lambda";
+import { DynamoEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { CnameRecord, IHostedZone } from "aws-cdk-lib/aws-route53";
 import { Construct } from "constructs";
 
@@ -35,6 +36,7 @@ export interface FamtracApiProps {
     readonly customOrigins?: string[];
     readonly authorization?: FamtracApiAuthorizationProps;
     readonly backendCode: Code;
+    readonly streamHandlerCode: Code;
 }
 
 export class FamtracApi extends Construct implements IFamtracApi {
@@ -61,6 +63,7 @@ export class FamtracApi extends Construct implements IFamtracApi {
                 writeCapacity: 1,
                 tableName: 'FamtracData',
                 billingMode: BillingMode.PROVISIONED,
+                stream: StreamViewType.NEW_AND_OLD_IMAGES,
                 timeToLiveAttribute: 'expires_in',
             });
             let indexName = "GSI-1";
@@ -83,6 +86,24 @@ export class FamtracApi extends Construct implements IFamtracApi {
         }
         this.table = table;
 
+        let streamHandlerFunction = new Function(this, 'StreamHandlerFunction', {
+            code: props.streamHandlerCode,
+            handler: 'bootstrap',
+            runtime: Runtime.PROVIDED_AL2023,
+            memorySize: 512,
+            timeout: Duration.seconds(30),
+            environment: {
+                TABLE_NAME: this.table.tableName,
+            },
+            architecture: Architecture.X86_64,
+        });
+
+        streamHandlerFunction.addEventSource(new DynamoEventSource(this.table, {
+            startingPosition: StartingPosition.TRIM_HORIZON,
+            reportBatchItemFailures: true,
+            batchSize: 10,
+        }));
+
         let backendFunction = new Function(this, 'BackendFunction', {
             code: props.backendCode,
             handler: 'bootstrap',
@@ -95,29 +116,30 @@ export class FamtracApi extends Construct implements IFamtracApi {
             architecture: Architecture.X86_64,
         });
 
-        backendFunction.addToRolePolicy(new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: [
-                'dynamodb:GetItem',
-                'dynamodb:PutItem',
-                'dynamodb:UpdateItem',
-                'dynamodb:DeleteItem',
-                'dynamodb:Query',
-            ],
-            resources: [
-                this.table.tableArn
-            ]
-        }));
-
-        if (indexes.length > 0) {
-            backendFunction.addToRolePolicy(new PolicyStatement({
+        [streamHandlerFunction, backendFunction].forEach(func => {
+            func.addToRolePolicy(new PolicyStatement({
                 effect: Effect.ALLOW,
                 actions: [
+                    'dynamodb:GetItem',
+                    'dynamodb:PutItem',
+                    'dynamodb:UpdateItem',
+                    'dynamodb:DeleteItem',
                     'dynamodb:Query',
                 ],
-                resources: indexes.map(indexName => `${this.table.tableArn}/index/${indexName}`),
+                resources: [
+                    this.table.tableArn
+                ]
             }));
-        }
+            if (indexes.length > 0) {
+                func.addToRolePolicy(new PolicyStatement({
+                    effect: Effect.ALLOW,
+                    actions: [
+                        'dynamodb:Query',
+                    ],
+                    resources: indexes.map(indexName => `${this.table.tableArn}/index/${indexName}`),
+                }));
+            }
+        });
 
         let allowOrigins = [];
         if (props.enableDevelopmentOrigin === true) {
