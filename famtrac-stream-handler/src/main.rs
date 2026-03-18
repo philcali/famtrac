@@ -1,5 +1,8 @@
 use aws_lambda_events::event::dynamodb::{Event as DynamoDbEvent, EventRecord, OperationType};
+use aws_sdk_dynamodb::types::AttributeValue as DdbAttributeValue;
+use aws_sdk_dynamodb::Client;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
+use std::collections::HashMap;
 
 use famtrac_backend::domain::{
     FamilyId, IdentityId, PermissionScope, Share, ShareId, ShareStatus, Timestamp,
@@ -22,19 +25,31 @@ pub enum RecordChange {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let handler = service_fn(handle_stream_event);
+    let config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
+    let client = Client::new(&config);
+    let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "FamtracData".to_string());
+
+    let handler = service_fn(move |event: LambdaEvent<DynamoDbEvent>| {
+        let client = client.clone();
+        let table_name = table_name.clone();
+        async move { handle_stream_event(event, &client, &table_name).await }
+    });
     lambda_runtime::run(handler).await?;
     Ok(())
 }
 
 /// Main stream event handler — classifies each record and dispatches to the appropriate action.
-async fn handle_stream_event(event: LambdaEvent<DynamoDbEvent>) -> Result<(), Error> {
+async fn handle_stream_event(
+    event: LambdaEvent<DynamoDbEvent>,
+    client: &Client,
+    table_name: &str,
+) -> Result<(), Error> {
     let dynamo_event = event.payload;
 
     for record in &dynamo_event.records {
         match classify_record(record) {
-            RecordChange::ShareActivated(_share) => {
-                // TODO (task 13.3): mirror_resources(share).await?
+            RecordChange::ShareActivated(share) => {
+                mirror_resources(client, table_name, &share).await?;
             }
             RecordChange::ShareRevoked(_share_id) => {
                 // TODO (task 13.8): cleanup_mirrored(share_id).await?
@@ -50,6 +65,193 @@ async fn handle_stream_event(event: LambdaEvent<DynamoDbEvent>) -> Result<(), Er
     }
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Mirror resources on share activation
+// ---------------------------------------------------------------------------
+
+/// Mirror the shared family, all its dependents, and all their activities into
+/// the accepter's partition. Each mirrored record is annotated with the share's
+/// `share_id` and `permission_scope`. Conditional writes (`attribute_not_exists`)
+/// ensure idempotency — duplicate stream deliveries are safely ignored.
+async fn mirror_resources(client: &Client, table_name: &str, share: &Share) -> Result<(), Error> {
+    let accepter_id = match &share.accepter_id {
+        Some(id) => id,
+        None => return Ok(()), // No accepter identity yet — nothing to mirror
+    };
+
+    let share_id_str = share.id.0.to_string();
+    let scope_json =
+        serde_json::to_string(&share.permission_scope).unwrap_or_else(|_| "{}".to_string());
+
+    // 1. Fetch the original family record
+    let family_item = get_item(
+        client,
+        table_name,
+        &format!("OWNER#{}", share.requester_id.0),
+        &format!("FAMILY#{}", share.family_id.0),
+    )
+    .await?;
+
+    let family_item = match family_item {
+        Some(item) => item,
+        None => return Ok(()), // Family not found — nothing to mirror
+    };
+
+    // Mirror the family into the accepter's partition with rekeyed PK
+    let mirrored_family = rekey_item(
+        family_item,
+        &format!("OWNER#{}", accepter_id.0),
+        &share_id_str,
+        &scope_json,
+    );
+    conditional_put(client, table_name, mirrored_family).await?;
+
+    // 2. Fetch all dependents for this family
+    let dependents = query_items(
+        client,
+        table_name,
+        &format!("FAMILY#{}", share.family_id.0),
+        "DEPENDENT#",
+    )
+    .await?;
+
+    for dep_item in &dependents {
+        let mirrored_dep = annotate_item(dep_item.clone(), &share_id_str, &scope_json);
+        conditional_put(client, table_name, mirrored_dep).await?;
+    }
+
+    // 3. For each dependent, fetch and mirror all activities
+    for dep_item in &dependents {
+        let dep_id = match dep_item.get("id").and_then(|v| v.as_s().ok()) {
+            Some(id) => id.clone(),
+            None => continue,
+        };
+
+        let activities = query_items(
+            client,
+            table_name,
+            &format!("FAMILY#{}#DEPENDENT#{}", share.family_id.0, dep_id),
+            "ACTIVITY#",
+        )
+        .await?;
+
+        for act_item in activities {
+            let mirrored_act = annotate_item(act_item, &share_id_str, &scope_json);
+            conditional_put(client, table_name, mirrored_act).await?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Fetch a single item by PK and SK.
+async fn get_item(
+    client: &Client,
+    table_name: &str,
+    pk: &str,
+    sk: &str,
+) -> Result<Option<HashMap<String, DdbAttributeValue>>, Error> {
+    let result = client
+        .get_item()
+        .table_name(table_name)
+        .key("PK", DdbAttributeValue::S(pk.to_string()))
+        .key("SK", DdbAttributeValue::S(sk.to_string()))
+        .send()
+        .await?;
+
+    Ok(result.item)
+}
+
+/// Query all items matching a PK and SK prefix.
+async fn query_items(
+    client: &Client,
+    table_name: &str,
+    pk: &str,
+    sk_prefix: &str,
+) -> Result<Vec<HashMap<String, DdbAttributeValue>>, Error> {
+    let result = client
+        .query()
+        .table_name(table_name)
+        .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+        .expression_attribute_values(":pk", DdbAttributeValue::S(pk.to_string()))
+        .expression_attribute_values(":sk_prefix", DdbAttributeValue::S(sk_prefix.to_string()))
+        .send()
+        .await?;
+
+    Ok(result.items.unwrap_or_default())
+}
+
+/// Rekey an item's PK to a new value and annotate with share metadata.
+/// Used for Family records that need to move into the accepter's OWNER partition.
+fn rekey_item(
+    mut item: HashMap<String, DdbAttributeValue>,
+    new_pk: &str,
+    share_id: &str,
+    scope_json: &str,
+) -> HashMap<String, DdbAttributeValue> {
+    item.insert("PK".to_string(), DdbAttributeValue::S(new_pk.to_string()));
+    item.insert(
+        "share_id".to_string(),
+        DdbAttributeValue::S(share_id.to_string()),
+    );
+    item.insert(
+        "permission_scope".to_string(),
+        DdbAttributeValue::S(scope_json.to_string()),
+    );
+    item
+}
+
+/// Annotate an item with share metadata without changing its PK/SK.
+/// Used for Dependent and Activity records that keep their original keys.
+fn annotate_item(
+    mut item: HashMap<String, DdbAttributeValue>,
+    share_id: &str,
+    scope_json: &str,
+) -> HashMap<String, DdbAttributeValue> {
+    item.insert(
+        "share_id".to_string(),
+        DdbAttributeValue::S(share_id.to_string()),
+    );
+    item.insert(
+        "permission_scope".to_string(),
+        DdbAttributeValue::S(scope_json.to_string()),
+    );
+    item
+}
+
+/// Put an item with a condition that it doesn't already exist (idempotent write).
+/// If the item already exists, the ConditionalCheckFailedException is silently ignored.
+async fn conditional_put(
+    client: &Client,
+    table_name: &str,
+    item: HashMap<String, DdbAttributeValue>,
+) -> Result<(), Error> {
+    let result = client
+        .put_item()
+        .table_name(table_name)
+        .set_item(Some(item))
+        .condition_expression("attribute_not_exists(PK) AND attribute_not_exists(SK)")
+        .send()
+        .await;
+
+    match result {
+        Ok(_) => Ok(()),
+        Err(err) => {
+            // ConditionalCheckFailedException means the item already exists — that's fine
+            // for idempotent mirroring.
+            if err
+                .as_service_error()
+                .map(|e| e.is_conditional_check_failed_exception())
+                .unwrap_or(false)
+            {
+                Ok(())
+            } else {
+                Err(Box::new(err))
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

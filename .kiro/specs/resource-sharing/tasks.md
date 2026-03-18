@@ -260,7 +260,7 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Classify into: `ShareActivated`, `ShareRevoked`, `SharePermissionUpdated`, `ResourceChanged`, `Ignored`
     - _Requirements: 3.1, 3.6, 6.2, 7.2_
 
-  - [ ] 13.3 Implement `mirror_resources` for share activation
+  - [x] 13.3 Implement `mirror_resources` for share activation
     - On share activation, query the original family, all dependents, and all activities
     - Copy each record into the accepter's partition with rekeyed PK (`OWNER#{accepter_id}` for Family)
     - Annotate each mirrored record with `share_id` and `permission_scope`
