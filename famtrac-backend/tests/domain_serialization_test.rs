@@ -89,8 +89,8 @@ fn test_sleep_activity_serialization() {
 
     let json = serde_json::to_string(&sleep).unwrap();
     assert!(json.contains("\"type\":\"sleep\""));
-    assert!(json.contains("\"start\":\"2024-01-15T22:00:00Z\""));
-    assert!(json.contains("\"end\":\"2024-01-16T06:00:00Z\""));
+    assert!(json.contains("\"start_time\":\"2024-01-15T22:00:00Z\""));
+    assert!(json.contains("\"end_time\":\"2024-01-16T06:00:00Z\""));
 
     let deserialized: ActivityType = serde_json::from_str(&json).unwrap();
     assert_eq!(sleep, deserialized);
