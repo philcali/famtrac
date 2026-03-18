@@ -7,6 +7,20 @@ use serde::{Deserialize, Serialize};
 /// Default share expiration period: 7 days in seconds
 const SHARE_EXPIRATION_SECONDS: i64 = 7 * 24 * 60 * 60;
 
+/// Check if a pending share has expired based on its `expires_at` timestamp.
+/// Returns the share with status set to `Expired` if it has exceeded the expiration period,
+/// otherwise returns the share unchanged.
+fn apply_expiration(mut share: Share) -> Share {
+    if share.status == ShareStatus::Pending {
+        if let Some(expires_at) = share.expires_at {
+            if Timestamp::now() > expires_at {
+                share.status = ShareStatus::Expired;
+            }
+        }
+    }
+    share
+}
+
 /// Request body for creating a new share
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreateShareRequest {
@@ -160,8 +174,12 @@ pub async fn list_shares<SR: ShareRepository, FR: FamilyRepository>(
         .list_by_family(context.identity_id.clone(), family_id)
         .await?;
 
-    // Convert to response (Requirement 10.3)
-    let shares_response: Vec<ShareResponse> = shares.into_iter().map(ShareResponse::from).collect();
+    // Apply expiration check to pending shares (Requirement 10.1, 10.3)
+    let shares_response: Vec<ShareResponse> = shares
+        .into_iter()
+        .map(apply_expiration)
+        .map(ShareResponse::from)
+        .collect();
     let response = ShareListResponse {
         shares: shares_response,
     };
@@ -328,8 +346,12 @@ pub async fn list_shares_for_accepter<SR: ShareRepository>(
 
     let all_shares = share_repo.list_by_accepter_email(email).await?;
 
-    let shares_response: Vec<ShareResponse> =
-        all_shares.into_iter().map(ShareResponse::from).collect();
+    // Apply expiration check to pending shares (Requirement 10.1)
+    let shares_response: Vec<ShareResponse> = all_shares
+        .into_iter()
+        .map(apply_expiration)
+        .map(ShareResponse::from)
+        .collect();
     let response = ShareListResponse {
         shares: shares_response,
     };

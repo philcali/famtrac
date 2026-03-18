@@ -316,8 +316,8 @@ Implement resource sharing for the famtrac backend, allowing family owners to sh
     - Configure `ReportBatchItemFailures` on the event source mapping
     - _Requirements: 3.1, 3.6_
 
-- [ ] 15. Handle share expiration
-  - [ ] 15.1 Implement expiration check logic in share handlers
+- [x] 15. Handle share expiration
+  - [x] 15.1 Implement expiration check logic in share handlers
     - When retrieving shares, check if `pending` shares have exceeded the configurable expiration period
     - Treat expired shares as `Expired` status regardless of DynamoDB TTL
     - Exclude expired shares from active permission checks
