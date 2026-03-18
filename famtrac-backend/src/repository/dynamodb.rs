@@ -817,6 +817,11 @@ impl DynamoDbShareRepository {
                 "expires_at".to_string(),
                 AttributeValue::S(expires_at.0.to_rfc3339()),
             );
+            // Set expires_in as Unix epoch seconds for DynamoDB TTL auto-cleanup
+            item.insert(
+                "expires_in".to_string(),
+                AttributeValue::N(expires_at.0.timestamp().to_string()),
+            );
         }
         item
     }
@@ -923,7 +928,7 @@ impl DynamoDbShareRepository {
             })?;
 
         let expires_at = item
-            .get("expires_at")
+            .get("expires_in")
             .and_then(|v| v.as_s().ok())
             .and_then(|s| s.parse().ok())
             .map(Timestamp::from_datetime);
