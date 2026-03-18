@@ -29,8 +29,9 @@ pub enum ActivityType {
         contents: DiaperContents,
     },
     Sleep {
-        start: Timestamp,
-        end: Timestamp,
+        start_time: Timestamp,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        end_time: Option<Timestamp>,
     },
     Pumping {
         volume_ml: u32,

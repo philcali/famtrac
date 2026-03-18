@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Card, Modal } from 'react-bootstrap';
+import { Container, Row, Col, Modal } from 'react-bootstrap';
 import { ErrorMessage } from '../components/common/ErrorMessage';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { SuccessMessage } from '../components/common/SuccessMessage';
@@ -9,7 +9,6 @@ import { Button } from '../components/common/Button';
 import { ActivityList } from '../components/activities/ActivityList';
 import { ActivityForm } from '../components/activities/ActivityForm';
 import { ActivityFilters } from '../components/activities/ActivityFilters';
-import { formatAge } from '../utils/dateUtils';
 import { useAuth } from '../auth/useAuth';
 import { useApi, useApiMutation } from '../hooks/useApi';
 import { createApiClient } from '../api/client';
@@ -17,6 +16,7 @@ import { getDependent } from '../api/dependents';
 import { getActivities, createActivity, updateActivity, deleteActivity } from '../api/activities';
 import type { ActivityType } from '../types/domain';
 import type { CreateActivityRequest, UpdateActivityRequest, ActivityResponse } from '../api/types';
+import { DependentCard } from '../components/dependents/DependentCard';
 
 /**
  * DependentDetailPage - View single dependent with activities
@@ -200,14 +200,6 @@ export function DependentDetailPage() {
     );
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
   const activities = activitiesData?.activities || [];
 
   return (
@@ -226,21 +218,7 @@ export function DependentDetailPage() {
       </Row>
 
       {/* Dependent Information Card */}
-      <Card className="mb-4">
-        <Card.Body>
-          <Card.Title>Dependent Information</Card.Title>
-          <Card.Text>
-            <strong>Age:</strong> {formatAge(dependent.date_of_birth)}
-            <br />
-            <strong>Date of Birth:</strong> {formatDate(dependent.date_of_birth)}
-            <br />
-            <br />
-            <strong>Created:</strong> {formatDate(dependent.created_at)}
-            <br />
-            <strong>Updated:</strong> {formatDate(dependent.updated_at)}
-          </Card.Text>
-        </Card.Body>
-      </Card>
+      <DependentCard dependent={dependent} overrideTitle="Dependent Information" />
 
       {/* Activities Section */}
       <Row className="mb-3">

@@ -1,6 +1,7 @@
 import { Card } from 'react-bootstrap';
 import { Button } from '../common/Button';
 import type { Family } from '../../types/domain';
+import { formatDate } from '../../utils/dateUtils';
 
 export interface FamilyCardProps {
   family: Family;
@@ -15,10 +16,6 @@ export interface FamilyCardProps {
  * - Provides edit and delete actions (Requirements 4.1, 5.1)
  */
 export function FamilyCard({ family, onEdit, onDelete, onView }: FamilyCardProps) {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
   return (
     <Card className="mb-3">
       <Card.Body>

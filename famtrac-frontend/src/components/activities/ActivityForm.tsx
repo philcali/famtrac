@@ -48,13 +48,21 @@ export function ActivityForm({
   onCancel,
   loading = false,
 }: ActivityFormProps) {
+  const formatISOValue = (date?: string | Date) => {
+    const browserDate = new Date();
+    let d: Date;
+    if (date) {
+      d = new Date(date);
+    } else {
+      d = new Date();
+    }
+    d.setTime(d.getTime() - browserDate.getTimezoneOffset() * 60 * 1000);
+    return d.toISOString().slice(0, 16);
+  };
   // Form state
   const [activityType, setActivityType] = useState<ActivityType>(activity?.type || 'feeding');
   const [timestamp, setTimestamp] = useState(() => {
-    if (activity?.timestamp) {
-      return new Date(activity.timestamp).toISOString().slice(0, 16);
-    }
-    return new Date().toISOString().slice(0, 16);
+    return formatISOValue(activity?.timestamp);
   });
 
   // Activity-specific fields
@@ -65,16 +73,10 @@ export function ActivityForm({
     activity?.type === 'diaper_change' && activity.contents ? activity.contents : 'wet'
   );
   const [startTime, setStartTime] = useState(() => {
-    if (activity?.type === 'sleep' && activity.start_time) {
-      return new Date(activity.start_time).toISOString().slice(0, 16);
-    }
-    return new Date().toISOString().slice(0, 16);
+    return formatISOValue(activity?.start_time);
   });
   const [endTime, setEndTime] = useState(() => {
-    if (activity?.type === 'sleep' && activity.end_time) {
-      return new Date(activity.end_time).toISOString().slice(0, 16);
-    }
-    return new Date().toISOString().slice(0, 16);
+    return formatISOValue(activity?.end_time);
   });
   const [volumeMl, setVolumeMl] = useState(
     activity?.type === 'pumping' && activity.volume_ml ? activity.volume_ml.toString() : ''
@@ -127,7 +129,7 @@ export function ActivityForm({
     clearAllErrors();
   }, [activityType, clearAllErrors]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
 
     // Build values object based on activity type

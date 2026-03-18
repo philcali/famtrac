@@ -108,15 +108,20 @@ pub fn validate_activity_type(activity_type: &ActivityType) -> Result<(), Valida
             // contents is required by the enum structure
             Ok(())
         }
-        ActivityType::Sleep { start, end } => {
+        ActivityType::Sleep {
+            start_time,
+            end_time,
+        } => {
             // Both start and end are required by the enum structure
             // Validate that end is after start
-            if end.0 <= start.0 {
-                return Err(ValidationError {
-                    field: "end".to_string(),
-                    message: "Sleep end time must be after start time".to_string(),
-                    constraint: Some("end must be > start".to_string()),
-                });
+            if let Some(end) = end_time {
+                if end.0 <= start_time.0 {
+                    return Err(ValidationError {
+                        field: "end_time".to_string(),
+                        message: "Sleep end time must be after start time".to_string(),
+                        constraint: Some("end must be > start".to_string()),
+                    });
+                }
             }
             Ok(())
         }
@@ -289,21 +294,27 @@ mod tests {
 
     #[test]
     fn test_validate_sleep_activity_valid() {
-        let start = Timestamp::from_datetime(Utc::now() - Duration::hours(2));
-        let end = Timestamp::from_datetime(Utc::now() - Duration::hours(1));
-        let activity = ActivityType::Sleep { start, end };
+        let start_time = Timestamp::from_datetime(Utc::now() - Duration::hours(2));
+        let end_time = Some(Timestamp::from_datetime(Utc::now() - Duration::hours(1)));
+        let activity = ActivityType::Sleep {
+            start_time,
+            end_time,
+        };
         assert!(validate_activity_type(&activity).is_ok());
     }
 
     #[test]
     fn test_validate_sleep_activity_end_before_start() {
-        let start = Timestamp::from_datetime(Utc::now() - Duration::hours(1));
-        let end = Timestamp::from_datetime(Utc::now() - Duration::hours(2));
-        let activity = ActivityType::Sleep { start, end };
+        let start_time = Timestamp::from_datetime(Utc::now() - Duration::hours(1));
+        let end_time = Some(Timestamp::from_datetime(Utc::now() - Duration::hours(2)));
+        let activity = ActivityType::Sleep {
+            start_time,
+            end_time,
+        };
         let result = validate_activity_type(&activity);
         assert!(result.is_err());
         let err = result.unwrap_err();
-        assert_eq!(err.field, "end");
+        assert_eq!(err.field, "end_time");
         assert!(err.message.contains("after start"));
     }
 
@@ -311,8 +322,8 @@ mod tests {
     fn test_validate_sleep_activity_end_equals_start() {
         let timestamp = Timestamp::from_datetime(Utc::now() - Duration::hours(1));
         let activity = ActivityType::Sleep {
-            start: timestamp,
-            end: timestamp,
+            start_time: timestamp,
+            end_time: Some(timestamp),
         };
         let result = validate_activity_type(&activity);
         assert!(result.is_err());

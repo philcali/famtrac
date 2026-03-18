@@ -79,8 +79,8 @@ pub async fn route_activity(
                         "sleep" => {
                             let now = Timestamp::now();
                             Some(ActivityType::Sleep {
-                                start: now,
-                                end: now,
+                                start_time: now,
+                                end_time: Some(now),
                             })
                         }
                         "pumping" => Some(ActivityType::Pumping { volume_ml: 0 }),

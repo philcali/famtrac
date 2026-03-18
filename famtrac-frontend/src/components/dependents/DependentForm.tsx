@@ -39,7 +39,7 @@ export function DependentForm({
     date_of_birth: [required('Date of birth'), pastDate('Date of birth')],
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
 
     const values = {
