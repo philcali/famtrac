@@ -111,6 +111,7 @@ class FamtracBackendStack extends Stack {
                 ],
             };
         }
+        const rootPath = p.join(__dirname, '..', '..');
         let api = new FamtracApi(this, 'Api', {
             apiName: 'famtrac-api',
             enableDevelopmentOrigin: true,
@@ -118,9 +119,13 @@ class FamtracBackendStack extends Stack {
             customOrigins: [
                 `https://app.${props?.config.domainName}`,
             ],
-            backendCode: new LocalModuleAsset(p.join(__dirname, '..', '..', 'famtrac-backend'), {
-                buildCommand: './dev.make-zip.sh',
-                buildOutput: 'build_famtrac_function.zip',
+            backendCode: new LocalModuleAsset(rootPath, {
+                buildCommand: './dev.make-zip.sh backend',
+                buildOutput: 'famtrac-backend/build_famtrac_backend_function.zip',
+            }),
+            streamHandlerCode: new LocalModuleAsset(rootPath, {
+                buildCommand: './dev.make-zip.sh stream-handler',
+                buildOutput: 'famtrac-stream-handler/build_famtrac_stream_handler_function.zip',
             }),
         });
         if (props?.config.enableCustomDomain && props.config.certificate && props.config.hostedZone) {
