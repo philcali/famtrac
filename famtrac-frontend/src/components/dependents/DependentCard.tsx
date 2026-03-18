@@ -1,13 +1,14 @@
 import { Card } from 'react-bootstrap';
 import { Button } from '../common/Button';
-import { formatAge } from '../../utils/dateUtils';
+import { formatAge, formatDate } from '../../utils/dateUtils';
 import type { Dependent } from '../../types/domain';
 
 export interface DependentCardProps {
   dependent: Dependent;
-  onEdit: (dependent: Dependent) => void;
-  onDelete: (dependent: Dependent) => void;
-  onView: (dependent: Dependent) => void;
+  overrideTitle?: string;
+  onEdit?: (dependent: Dependent) => void;
+  onDelete?: (dependent: Dependent) => void;
+  onView?: (dependent: Dependent) => void;
 }
 
 /**
@@ -16,36 +17,51 @@ export interface DependentCardProps {
  * - Calculates and displays age based on date of birth (Requirement 7.4)
  * - Provides edit and delete actions (Requirements 8.1, 9.1)
  */
-export function DependentCard({ dependent, onEdit, onDelete, onView }: DependentCardProps) {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+export function DependentCard({
+  dependent,
+  overrideTitle,
+  onEdit,
+  onDelete,
+  onView,
+}: DependentCardProps) {
+  const options: Intl.DateTimeFormatOptions = {
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric',
   };
-
   return (
     <Card className="mb-3">
       <Card.Body>
-        <Card.Title>{dependent.name}</Card.Title>
+        <Card.Title>{overrideTitle ?? dependent.name}</Card.Title>
         <Card.Text>
           <strong>Age:</strong> {formatAge(dependent.date_of_birth)}
           <br />
-          <strong>Date of Birth:</strong> {formatDate(dependent.date_of_birth)}
+          <strong>Date of Birth:</strong> {formatDate(dependent.date_of_birth, options)}
         </Card.Text>
         <Card.Text className="text-muted small">
-          Created: {formatDate(dependent.created_at)}
+          Created: {formatDate(dependent.created_at, options)}
           <br />
-          Updated: {formatDate(dependent.updated_at)}
+          Updated: {formatDate(dependent.updated_at, options)}
         </Card.Text>
-        <div className="d-flex gap-2">
-          <Button variant="primary" size="sm" onClick={() => onView(dependent)}>
-            View
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => onEdit(dependent)}>
-            Edit
-          </Button>
-          <Button variant="danger" size="sm" onClick={() => onDelete(dependent)}>
-            Delete
-          </Button>
-        </div>
+        {(onEdit || onDelete || onView) && (
+          <div className="d-flex gap-2">
+            {onView && (
+              <Button variant="primary" size="sm" onClick={() => onView(dependent)}>
+                View
+              </Button>
+            )}
+            {onEdit && (
+              <Button variant="secondary" size="sm" onClick={() => onEdit(dependent)}>
+                Edit
+              </Button>
+            )}
+            {onDelete && (
+              <Button variant="danger" size="sm" onClick={() => onDelete(dependent)}>
+                Delete
+              </Button>
+            )}
+          </div>
+        )}
       </Card.Body>
     </Card>
   );

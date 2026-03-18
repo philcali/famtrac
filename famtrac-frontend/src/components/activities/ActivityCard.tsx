@@ -1,6 +1,7 @@
 import { Card, Badge } from 'react-bootstrap';
 import { Button } from '../common/Button';
 import type { ActivityResponse } from '../../api/types';
+import { formatDateTime, formatTime } from '../../utils/dateUtils';
 
 export interface ActivityCardProps {
   activity: ActivityResponse;
@@ -14,17 +15,6 @@ export interface ActivityCardProps {
  * - Provides edit and delete actions (Requirements 12.1, 13.1)
  */
 export function ActivityCard({ activity, onEdit, onDelete }: ActivityCardProps) {
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
-
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
   const getActivityTypeLabel = (type: string) => {
     switch (type) {
       case 'feeding':
@@ -59,25 +49,25 @@ export function ActivityCard({ activity, onEdit, onDelete }: ActivityCardProps) 
     switch (activity.type) {
       case 'feeding':
         return (
-          <div>
+          <>
             <strong>Type:</strong>{' '}
             {activity.feeding_type
               ? activity.feeding_type.charAt(0).toUpperCase() + activity.feeding_type.slice(1)
               : 'N/A'}
-          </div>
+          </>
         );
       case 'diaper_change':
         return (
-          <div>
+          <>
             <strong>Contents:</strong>{' '}
             {activity.contents
               ? activity.contents.charAt(0).toUpperCase() + activity.contents.slice(1)
               : 'N/A'}
-          </div>
+          </>
         );
       case 'sleep':
         return (
-          <div>
+          <>
             <strong>Start:</strong> {activity.start_time ? formatTime(activity.start_time) : 'N/A'}
             <br />
             <strong>End:</strong> {activity.end_time ? formatTime(activity.end_time) : 'N/A'}
@@ -91,13 +81,13 @@ export function ActivityCard({ activity, onEdit, onDelete }: ActivityCardProps) 
                 )
               : 0}{' '}
             minutes
-          </div>
+          </>
         );
       case 'pumping':
         return (
-          <div>
+          <>
             <strong>Volume:</strong> {activity.volume_ml ?? 'N/A'} ml
-          </div>
+          </>
         );
       default:
         return null;

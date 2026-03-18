@@ -1,10 +1,21 @@
-export function formatDate(date: string | Date): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+export function formatDate(date: string | Date, options?: Intl.DateTimeFormatOptions): string {
+  let d: Date;
+  if (typeof date === 'string') {
+    d = new Date(date);
+    if (!date.match(/T/)) {
+      d.setTime(d.getTime() + d.getTimezoneOffset() * 60 * 1000);
+    }
+  } else {
+    d = date;
+  }
+  return d.toLocaleDateString(
+    'en-US',
+    options ?? {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }
+  );
 }
 
 export function formatDateTime(date: string | Date): string {
@@ -13,6 +24,13 @@ export function formatDateTime(date: string | Date): string {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export function formatTime(dateString: string | Date) {
+  return new Date(dateString).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
   });

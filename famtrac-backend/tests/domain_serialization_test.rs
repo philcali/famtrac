@@ -75,22 +75,22 @@ fn test_activity_type_serialization() {
 #[test]
 fn test_sleep_activity_serialization() {
     let sleep = ActivityType::Sleep {
-        start: Timestamp::from_datetime(
+        start_time: Timestamp::from_datetime(
             DateTime::parse_from_rfc3339("2024-01-15T22:00:00Z")
                 .unwrap()
                 .with_timezone(&Utc),
         ),
-        end: Timestamp::from_datetime(
+        end_time: Some(Timestamp::from_datetime(
             DateTime::parse_from_rfc3339("2024-01-16T06:00:00Z")
                 .unwrap()
                 .with_timezone(&Utc),
-        ),
+        )),
     };
 
     let json = serde_json::to_string(&sleep).unwrap();
     assert!(json.contains("\"type\":\"sleep\""));
-    assert!(json.contains("\"start\":\"2024-01-15T22:00:00Z\""));
-    assert!(json.contains("\"end\":\"2024-01-16T06:00:00Z\""));
+    assert!(json.contains("\"start_time\":\"2024-01-15T22:00:00Z\""));
+    assert!(json.contains("\"end_time\":\"2024-01-16T06:00:00Z\""));
 
     let deserialized: ActivityType = serde_json::from_str(&json).unwrap();
     assert_eq!(sleep, deserialized);
