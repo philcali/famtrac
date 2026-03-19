@@ -169,7 +169,7 @@ pub async fn route_activity(
                 "/activities/",
                 "activity_id",
             )?;
-            let (_status, response_json) = handlers::delete_activity(
+            let (_status, _response_json) = handlers::delete_activity(
                 family_id,
                 dependent_id,
                 ActivityId(activity_id),
@@ -179,11 +179,7 @@ pub async fn route_activity(
                 activity_repo,
             )
             .await?;
-            let response: serde_json::Value =
-                serde_json::from_str(&response_json).map_err(|e| {
-                    HandlerError::InternalError(format!("Failed to parse response: {}", e))
-                })?;
-            Ok(response)
+            Ok(serde_json::Value::Null)
         }
 
         // Unknown route

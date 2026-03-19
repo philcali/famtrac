@@ -14,7 +14,7 @@ pub use dependent::{
     CreateDependentRequest, DependentListResponse, DependentResponse, UpdateDependentRequest,
 };
 pub use family::{
-    create_family, get_family, list_families, update_family, CreateFamilyRequest,
+    create_family, delete_family, get_family, list_families, update_family, CreateFamilyRequest,
     FamilyListResponse, FamilyResponse, UpdateFamilyRequest,
 };
 pub use pagination::{PaginatedResponse, PaginationParams};

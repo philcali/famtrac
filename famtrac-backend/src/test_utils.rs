@@ -123,6 +123,19 @@ pub mod mocks {
             };
             Ok(PaginatedResponse::with_next_token(items, next_token))
         }
+
+        async fn delete(&self, owner_id: IdentityId, id: FamilyId) -> Result<(), StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            let mut families = self.families.lock().unwrap();
+            if let Some(family) = families.get(&id) {
+                if family.owner_id == owner_id {
+                    families.remove(&id);
+                }
+            }
+            Ok(())
+        }
     }
 
     /// Mock implementation of DependentRepository for testing
