@@ -273,6 +273,19 @@ impl FamilyRepository for DynamoDbFamilyRepository {
 
         Ok(PaginatedResponse::with_next_token(families, next_token))
     }
+
+    async fn delete(&self, owner_id: IdentityId, id: FamilyId) -> Result<(), StoreError> {
+        self.client
+            .delete_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("OWNER#{}", owner_id.0)))
+            .key("SK", AttributeValue::S(format!("FAMILY#{}", id.0)))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to delete family: {}", e)))?;
+
+        Ok(())
+    }
 }
 
 /// DynamoDB implementation of DependentRepository

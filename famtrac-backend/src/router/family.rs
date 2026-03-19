@@ -107,6 +107,13 @@ pub async fn route_family(
             Ok(response)
         }
 
+        // DELETE /families/{id} - Delete a family
+        ("DELETE", p) if p.starts_with("/families/") && !p.contains("/dependents") => {
+            let family_id = extract_uuid_param(path, "/families/", "family_id")?;
+            handlers::delete_family(FamilyId(family_id), context, family_repo).await?;
+            Ok(serde_json::Value::Null)
+        }
+
         // GET /families/{id}/dependents - List dependents for a family
         ("GET", p) if p.starts_with("/families/") && p.ends_with("/dependents") => {
             let family_id = extract_uuid_param(path, "/families/", "family_id")?;

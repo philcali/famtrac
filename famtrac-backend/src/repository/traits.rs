@@ -24,6 +24,9 @@ pub trait FamilyRepository: Send + Sync {
         owner_id: IdentityId,
         pagination: PaginationParams,
     ) -> Result<PaginatedResponse<Family>, StoreError>;
+
+    /// Delete a family by owner ID and family ID
+    async fn delete(&self, owner_id: IdentityId, id: FamilyId) -> Result<(), StoreError>;
 }
 
 /// Repository trait for Dependent operations

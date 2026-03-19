@@ -232,6 +232,33 @@ pub async fn list_families<R: FamilyRepository>(
     Ok((200, response_json))
 }
 
+/// Delete a family by ID
+///
+/// Verifies ownership via tenant-isolated key lookup, then deletes the family.
+/// Returns 204 No Content on success.
+pub async fn delete_family<R: FamilyRepository>(
+    family_id: FamilyId,
+    context: &RequestContext,
+    repository: &R,
+) -> Result<(u16, String), HandlerError> {
+    // Verify family exists and is owned by the authenticated identity
+    let family = repository
+        .get(context.identity_id.clone(), family_id)
+        .await?;
+    family.ok_or(HandlerError::NotFound(format!(
+        "Family with id {:?} not found",
+        family_id
+    )))?;
+
+    // Delete from repository
+    repository
+        .delete(context.identity_id.clone(), family_id)
+        .await?;
+
+    // Return 204 No Content
+    Ok((204, String::new()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
