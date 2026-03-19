@@ -19,7 +19,11 @@ pub trait FamilyRepository: Send + Sync {
     async fn update(&self, family: Family) -> Result<Family, StoreError>;
 
     /// Get all families owned by a specific identity
-    async fn get_by_owner(&self, owner_id: IdentityId) -> Result<Vec<Family>, StoreError>;
+    async fn get_by_owner(
+        &self,
+        owner_id: IdentityId,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<Family>, StoreError>;
 }
 
 /// Repository trait for Dependent operations
@@ -39,7 +43,11 @@ pub trait DependentRepository: Send + Sync {
     async fn update(&self, dependent: Dependent) -> Result<Dependent, StoreError>;
 
     /// List all dependents for a specific family
-    async fn list_by_family(&self, family_id: FamilyId) -> Result<Vec<Dependent>, StoreError>;
+    async fn list_by_family(
+        &self,
+        family_id: FamilyId,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<Dependent>, StoreError>;
 
     /// Delete a dependent by family ID and dependent ID
     async fn delete(&self, family_id: FamilyId, id: DependentId) -> Result<(), StoreError>;
@@ -81,7 +89,11 @@ pub trait ActivityRepository: Send + Sync {
     ) -> Result<(), StoreError>;
 
     /// Query activities with filters
-    async fn query(&self, params: ActivityQueryParams) -> Result<Vec<Activity>, StoreError>;
+    async fn query(
+        &self,
+        params: ActivityQueryParams,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<Activity>, StoreError>;
 }
 
 /// Repository trait for Share operations

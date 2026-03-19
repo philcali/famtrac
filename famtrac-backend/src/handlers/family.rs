@@ -2,6 +2,7 @@ use super::permission::check_permission;
 use crate::context::RequestContext;
 use crate::domain::{Family, FamilyId, PermissionAction, Timestamp};
 use crate::errors::{validate_family_name, HandlerError};
+use crate::handlers::pagination::PaginationParams;
 use crate::repository::FamilyRepository;
 use serde::{Deserialize, Serialize};
 
@@ -203,18 +204,24 @@ pub async fn update_family<R: FamilyRepository>(
 pub async fn list_families<R: FamilyRepository>(
     context: &RequestContext,
     repository: &R,
+    pagination: PaginationParams,
 ) -> Result<(u16, String), HandlerError> {
-    // Retrieve all families owned by the authenticated identity
-    let families = repository.get_by_owner(context.identity_id.clone()).await?;
+    // Retrieve families owned by the authenticated identity with pagination
+    let paginated_result = repository
+        .get_by_owner(context.identity_id.clone(), pagination)
+        .await?;
 
     // Convert to response format
-    let families_response: Vec<FamilyResponse> =
-        families.into_iter().map(FamilyResponse::from).collect();
+    let families_response: Vec<FamilyResponse> = paginated_result
+        .items
+        .into_iter()
+        .map(FamilyResponse::from)
+        .collect();
 
     // Wrap in list response structure
     let response = FamilyListResponse {
         families: families_response,
-        next_token: None, // Pagination not yet implemented
+        next_token: paginated_result.next_token,
     };
 
     // Serialize response (Requirement 10.3)
@@ -697,7 +704,11 @@ mod tests {
             .unwrap()
             .insert(family2.id, family2);
 
-        let result = list_families(&context, &repository).await;
+        let pagination = PaginationParams {
+            limit: None,
+            next_token: None,
+        };
+        let result = list_families(&context, &repository, pagination).await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -714,7 +725,11 @@ mod tests {
         let context = create_test_context("user-123");
         let repository = MockFamilyRepository::new();
 
-        let result = list_families(&context, &repository).await;
+        let pagination = PaginationParams {
+            limit: None,
+            next_token: None,
+        };
+        let result = list_families(&context, &repository, pagination).await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -729,7 +744,11 @@ mod tests {
         let context = create_test_context("user-123");
         let repository = MockFamilyRepository::with_failure();
 
-        let result = list_families(&context, &repository).await;
+        let pagination = PaginationParams {
+            limit: None,
+            next_token: None,
+        };
+        let result = list_families(&context, &repository, pagination).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {

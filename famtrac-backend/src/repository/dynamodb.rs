@@ -238,19 +238,29 @@ impl FamilyRepository for DynamoDbFamilyRepository {
         Ok(family)
     }
 
-    async fn get_by_owner(&self, owner_id: IdentityId) -> Result<Vec<Family>, StoreError> {
-        let result = self
+    async fn get_by_owner(
+        &self,
+        owner_id: IdentityId,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<Family>, StoreError> {
+        let exclusive_start_key = decode_next_token(&pagination.next_token)?;
+
+        let mut query = self
             .client
             .query()
             .table_name(&self.table_name)
             .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
             .expression_attribute_values(":pk", AttributeValue::S(format!("OWNER#{}", owner_id.0)))
             .expression_attribute_values(":sk_prefix", AttributeValue::S("FAMILY#".to_string()))
-            .send()
-            .await
-            .map_err(|e| {
-                StoreError::QueryError(format!("Failed to query families by owner: {}", e))
-            })?;
+            .limit(pagination.effective_limit() as i32);
+
+        if let Some(start_key) = exclusive_start_key {
+            query = query.set_exclusive_start_key(Some(start_key));
+        }
+
+        let result = query.send().await.map_err(|e| {
+            StoreError::QueryError(format!("Failed to query families by owner: {}", e))
+        })?;
 
         let families = result
             .items
@@ -259,7 +269,9 @@ impl FamilyRepository for DynamoDbFamilyRepository {
             .map(|item| self.parse_item(item))
             .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(families)
+        let next_token = encode_last_evaluated_key(&result.last_evaluated_key)?;
+
+        Ok(PaginatedResponse::with_next_token(families, next_token))
     }
 }
 
@@ -449,8 +461,14 @@ impl DependentRepository for DynamoDbDependentRepository {
         Ok(dependent)
     }
 
-    async fn list_by_family(&self, family_id: FamilyId) -> Result<Vec<Dependent>, StoreError> {
-        let result = self
+    async fn list_by_family(
+        &self,
+        family_id: FamilyId,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<Dependent>, StoreError> {
+        let exclusive_start_key = decode_next_token(&pagination.next_token)?;
+
+        let mut query = self
             .client
             .query()
             .table_name(&self.table_name)
@@ -460,11 +478,15 @@ impl DependentRepository for DynamoDbDependentRepository {
                 AttributeValue::S(format!("FAMILY#{}", family_id.0)),
             )
             .expression_attribute_values(":sk_prefix", AttributeValue::S("DEPENDENT#".to_string()))
-            .send()
-            .await
-            .map_err(|e| {
-                StoreError::QueryError(format!("Failed to list dependents by family: {}", e))
-            })?;
+            .limit(pagination.effective_limit() as i32);
+
+        if let Some(start_key) = exclusive_start_key {
+            query = query.set_exclusive_start_key(Some(start_key));
+        }
+
+        let result = query.send().await.map_err(|e| {
+            StoreError::QueryError(format!("Failed to list dependents by family: {}", e))
+        })?;
 
         let dependents = result
             .items
@@ -473,7 +495,9 @@ impl DependentRepository for DynamoDbDependentRepository {
             .map(|item| self.parse_item(item))
             .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(dependents)
+        let next_token = encode_last_evaluated_key(&result.last_evaluated_key)?;
+
+        Ok(PaginatedResponse::with_next_token(dependents, next_token))
     }
 
     async fn delete(&self, family_id: FamilyId, id: DependentId) -> Result<(), StoreError> {
@@ -730,7 +754,11 @@ impl ActivityRepository for DynamoDbActivityRepository {
         Ok(())
     }
 
-    async fn query(&self, params: ActivityQueryParams) -> Result<Vec<Activity>, StoreError> {
+    async fn query(
+        &self,
+        params: ActivityQueryParams,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<Activity>, StoreError> {
         let pk = format!(
             "FAMILY#{}#DEPENDENT#{}",
             params.family_id.0, params.dependent_id.0
@@ -753,6 +781,8 @@ impl ActivityRepository for DynamoDbActivityRepository {
             filter_expressions.push("activity_type_name = :activity_type");
         }
 
+        let exclusive_start_key = decode_next_token(&pagination.next_token)?;
+
         let mut query_builder = self
             .client
             .query()
@@ -760,7 +790,12 @@ impl ActivityRepository for DynamoDbActivityRepository {
             .index_name("GSI-1")
             .key_condition_expression(&key_condition)
             .expression_attribute_values(":pk", AttributeValue::S(pk))
-            .scan_index_forward(false); // Sort descending by timestamp
+            .scan_index_forward(false) // Sort descending by timestamp
+            .limit(pagination.effective_limit() as i32);
+
+        if let Some(start_key) = exclusive_start_key {
+            query_builder = query_builder.set_exclusive_start_key(Some(start_key));
+        }
 
         // Add timestamp attribute name alias (reserved word)
         if params.start_date.is_some() || params.end_date.is_some() {
@@ -818,7 +853,9 @@ impl ActivityRepository for DynamoDbActivityRepository {
             .map(|item| self.parse_item(item))
             .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(activities)
+        let next_token = encode_last_evaluated_key(&result.last_evaluated_key)?;
+
+        Ok(PaginatedResponse::with_next_token(activities, next_token))
     }
 }
 
