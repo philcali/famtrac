@@ -56,3 +56,31 @@ export interface PumpingActivity extends BaseActivity {
 
 // Union type for all activities
 export type Activity = FeedingActivity | DiaperActivity | SleepActivity | PumpingActivity;
+
+// Share types
+
+export type PermissionAction =
+  | 'family_read'
+  | 'dependent_read'
+  | 'dependent_write'
+  | 'activity_read'
+  | 'activity_write';
+
+export interface PermissionScope {
+  actions: PermissionAction[];
+}
+
+export type ShareStatus = 'pending' | 'active' | 'expired';
+
+export interface Share {
+  id: string;
+  family_id: string;
+  requester_id: string;
+  accepter_email: string;
+  accepter_id?: string;
+  permission_scope: PermissionScope;
+  status: ShareStatus;
+  created_at: string;
+  updated_at: string;
+  expires_at?: string;
+}

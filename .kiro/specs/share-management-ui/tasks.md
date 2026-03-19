@@ -51,23 +51,23 @@ Add share management to the famtrac application: backend pagination support for 
 - [ ] 2. Checkpoint - Ensure backend compiles and all existing tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 3. Frontend share domain types and API types
-  - [ ] 3.1 Add share domain types to `famtrac-frontend/src/types/domain.ts`
+- [x] 3. Frontend share domain types and API types
+  - [x] 3.1 Add share domain types to `famtrac-frontend/src/types/domain.ts`
     - Add `PermissionAction` type union: `'family_read' | 'dependent_read' | 'dependent_write' | 'activity_read' | 'activity_write'`
     - Add `PermissionScope` interface with `actions: PermissionAction[]`
     - Add `ShareStatus` type union: `'pending' | 'active' | 'expired'`
     - Add `Share` interface with all fields: `id`, `family_id`, `requester_id`, `accepter_email`, `accepter_id?`, `permission_scope`, `status`, `created_at`, `updated_at`, `expires_at?`
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-  - [ ] 3.2 Add share API types to `famtrac-frontend/src/api/types.ts`
+  - [x] 3.2 Add share API types to `famtrac-frontend/src/api/types.ts`
     - Add `CreateShareRequest` interface with `accepter_email` and `permission_scope`
     - Add `UpdateShareRequest` interface with `permission_scope`
     - Add `ShareResponse` interface matching backend JSON schema
     - Add `ShareListResponse` interface with `shares: ShareResponse[]` and optional `next_token`
     - _Requirements: 1.9, 1.10_
 
-- [ ] 4. Frontend API client and utilities
-  - [ ] 4.1 Create `famtrac-frontend/src/api/shares.ts` with all 6 API functions
+- [x] 4. Frontend API client and utilities
+  - [x] 4.1 Create `famtrac-frontend/src/api/shares.ts` with all 6 API functions
     - `createShare(client, familyId, request)` → POST `/families/{familyId}/shares`
     - `getShares(client, familyId, options?)` → GET `/families/{familyId}/shares` with optional `limit`/`next_token` query params
     - `updateShare(client, shareId, request)` → PUT `/shares/{shareId}`
@@ -84,7 +84,7 @@ Add share management to the famtrac application: backend pagination support for 
     - Mock `ApiClient`, generate random UUIDs, verify correct method/path/query params
     - **Validates: Requirements 1.1, 1.2, 1.4, 1.5, 1.6, 1.3, 1.8**
 
-  - [ ] 4.3 Create `famtrac-frontend/src/utils/permissions.ts` with pure permission dependency logic
+  - [x] 4.3 Create `famtrac-frontend/src/utils/permissions.ts` with pure permission dependency logic
     - Export `ALWAYS_REQUIRED`, `PERMISSION_DEPENDENCIES`, `PERMISSION_LABELS` constants
     - Implement `getLockedActions(selected)` → returns `Set<PermissionAction>` of non-uncheckable actions
     - Implement `addActionWithDependencies(current, action)` → returns new action array with auto-selected dependencies
@@ -101,7 +101,7 @@ Add share management to the famtrac application: backend pagination support for 
     - Test file: `famtrac-frontend/src/utils/permissions.test.ts`
     - **Validates: Requirements 3.2, 3.3, 3.4, 3.5, 11.1, 11.2, 11.3, 5.3**
 
-  - [ ] 4.5 Add `email()` validator to `famtrac-frontend/src/utils/validation.ts`
+  - [x] 4.5 Add `email()` validator to `famtrac-frontend/src/utils/validation.ts`
     - Validate non-empty string with standard email format (one `@`, non-empty local and domain parts)
     - Return `ValidationResult` following existing validator pattern
     - _Requirements: 4.2_
