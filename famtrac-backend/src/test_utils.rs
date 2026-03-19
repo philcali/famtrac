@@ -8,6 +8,7 @@ pub mod mocks {
         Activity, ActivityId, Dependent, DependentId, Family, FamilyId, IdentityId, Share, ShareId,
     };
     use crate::errors::StoreError;
+    use crate::handlers::{PaginatedResponse, PaginationParams};
     use crate::repository::{
         ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository,
         ShareRepository,
@@ -423,32 +424,67 @@ pub mod mocks {
             &self,
             requester_id: IdentityId,
             family_id: FamilyId,
-        ) -> Result<Vec<Share>, StoreError> {
+            pagination: PaginationParams,
+        ) -> Result<PaginatedResponse<Share>, StoreError> {
             if self.should_fail {
                 return Err(StoreError::QueryError("Mock failure".to_string()));
             }
-            Ok(self
+            let all: Vec<Share> = self
                 .shares
                 .lock()
                 .unwrap()
                 .values()
                 .filter(|s| s.requester_id == requester_id && s.family_id == family_id)
                 .cloned()
-                .collect())
+                .collect();
+            let offset = pagination
+                .next_token
+                .as_deref()
+                .and_then(|t| t.parse::<usize>().ok())
+                .unwrap_or(0);
+            let limit = pagination.effective_limit() as usize;
+            let page: Vec<Share> = all.into_iter().skip(offset).take(limit + 1).collect();
+            let has_more = page.len() > limit;
+            let items: Vec<Share> = page.into_iter().take(limit).collect();
+            let next_token = if has_more {
+                Some((offset + limit).to_string())
+            } else {
+                None
+            };
+            Ok(PaginatedResponse::with_next_token(items, next_token))
         }
 
-        async fn list_by_accepter_email(&self, email: &str) -> Result<Vec<Share>, StoreError> {
+        async fn list_by_accepter_email(
+            &self,
+            email: &str,
+            pagination: PaginationParams,
+        ) -> Result<PaginatedResponse<Share>, StoreError> {
             if self.should_fail {
                 return Err(StoreError::QueryError("Mock failure".to_string()));
             }
-            Ok(self
+            let all: Vec<Share> = self
                 .shares
                 .lock()
                 .unwrap()
                 .values()
                 .filter(|s| s.accepter_email == email)
                 .cloned()
-                .collect())
+                .collect();
+            let offset = pagination
+                .next_token
+                .as_deref()
+                .and_then(|t| t.parse::<usize>().ok())
+                .unwrap_or(0);
+            let limit = pagination.effective_limit() as usize;
+            let page: Vec<Share> = all.into_iter().skip(offset).take(limit + 1).collect();
+            let has_more = page.len() > limit;
+            let items: Vec<Share> = page.into_iter().take(limit).collect();
+            let next_token = if has_more {
+                Some((offset + limit).to_string())
+            } else {
+                None
+            };
+            Ok(PaginatedResponse::with_next_token(items, next_token))
         }
 
         async fn get_by_family_and_email(

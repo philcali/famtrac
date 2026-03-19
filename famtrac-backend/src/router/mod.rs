@@ -67,8 +67,16 @@ pub async fn route_request(
     // Check for share routes first (top-level /shares paths)
     if path == "/shares" || (path.starts_with("/shares/") && !path.starts_with("/shared-families"))
     {
-        let handler_result =
-            share::route_shares(method, path, body, context, share_repo, family_repo).await;
+        let handler_result = share::route_shares(
+            method,
+            path,
+            body,
+            request,
+            context,
+            share_repo,
+            family_repo,
+        )
+        .await;
         return HttpResponse::from_handler_result(handler_result, cors_config);
     }
 
@@ -91,6 +99,7 @@ pub async fn route_request(
                 crate::domain::FamilyId(family_id),
                 sub_path,
                 body,
+                request,
                 context,
                 share_repo,
                 family_repo,

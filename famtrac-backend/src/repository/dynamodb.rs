@@ -8,10 +8,78 @@ use crate::domain::{
     PermissionScope, Share, ShareId, ShareStatus, Timestamp,
 };
 use crate::errors::StoreError;
+use crate::handlers::{PaginatedResponse, PaginationParams};
 
 use super::traits::{
     ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository, ShareRepository,
 };
+
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+
+/// Decode a pagination `next_token` (base64-encoded JSON) into a DynamoDB
+/// `ExclusiveStartKey` map.  Returns `Ok(None)` when the token is absent.
+fn decode_next_token(
+    next_token: &Option<String>,
+) -> Result<Option<HashMap<String, AttributeValue>>, StoreError> {
+    let token = match next_token {
+        Some(t) => t,
+        None => return Ok(None),
+    };
+
+    let json_bytes = BASE64.decode(token).map_err(|e| {
+        StoreError::QueryError(format!("Invalid pagination token (base64 decode): {}", e))
+    })?;
+
+    let map: HashMap<String, serde_json::Value> =
+        serde_json::from_slice(&json_bytes).map_err(|e| {
+            StoreError::QueryError(format!("Invalid pagination token (JSON decode): {}", e))
+        })?;
+
+    let dynamo_map: HashMap<String, AttributeValue> = map
+        .into_iter()
+        .map(|(k, v)| {
+            let av = match v {
+                serde_json::Value::String(s) => AttributeValue::S(s),
+                serde_json::Value::Number(n) => AttributeValue::N(n.to_string()),
+                other => AttributeValue::S(other.to_string()),
+            };
+            (k, av)
+        })
+        .collect();
+
+    Ok(Some(dynamo_map))
+}
+
+/// Encode a DynamoDB `LastEvaluatedKey` map into a base64-encoded JSON string
+/// suitable for use as a pagination `next_token`.  Returns `Ok(None)` when
+/// there is no key (i.e. last page).
+fn encode_last_evaluated_key(
+    last_evaluated_key: &Option<HashMap<String, AttributeValue>>,
+) -> Result<Option<String>, StoreError> {
+    let key = match last_evaluated_key {
+        Some(k) => k,
+        None => return Ok(None),
+    };
+
+    let json_map: HashMap<String, serde_json::Value> = key
+        .iter()
+        .map(|(k, v)| {
+            let json_val = match v.as_s() {
+                Ok(s) => serde_json::Value::String(s.clone()),
+                Err(_) => match v.as_n() {
+                    Ok(n) => serde_json::json!(n.parse::<f64>().unwrap_or(0.0)),
+                    Err(_) => serde_json::Value::String(format!("{:?}", v)),
+                },
+            };
+            (k.clone(), json_val)
+        })
+        .collect();
+
+    let json_bytes = serde_json::to_vec(&json_map)
+        .map_err(|e| StoreError::QueryError(format!("Failed to encode pagination token: {}", e)))?;
+
+    Ok(Some(BASE64.encode(&json_bytes)))
+}
 
 /// DynamoDB implementation of FamilyRepository
 #[derive(Clone)]
@@ -1109,8 +1177,11 @@ impl ShareRepository for DynamoDbShareRepository {
         &self,
         requester_id: IdentityId,
         family_id: FamilyId,
-    ) -> Result<Vec<Share>, StoreError> {
-        let result = self
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<Share>, StoreError> {
+        let exclusive_start_key = decode_next_token(&pagination.next_token)?;
+
+        let mut query_builder = self
             .client
             .query()
             .table_name(&self.table_name)
@@ -1122,40 +1193,58 @@ impl ShareRepository for DynamoDbShareRepository {
             )
             .expression_attribute_values(":sk_prefix", AttributeValue::S("SHARE#".to_string()))
             .expression_attribute_values(":fid", AttributeValue::S(family_id.0.to_string()))
-            .send()
-            .await
-            .map_err(|e| {
-                StoreError::QueryError(format!("Failed to list shares by family: {}", e))
-            })?;
+            .limit(pagination.effective_limit() as i32);
 
-        result
+        query_builder = query_builder.set_exclusive_start_key(exclusive_start_key);
+
+        let result = query_builder.send().await.map_err(|e| {
+            StoreError::QueryError(format!("Failed to list shares by family: {}", e))
+        })?;
+
+        let shares = result
             .items
             .unwrap_or_default()
             .iter()
             .map(|item| self.parse_share_item(item))
-            .collect()
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let next_token = encode_last_evaluated_key(&result.last_evaluated_key)?;
+
+        Ok(PaginatedResponse::with_next_token(shares, next_token))
     }
 
-    async fn list_by_accepter_email(&self, email: &str) -> Result<Vec<Share>, StoreError> {
-        let result = self
+    async fn list_by_accepter_email(
+        &self,
+        email: &str,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<Share>, StoreError> {
+        let exclusive_start_key = decode_next_token(&pagination.next_token)?;
+
+        let mut query_builder = self
             .client
             .query()
             .table_name(&self.table_name)
             .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
             .expression_attribute_values(":pk", AttributeValue::S(format!("SHARE_EMAIL#{}", email)))
             .expression_attribute_values(":sk_prefix", AttributeValue::S("SHARE#".to_string()))
-            .send()
-            .await
-            .map_err(|e| {
-                StoreError::QueryError(format!("Failed to list shares by accepter email: {}", e))
-            })?;
+            .limit(pagination.effective_limit() as i32);
 
-        result
+        query_builder = query_builder.set_exclusive_start_key(exclusive_start_key);
+
+        let result = query_builder.send().await.map_err(|e| {
+            StoreError::QueryError(format!("Failed to list shares by accepter email: {}", e))
+        })?;
+
+        let shares = result
             .items
             .unwrap_or_default()
             .iter()
             .map(|item| self.parse_share_item(item))
-            .collect()
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let next_token = encode_last_evaluated_key(&result.last_evaluated_key)?;
+
+        Ok(PaginatedResponse::with_next_token(shares, next_token))
     }
 
     async fn get_by_family_and_email(
