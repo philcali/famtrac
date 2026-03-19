@@ -3,6 +3,7 @@ use crate::domain::{
     ShareId,
 };
 use crate::errors::StoreError;
+use crate::handlers::{PaginatedResponse, PaginationParams};
 use async_trait::async_trait;
 
 /// Repository trait for Family operations
@@ -114,10 +115,15 @@ pub trait ShareRepository: Send + Sync {
         &self,
         requester_id: IdentityId,
         family_id: FamilyId,
-    ) -> Result<Vec<Share>, StoreError>;
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<Share>, StoreError>;
 
     /// List all shares by accepter email (email partition lookup)
-    async fn list_by_accepter_email(&self, email: &str) -> Result<Vec<Share>, StoreError>;
+    async fn list_by_accepter_email(
+        &self,
+        email: &str,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<Share>, StoreError>;
 
     /// Get a share by family ID and accepter email (email partition, filtered by family_id)
     async fn get_by_family_and_email(

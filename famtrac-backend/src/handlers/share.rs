@@ -1,6 +1,7 @@
 use crate::context::RequestContext;
 use crate::domain::{FamilyId, PermissionScope, Share, ShareId, ShareStatus, Timestamp};
 use crate::errors::{HandlerError, ValidationError};
+use crate::handlers::pagination::PaginationParams;
 use crate::repository::{FamilyRepository, ShareRepository};
 use serde::{Deserialize, Serialize};
 
@@ -55,6 +56,8 @@ pub struct ShareResponse {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ShareListResponse {
     pub shares: Vec<ShareResponse>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_token: Option<String>,
 }
 
 impl From<Share> for ShareResponse {
@@ -162,6 +165,7 @@ pub async fn list_shares<SR: ShareRepository, FR: FamilyRepository>(
     context: &RequestContext,
     share_repo: &SR,
     family_repo: &FR,
+    pagination: PaginationParams,
 ) -> Result<(u16, String), HandlerError> {
     // Verify requester owns the family (Requirement 5.2)
     let family = family_repo
@@ -170,18 +174,20 @@ pub async fn list_shares<SR: ShareRepository, FR: FamilyRepository>(
     family.ok_or(HandlerError::NotFound("Family not found".to_string()))?;
 
     // Query shares by family (Requirement 5.1, 5.3)
-    let shares = share_repo
-        .list_by_family(context.identity_id.clone(), family_id)
+    let paginated_result = share_repo
+        .list_by_family(context.identity_id.clone(), family_id, pagination)
         .await?;
 
     // Apply expiration check to pending shares (Requirement 10.1, 10.3)
-    let shares_response: Vec<ShareResponse> = shares
+    let shares_response: Vec<ShareResponse> = paginated_result
+        .items
         .into_iter()
         .map(apply_expiration)
         .map(ShareResponse::from)
         .collect();
     let response = ShareListResponse {
         shares: shares_response,
+        next_token: paginated_result.next_token,
     };
 
     let response_json = serde_json::to_string(&response)
@@ -339,21 +345,24 @@ pub async fn accept_share<SR: ShareRepository>(
 pub async fn list_shares_for_accepter<SR: ShareRepository>(
     context: &RequestContext,
     share_repo: &SR,
+    pagination: PaginationParams,
 ) -> Result<(u16, String), HandlerError> {
     let email = context.email.as_ref().ok_or_else(|| {
         HandlerError::Forbidden("Email not available in authentication context".to_string())
     })?;
 
-    let all_shares = share_repo.list_by_accepter_email(email).await?;
+    let paginated_result = share_repo.list_by_accepter_email(email, pagination).await?;
 
     // Apply expiration check to pending shares (Requirement 10.1)
-    let shares_response: Vec<ShareResponse> = all_shares
+    let shares_response: Vec<ShareResponse> = paginated_result
+        .items
         .into_iter()
         .map(apply_expiration)
         .map(ShareResponse::from)
         .collect();
     let response = ShareListResponse {
         shares: shares_response,
+        next_token: paginated_result.next_token,
     };
 
     let response_json = serde_json::to_string(&response)

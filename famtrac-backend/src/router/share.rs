@@ -8,10 +8,13 @@
 // - POST /shares/{sid}/accept → accept_share
 // - GET /shares → list_shares_for_accepter
 
+use aws_lambda_events::apigw::ApiGatewayV2httpRequest;
+
 use crate::context::RequestContext;
 use crate::domain::{FamilyId, ShareId};
 use crate::errors::HandlerError;
 use crate::handlers;
+use crate::handlers::PaginationParams;
 use crate::repository::{DynamoDbFamilyRepository, DynamoDbShareRepository};
 use crate::router::extractors::extract_uuid_param;
 
@@ -22,11 +25,13 @@ use crate::router::extractors::extract_uuid_param;
 /// - GET /families/{fid}/shares → list_shares
 ///
 /// Requirements: 1.1, 5.1
+#[allow(clippy::too_many_arguments)]
 pub async fn route_family_shares(
     method: &str,
     family_id: FamilyId,
     sub_path: &str,
     body: &str,
+    request: &ApiGatewayV2httpRequest,
     context: &RequestContext,
     share_repo: &DynamoDbShareRepository,
     family_repo: &DynamoDbFamilyRepository,
@@ -39,7 +44,12 @@ pub async fn route_family_shares(
 
         // GET /families/{fid}/shares - List shares for a family
         ("GET", "" | "/") => {
-            handlers::list_shares(family_id, context, share_repo, family_repo).await
+            let query_params = &request.query_string_parameters;
+            let pagination = PaginationParams {
+                limit: query_params.first("limit").and_then(|s| s.parse().ok()),
+                next_token: query_params.first("next_token").map(|s| s.to_string()),
+            };
+            handlers::list_shares(family_id, context, share_repo, family_repo, pagination).await
         }
 
         _ => Err(HandlerError::NotFound(format!(
@@ -62,13 +72,21 @@ pub async fn route_shares(
     method: &str,
     path: &str,
     body: &str,
+    request: &ApiGatewayV2httpRequest,
     context: &RequestContext,
     share_repo: &DynamoDbShareRepository,
     family_repo: &DynamoDbFamilyRepository,
 ) -> Result<(u16, String), HandlerError> {
     match (method, path) {
         // GET /shares - List shares for the accepter
-        ("GET", "/shares") => handlers::list_shares_for_accepter(context, share_repo).await,
+        ("GET", "/shares") => {
+            let query_params = &request.query_string_parameters;
+            let pagination = PaginationParams {
+                limit: query_params.first("limit").and_then(|s| s.parse().ok()),
+                next_token: query_params.first("next_token").map(|s| s.to_string()),
+            };
+            handlers::list_shares_for_accepter(context, share_repo, pagination).await
+        }
 
         // PUT /shares/{sid} - Update a share's permission scope
         ("PUT", p) if p.starts_with("/shares/") && !p.contains("/accept") => {
