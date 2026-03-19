@@ -112,8 +112,8 @@ Add share management to the famtrac application: backend pagination support for 
     - Generate random strings (valid emails, invalid strings, whitespace), verify correct accept/reject
     - **Validates: Requirements 4.2**
 
-- [ ] 5. Share UI components
-  - [ ] 5.1 Create `famtrac-frontend/src/components/shares/ShareStatusBadge.tsx`
+- [x] 5. Share UI components
+  - [x] 5.1 Create `famtrac-frontend/src/components/shares/ShareStatusBadge.tsx`
     - Render React Bootstrap `Badge` with variant mapping: `pending` → `warning`, `active` → `success`, `expired` → `secondary`
     - Display capitalized status text
     - _Requirements: 10.1, 10.2, 10.3_
@@ -124,7 +124,7 @@ Add share management to the famtrac application: backend pagination support for 
     - Generate random `ShareStatus` values, render component, verify correct variant and text
     - **Validates: Requirements 10.1, 10.2, 10.3**
 
-  - [ ] 5.3 Create `famtrac-frontend/src/components/shares/PermissionScopeSelector.tsx`
+  - [x] 5.3 Create `famtrac-frontend/src/components/shares/PermissionScopeSelector.tsx`
     - Render `Form.Check` checkbox for each of the 5 permission actions
     - `family_read` always checked and disabled
     - Use `getLockedActions` from `utils/permissions.ts` to determine disabled state
@@ -133,7 +133,7 @@ Add share management to the famtrac application: backend pagination support for 
     - Accept optional `disabled` prop
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7_
 
-  - [ ] 5.4 Create `famtrac-frontend/src/components/shares/ShareCard.tsx`
+  - [x] 5.4 Create `famtrac-frontend/src/components/shares/ShareCard.tsx`
     - Display accepter email, `ShareStatusBadge`, permission labels from `PERMISSION_LABELS`
     - Render "Edit" button (calls `onEdit`, disabled when `status === 'expired'`)
     - Render "Revoke" button (calls `onRevoke`)
@@ -141,7 +141,7 @@ Add share management to the famtrac application: backend pagination support for 
     - Follow `DependentCard` pattern
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-  - [ ] 5.5 Create `famtrac-frontend/src/components/shares/ShareForm.tsx`
+  - [x] 5.5 Create `famtrac-frontend/src/components/shares/ShareForm.tsx`
     - Email input with `required` and `email` validators via `useValidation`
     - Embed `PermissionScopeSelector`
     - Validate permission scope via `validatePermissionScope` before submission
@@ -149,7 +149,7 @@ Add share management to the famtrac application: backend pagination support for 
     - Follow `DependentForm` pattern
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 11.1, 11.2, 11.3, 11.4_
 
-  - [ ] 5.6 Create `famtrac-frontend/src/components/shares/ShareList.tsx`
+  - [x] 5.6 Create `famtrac-frontend/src/components/shares/ShareList.tsx`
     - Render `ShareCard` for each share in a `Row`/`Col` grid
     - Show `SkeletonCard` when loading, `ErrorMessage` on error, empty state message when no shares
     - Render "Load More" button when `hasMore` is true and list is non-empty
