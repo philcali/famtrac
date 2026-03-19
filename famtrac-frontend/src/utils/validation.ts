@@ -106,6 +106,19 @@ export function positiveInteger(field: string): ValidationRule {
   };
 }
 
+export function email(field: string): ValidationRule {
+  return (value: unknown): ValidationResult => {
+    if (typeof value !== 'string' || value.trim() === '') {
+      return { isValid: false, error: `${field} is required` };
+    }
+    const parts = value.split('@');
+    if (parts.length !== 2 || parts[0] === '' || parts[1] === '') {
+      return { isValid: false, error: 'Please enter a valid email address' };
+    }
+    return { isValid: true, error: null };
+  };
+}
+
 export function dateRange(startDate: string, endDate: string): ValidationRule {
   return (value: unknown) => {
     if (typeof value !== 'string' && typeof value !== 'number') {
