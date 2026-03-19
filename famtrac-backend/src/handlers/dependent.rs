@@ -2,6 +2,7 @@ use super::permission::check_permission;
 use crate::context::RequestContext;
 use crate::domain::{Date, Dependent, DependentId, FamilyId, PermissionAction, Timestamp};
 use crate::errors::{validate_date_of_birth, validate_dependent_name, HandlerError};
+use crate::handlers::pagination::PaginationParams;
 use crate::repository::{DependentRepository, FamilyRepository};
 use serde::{Deserialize, Serialize};
 
@@ -297,6 +298,7 @@ pub async fn list_dependents<F: FamilyRepository, D: DependentRepository>(
     context: &RequestContext,
     family_repository: &F,
     dependent_repository: &D,
+    pagination: PaginationParams,
 ) -> Result<(u16, String), HandlerError> {
     // Retrieve Family with owner-scoped key (implicit authorization) (Requirement 2.6, 4.5)
     let _family = family_repository
@@ -314,18 +316,21 @@ pub async fn list_dependents<F: FamilyRepository, D: DependentRepository>(
         PermissionAction::DependentRead,
     )?;
 
-    // List all Dependents for Family (Requirement 2.5)
-    let dependents = dependent_repository.list_by_family(family_id).await?;
+    // List Dependents for Family with pagination (Requirement 2.5)
+    let paginated_result = dependent_repository
+        .list_by_family(family_id, pagination)
+        .await?;
 
     // Convert to response and wrap in list response structure (Requirement 10.3)
-    let dependents_response: Vec<DependentResponse> = dependents
+    let dependents_response: Vec<DependentResponse> = paginated_result
+        .items
         .into_iter()
         .map(DependentResponse::from)
         .collect();
 
     let response = DependentListResponse {
         dependents: dependents_response,
-        next_token: None, // Pagination not yet implemented
+        next_token: paginated_result.next_token,
     };
 
     let response_json = serde_json::to_string(&response)
@@ -898,7 +903,18 @@ mod tests {
             .unwrap()
             .insert(dependent2.id, dependent2);
 
-        let result = list_dependents(family_id, &context, &family_repo, &dependent_repo).await;
+        let pagination = PaginationParams {
+            limit: None,
+            next_token: None,
+        };
+        let result = list_dependents(
+            family_id,
+            &context,
+            &family_repo,
+            &dependent_repo,
+            pagination,
+        )
+        .await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -924,7 +940,18 @@ mod tests {
             .unwrap()
             .insert(family_id, family);
 
-        let result = list_dependents(family_id, &context, &family_repo, &dependent_repo).await;
+        let pagination = PaginationParams {
+            limit: None,
+            next_token: None,
+        };
+        let result = list_dependents(
+            family_id,
+            &context,
+            &family_repo,
+            &dependent_repo,
+            pagination,
+        )
+        .await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -942,7 +969,18 @@ mod tests {
         let family_repo = MockFamilyRepository::new();
         let dependent_repo = MockDependentRepository::new();
 
-        let result = list_dependents(family_id, &context, &family_repo, &dependent_repo).await;
+        let pagination = PaginationParams {
+            limit: None,
+            next_token: None,
+        };
+        let result = list_dependents(
+            family_id,
+            &context,
+            &family_repo,
+            &dependent_repo,
+            pagination,
+        )
+        .await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -968,7 +1006,18 @@ mod tests {
             .unwrap()
             .insert(family_id, family);
 
-        let result = list_dependents(family_id, &context, &family_repo, &dependent_repo).await;
+        let pagination = PaginationParams {
+            limit: None,
+            next_token: None,
+        };
+        let result = list_dependents(
+            family_id,
+            &context,
+            &family_repo,
+            &dependent_repo,
+            pagination,
+        )
+        .await;
 
         assert!(result.is_err());
         match result.unwrap_err() {

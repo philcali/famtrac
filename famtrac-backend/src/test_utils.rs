@@ -91,18 +91,37 @@ pub mod mocks {
             Ok(family)
         }
 
-        async fn get_by_owner(&self, owner_id: IdentityId) -> Result<Vec<Family>, StoreError> {
+        async fn get_by_owner(
+            &self,
+            owner_id: IdentityId,
+            pagination: PaginationParams,
+        ) -> Result<PaginatedResponse<Family>, StoreError> {
             if self.should_fail {
                 return Err(StoreError::QueryError("Mock failure".to_string()));
             }
-            Ok(self
+            let all: Vec<Family> = self
                 .families
                 .lock()
                 .unwrap()
                 .values()
                 .filter(|f| f.owner_id == owner_id)
                 .cloned()
-                .collect())
+                .collect();
+            let offset = pagination
+                .next_token
+                .as_deref()
+                .and_then(|t| t.parse::<usize>().ok())
+                .unwrap_or(0);
+            let limit = pagination.effective_limit() as usize;
+            let page: Vec<Family> = all.into_iter().skip(offset).take(limit + 1).collect();
+            let has_more = page.len() > limit;
+            let items: Vec<Family> = page.into_iter().take(limit).collect();
+            let next_token = if has_more {
+                Some((offset + limit).to_string())
+            } else {
+                None
+            };
+            Ok(PaginatedResponse::with_next_token(items, next_token))
         }
     }
 
@@ -177,18 +196,37 @@ pub mod mocks {
             Ok(dependent)
         }
 
-        async fn list_by_family(&self, family_id: FamilyId) -> Result<Vec<Dependent>, StoreError> {
+        async fn list_by_family(
+            &self,
+            family_id: FamilyId,
+            pagination: PaginationParams,
+        ) -> Result<PaginatedResponse<Dependent>, StoreError> {
             if self.should_fail {
                 return Err(StoreError::QueryError("Mock failure".to_string()));
             }
-            Ok(self
+            let all: Vec<Dependent> = self
                 .dependents
                 .lock()
                 .unwrap()
                 .values()
                 .filter(|d| d.family_id == family_id)
                 .cloned()
-                .collect())
+                .collect();
+            let offset = pagination
+                .next_token
+                .as_deref()
+                .and_then(|t| t.parse::<usize>().ok())
+                .unwrap_or(0);
+            let limit = pagination.effective_limit() as usize;
+            let page: Vec<Dependent> = all.into_iter().skip(offset).take(limit + 1).collect();
+            let has_more = page.len() > limit;
+            let items: Vec<Dependent> = page.into_iter().take(limit).collect();
+            let next_token = if has_more {
+                Some((offset + limit).to_string())
+            } else {
+                None
+            };
+            Ok(PaginatedResponse::with_next_token(items, next_token))
         }
 
         async fn delete(&self, _family_id: FamilyId, id: DependentId) -> Result<(), StoreError> {
@@ -285,11 +323,15 @@ pub mod mocks {
             Ok(())
         }
 
-        async fn query(&self, params: ActivityQueryParams) -> Result<Vec<Activity>, StoreError> {
+        async fn query(
+            &self,
+            params: ActivityQueryParams,
+            pagination: PaginationParams,
+        ) -> Result<PaginatedResponse<Activity>, StoreError> {
             if self.should_fail {
                 return Err(StoreError::QueryError("Mock failure".to_string()));
             }
-            let mut activities: Vec<Activity> = self
+            let mut all: Vec<Activity> = self
                 .activities
                 .lock()
                 .unwrap()
@@ -298,8 +340,22 @@ pub mod mocks {
                 .cloned()
                 .collect();
             // Sort by timestamp descending to match GSI behavior
-            activities.sort_by(|a, b| b.timestamp.0.cmp(&a.timestamp.0));
-            Ok(activities)
+            all.sort_by(|a, b| b.timestamp.0.cmp(&a.timestamp.0));
+            let offset = pagination
+                .next_token
+                .as_deref()
+                .and_then(|t| t.parse::<usize>().ok())
+                .unwrap_or(0);
+            let limit = pagination.effective_limit() as usize;
+            let page: Vec<Activity> = all.into_iter().skip(offset).take(limit + 1).collect();
+            let has_more = page.len() > limit;
+            let items: Vec<Activity> = page.into_iter().take(limit).collect();
+            let next_token = if has_more {
+                Some((offset + limit).to_string())
+            } else {
+                None
+            };
+            Ok(PaginatedResponse::with_next_token(items, next_token))
         }
     }
 

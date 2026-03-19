@@ -4,6 +4,7 @@ use crate::domain::{
     Activity, ActivityId, ActivityType, Date, DependentId, FamilyId, PermissionAction, Timestamp,
 };
 use crate::errors::{validate_activity_timestamp, validate_activity_type, HandlerError};
+use crate::handlers::pagination::PaginationParams;
 use crate::repository::{
     ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository,
 };
@@ -359,6 +360,7 @@ pub async fn query_activities<
     family_repository: &F,
     dependent_repository: &D,
     activity_repository: &A,
+    pagination: PaginationParams,
 ) -> Result<(u16, String), HandlerError> {
     // Authorize access via owner-scoped family get (implicit authorization) (Requirement 4.6)
     let _family = family_repository
@@ -403,15 +405,18 @@ pub async fn query_activities<
         activity_type,
     };
 
-    let activities = activity_repository.query(params).await?;
+    let paginated_result = activity_repository.query(params, pagination).await?;
 
     // Convert to response and wrap in list response structure (Requirement 10.3)
-    let activities_response: Vec<ActivityResponse> =
-        activities.into_iter().map(ActivityResponse::from).collect();
+    let activities_response: Vec<ActivityResponse> = paginated_result
+        .items
+        .into_iter()
+        .map(ActivityResponse::from)
+        .collect();
 
     let response = ActivityListResponse {
         activities: activities_response,
-        next_token: None, // Pagination not yet implemented
+        next_token: paginated_result.next_token,
     };
 
     let response_json = serde_json::to_string(&response)

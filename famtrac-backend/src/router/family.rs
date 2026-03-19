@@ -4,6 +4,7 @@ use crate::context::RequestContext;
 use crate::domain::FamilyId;
 use crate::errors::HandlerError;
 use crate::handlers;
+use crate::handlers::PaginationParams;
 use crate::repository::{
     DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
 };
@@ -57,7 +58,13 @@ pub async fn route_family(
     match (method, path) {
         // GET /families - List all families for authenticated identity
         ("GET", "/families") => {
-            let (_status, response_json) = handlers::list_families(context, family_repo).await?;
+            let query_params = &request.query_string_parameters;
+            let pagination = PaginationParams {
+                limit: query_params.first("limit").and_then(|s| s.parse().ok()),
+                next_token: query_params.first("next_token").map(|s| s.to_string()),
+            };
+            let (_status, response_json) =
+                handlers::list_families(context, family_repo, pagination).await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -103,11 +110,17 @@ pub async fn route_family(
         // GET /families/{id}/dependents - List dependents for a family
         ("GET", p) if p.starts_with("/families/") && p.ends_with("/dependents") => {
             let family_id = extract_uuid_param(path, "/families/", "family_id")?;
+            let query_params = &request.query_string_parameters;
+            let pagination = PaginationParams {
+                limit: query_params.first("limit").and_then(|s| s.parse().ok()),
+                next_token: query_params.first("next_token").map(|s| s.to_string()),
+            };
             let (_status, response_json) = handlers::list_dependents(
                 FamilyId(family_id),
                 context,
                 family_repo,
                 dependent_repo,
+                pagination,
             )
             .await?;
             let response: serde_json::Value =

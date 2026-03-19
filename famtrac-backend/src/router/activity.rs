@@ -9,6 +9,7 @@ use crate::domain::{
 };
 use crate::errors::HandlerError;
 use crate::handlers;
+use crate::handlers::PaginationParams;
 use crate::repository::{
     DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
 };
@@ -87,6 +88,11 @@ pub async fn route_activity(
                         _ => None,
                     });
 
+            let pagination = PaginationParams {
+                limit: query_params.first("limit").and_then(|s| s.parse().ok()),
+                next_token: query_params.first("next_token").map(|s| s.to_string()),
+            };
+
             let (_status, response_json) = handlers::query_activities(
                 family_id,
                 dependent_id,
@@ -97,6 +103,7 @@ pub async fn route_activity(
                 family_repo,
                 dependent_repo,
                 activity_repo,
+                pagination,
             )
             .await?;
             let response: serde_json::Value =
