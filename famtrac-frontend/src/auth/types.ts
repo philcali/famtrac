@@ -1,5 +1,6 @@
 export interface CognitoUser {
   sub: string;
+  username?: string;
   email?: string;
   email_verified?: boolean;
   [key: string]: unknown;

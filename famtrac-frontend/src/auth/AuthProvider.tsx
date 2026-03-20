@@ -33,6 +33,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Decode the payload (second part)
       const payload = JSON.parse(atob(parts[1]));
+      if (payload['cognito:username']) {
+        payload['username'] = payload['cognito:username'];
+      }
       return payload as CognitoUser;
     } catch (error) {
       console.error('Failed to parse ID token:', error);

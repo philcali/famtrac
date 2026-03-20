@@ -413,7 +413,7 @@ pub mod mocks {
             }
             // Check for duplicate (same family + email)
             let exists = self.shares.lock().unwrap().values().any(|s| {
-                s.family_id == share.family_id && s.accepter_email == share.accepter_email
+                s.family_id == share.family_id && s.accepter_username == share.accepter_username
             });
             if exists {
                 return Err(StoreError::ConflictError(
@@ -443,7 +443,7 @@ pub mod mocks {
 
         async fn get_by_email_and_share_id(
             &self,
-            accepter_email: &str,
+            accepter_username: &str,
             share_id: ShareId,
         ) -> Result<Option<Share>, StoreError> {
             if self.should_fail {
@@ -454,7 +454,7 @@ pub mod mocks {
                 .lock()
                 .unwrap()
                 .get(&share_id)
-                .filter(|s| s.accepter_email == accepter_email)
+                .filter(|s| s.accepter_username == accepter_username)
                 .cloned())
         }
 
@@ -523,9 +523,9 @@ pub mod mocks {
             Ok(PaginatedResponse::with_next_token(items, next_token))
         }
 
-        async fn list_by_accepter_email(
+        async fn list_by_accepter_username(
             &self,
-            email: &str,
+            username: &str,
             pagination: PaginationParams,
         ) -> Result<PaginatedResponse<Share>, StoreError> {
             if self.should_fail {
@@ -536,7 +536,7 @@ pub mod mocks {
                 .lock()
                 .unwrap()
                 .values()
-                .filter(|s| s.accepter_email == email)
+                .filter(|s| s.accepter_username == username)
                 .cloned()
                 .collect();
             let offset = pagination
@@ -556,10 +556,10 @@ pub mod mocks {
             Ok(PaginatedResponse::with_next_token(items, next_token))
         }
 
-        async fn get_by_family_and_email(
+        async fn get_by_family_and_username(
             &self,
             family_id: FamilyId,
-            accepter_email: &str,
+            accepter_username: &str,
         ) -> Result<Option<Share>, StoreError> {
             if self.should_fail {
                 return Err(StoreError::QueryError("Mock failure".to_string()));
@@ -569,7 +569,7 @@ pub mod mocks {
                 .lock()
                 .unwrap()
                 .values()
-                .find(|s| s.family_id == family_id && s.accepter_email == accepter_email)
+                .find(|s| s.family_id == family_id && s.accepter_username == accepter_username)
                 .cloned())
         }
     }

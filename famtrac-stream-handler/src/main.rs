@@ -386,7 +386,7 @@ fn parse_share_from_ddb_item(item: &HashMap<String, DdbAttributeValue>) -> Optio
     let id = get("id")?.parse().ok()?;
     let family_id = get("family_id")?.parse().ok()?;
     let requester_id = get("requester_id")?;
-    let accepter_email = get("accepter_email")?;
+    let accepter_username = get("accepter_username")?;
     let accepter_id = get("accepter_id").map(IdentityId);
 
     let scope_json = get("permission_scope")?;
@@ -409,7 +409,7 @@ fn parse_share_from_ddb_item(item: &HashMap<String, DdbAttributeValue>) -> Optio
         id: ShareId(id),
         family_id: FamilyId(family_id),
         requester_id: IdentityId(requester_id),
-        accepter_email,
+        accepter_username,
         accepter_id,
         permission_scope,
         status,
@@ -909,7 +909,7 @@ fn parse_share_from_image(image: &serde_dynamo::Item) -> Option<Share> {
     let id = get_str(image, "id")?.parse().ok()?;
     let family_id = get_str(image, "family_id")?.parse().ok()?;
     let requester_id = get_str(image, "requester_id")?;
-    let accepter_email = get_str(image, "accepter_email")?;
+    let accepter_username = get_str(image, "accepter_username")?;
     let accepter_id = get_str(image, "accepter_id").map(IdentityId);
 
     let scope_json = get_str(image, "permission_scope")?;
@@ -932,7 +932,7 @@ fn parse_share_from_image(image: &serde_dynamo::Item) -> Option<Share> {
         id: ShareId(id),
         family_id: FamilyId(family_id),
         requester_id: IdentityId(requester_id),
-        accepter_email,
+        accepter_username,
         accepter_id,
         permission_scope,
         status,
@@ -1137,7 +1137,7 @@ mod tests {
         share_id: &str,
         family_id: &str,
         requester_id: &str,
-        email: &str,
+        username: &str,
         status: &str,
         scope_json: &str,
     ) -> HashMap<String, AttributeValue> {
@@ -1145,7 +1145,7 @@ mod tests {
         m.insert("id".to_string(), s(share_id));
         m.insert("family_id".to_string(), s(family_id));
         m.insert("requester_id".to_string(), s(requester_id));
-        m.insert("accepter_email".to_string(), s(email));
+        m.insert("accepter_username".to_string(), s(username));
         m.insert("status".to_string(), s(status));
         m.insert("permission_scope".to_string(), s(scope_json));
         m.insert("created_at".to_string(), s("2025-01-01T00:00:00Z"));

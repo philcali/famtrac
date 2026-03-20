@@ -164,8 +164,8 @@ Add share management to the famtrac application: backend pagination support for 
     - Test file: `famtrac-frontend/src/components/shares/ShareList.test.tsx`
     - **Validates: Requirements 6.5, 6.7, 8.7**
 
-- [ ] 6. Page integration and routing
-  - [ ] 6.1 Update `famtrac-frontend/src/pages/FamilyDetailPage.tsx` to add shares section
+- [x] 6. Page integration and routing
+  - [x] 6.1 Update `famtrac-frontend/src/pages/FamilyDetailPage.tsx` to add shares section
     - Add "Shares" section below the existing dependents section
     - Add "Invite User" button that opens a modal with `ShareForm`
     - Use `useApi` to fetch shares via `getShares(apiClient, familyId)`
@@ -177,7 +177,7 @@ Add share management to the famtrac application: backend pagination support for 
     - Use `useApiMutation` for `createShare`, `updateShare`, `revokeShare`
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6_
 
-  - [ ] 6.2 Create `famtrac-frontend/src/pages/PendingSharesPage.tsx`
+  - [x] 6.2 Create `famtrac-frontend/src/pages/PendingSharesPage.tsx`
     - Call `getSharesForAccepter` to fetch shares for the authenticated user
     - Manage local state for accumulated shares and `nextToken` for pagination
     - Render each share with `ShareCard` (with `onAccept` prop)
@@ -187,11 +187,11 @@ Add share management to the famtrac application: backend pagination support for 
     - Display error messages from API (e.g., expired share)
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8_
 
-  - [ ] 6.3 Update `famtrac-frontend/src/components/common/Navigation.tsx`
+  - [x] 6.3 Update `famtrac-frontend/src/components/common/Navigation.tsx`
     - Add "Shared With Me" `Nav.Link` pointing to `/shares`, next to the existing "Families" link
     - _Requirements: 9.1_
 
-  - [ ] 6.4 Update `famtrac-frontend/src/App.tsx` to add `/shares` route
+  - [x] 6.4 Update `famtrac-frontend/src/App.tsx` to add `/shares` route
     - Add `<Route path="/shares" element={<ProtectedRoute><PendingSharesPage /></ProtectedRoute>} />`
     - Import `PendingSharesPage`
     - _Requirements: 9.2, 9.3_

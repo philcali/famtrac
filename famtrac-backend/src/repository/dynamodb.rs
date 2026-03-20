@@ -902,8 +902,8 @@ impl DynamoDbShareRepository {
             AttributeValue::S(share.requester_id.0.clone()),
         );
         item.insert(
-            "accepter_email".to_string(),
-            AttributeValue::S(share.accepter_email.clone()),
+            "accepter_username".to_string(),
+            AttributeValue::S(share.accepter_username.clone()),
         );
         if let Some(ref accepter_id) = share.accepter_id {
             item.insert(
@@ -964,7 +964,7 @@ impl DynamoDbShareRepository {
         let mut item = self.share_attributes(share);
         item.insert(
             "PK".to_string(),
-            AttributeValue::S(format!("SHARE_EMAIL#{}", share.accepter_email)),
+            AttributeValue::S(format!("SHARE_USERNAME#{}", share.accepter_username)),
         );
         item.insert(
             "SK".to_string(),
@@ -1002,8 +1002,8 @@ impl DynamoDbShareRepository {
             .ok_or_else(|| StoreError::QueryError("Missing share requester_id".to_string()))?
             .clone();
 
-        let accepter_email = item
-            .get("accepter_email")
+        let accepter_username = item
+            .get("accepter_username")
             .and_then(|v| v.as_s().ok())
             .ok_or_else(|| StoreError::QueryError("Missing share accepter_email".to_string()))?
             .clone();
@@ -1055,7 +1055,7 @@ impl DynamoDbShareRepository {
             id: ShareId(id),
             family_id: FamilyId(family_id),
             requester_id: IdentityId(requester_id),
-            accepter_email,
+            accepter_username,
             accepter_id,
             permission_scope,
             status,
@@ -1206,7 +1206,7 @@ impl ShareRepository for DynamoDbShareRepository {
             .table_name(&self.table_name)
             .key(
                 "PK",
-                AttributeValue::S(format!("SHARE_EMAIL#{}", share.accepter_email)),
+                AttributeValue::S(format!("SHARE_USERNAME#{}", share.accepter_username)),
             )
             .key("SK", AttributeValue::S(format!("SHARE#{}", share_id.0)))
             .build()
@@ -1263,9 +1263,9 @@ impl ShareRepository for DynamoDbShareRepository {
         Ok(PaginatedResponse::with_next_token(shares, next_token))
     }
 
-    async fn list_by_accepter_email(
+    async fn list_by_accepter_username(
         &self,
-        email: &str,
+        username: &str,
         pagination: PaginationParams,
     ) -> Result<PaginatedResponse<Share>, StoreError> {
         let exclusive_start_key = decode_next_token(&pagination.next_token)?;
@@ -1275,7 +1275,10 @@ impl ShareRepository for DynamoDbShareRepository {
             .query()
             .table_name(&self.table_name)
             .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
-            .expression_attribute_values(":pk", AttributeValue::S(format!("SHARE_EMAIL#{}", email)))
+            .expression_attribute_values(
+                ":pk",
+                AttributeValue::S(format!("SHARE_USERNAME#{}", username)),
+            )
             .expression_attribute_values(":sk_prefix", AttributeValue::S("SHARE#".to_string()))
             .limit(pagination.effective_limit() as i32);
 
@@ -1297,10 +1300,10 @@ impl ShareRepository for DynamoDbShareRepository {
         Ok(PaginatedResponse::with_next_token(shares, next_token))
     }
 
-    async fn get_by_family_and_email(
+    async fn get_by_family_and_username(
         &self,
         family_id: FamilyId,
-        accepter_email: &str,
+        accepter_username: &str,
     ) -> Result<Option<Share>, StoreError> {
         let result = self
             .client
@@ -1310,7 +1313,7 @@ impl ShareRepository for DynamoDbShareRepository {
             .filter_expression("family_id = :fid")
             .expression_attribute_values(
                 ":pk",
-                AttributeValue::S(format!("SHARE_EMAIL#{}", accepter_email)),
+                AttributeValue::S(format!("SHARE_USERNAME#{}", accepter_username)),
             )
             .expression_attribute_values(":sk_prefix", AttributeValue::S("SHARE#".to_string()))
             .expression_attribute_values(":fid", AttributeValue::S(family_id.0.to_string()))

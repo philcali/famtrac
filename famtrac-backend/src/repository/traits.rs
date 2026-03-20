@@ -133,17 +133,17 @@ pub trait ShareRepository: Send + Sync {
         pagination: PaginationParams,
     ) -> Result<PaginatedResponse<Share>, StoreError>;
 
-    /// List all shares by accepter email (email partition lookup)
-    async fn list_by_accepter_email(
+    /// List all shares by accepter username (username partition lookup)
+    async fn list_by_accepter_username(
         &self,
-        email: &str,
+        username: &str,
         pagination: PaginationParams,
     ) -> Result<PaginatedResponse<Share>, StoreError>;
 
-    /// Get a share by family ID and accepter email (email partition, filtered by family_id)
-    async fn get_by_family_and_email(
+    /// Get a share by family ID and accepter username (username partition, filtered by family_id)
+    async fn get_by_family_and_username(
         &self,
         family_id: FamilyId,
-        accepter_email: &str,
+        accepter_username: &str,
     ) -> Result<Option<Share>, StoreError>;
 }

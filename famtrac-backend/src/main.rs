@@ -73,9 +73,9 @@ async fn handle_request(
     cors_config: &CorsConfig,
 ) -> Result<ApiGatewayV2httpResponse, Error> {
     // Log request for debugging (Requirement 9.4)
-    eprintln!(
+    println!(
         "Received request: {} {}",
-        request.http_method,
+        request.request_context.http.method,
         request.raw_path.as_deref().unwrap_or("/")
     );
 
