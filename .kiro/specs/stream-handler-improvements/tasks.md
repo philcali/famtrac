@@ -39,8 +39,8 @@ Refactor the `famtrac-stream-handler` monolith into a modular classify-and-route
 - [ ] 2. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 3. Extract classifier and implement RecordChange expansion
-  - [ ] 3.1 Create `classify.rs` with classifier logic
+- [x] 3. Extract classifier and implement RecordChange expansion
+  - [x] 3.1 Create `classify.rs` with classifier logic
     - Move `classify_record`, `classify_share_record`, `get_str`, `record_type_from_sk`, `is_owner_partition`, `convert_image` into `famtrac-stream-handler/src/classify.rs`
     - Expand `RecordChange::ShareRevoked` from `ShareRevoked(ShareId)` to `ShareRevoked { share_id, family_id, accepter_id }` extracting fields from old image
     - Add `ChangeKind` enum and `change_kind(rc: &RecordChange) -> Option<ChangeKind>` function
