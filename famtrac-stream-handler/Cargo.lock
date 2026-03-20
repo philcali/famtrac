@@ -741,6 +741,7 @@ dependencies = [
  "aws-config",
  "aws-sdk-dynamodb",
  "aws_lambda_events",
+ "base64 0.22.1",
  "chrono",
  "lambda_runtime",
  "serde",

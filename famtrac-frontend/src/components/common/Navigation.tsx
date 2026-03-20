@@ -34,6 +34,9 @@ export function Navigation() {
             <Nav.Link as={Link} to="/">
               Families
             </Nav.Link>
+            <Nav.Link as={Link} to="/shares">
+              Shared With Me
+            </Nav.Link>
           </Nav>
           <Nav className="ms-auto align-items-center">
             {user && (

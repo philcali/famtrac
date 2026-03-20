@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RequestContext {
     pub identity_id: IdentityId,
-    pub email: Option<String>,
+    pub username: Option<String>,
 }
 
 impl RequestContext {
@@ -26,14 +26,14 @@ impl RequestContext {
             .map(|s| s.to_string())
             .ok_or(AuthError::MissingIdentity)?;
 
-        let email = jwt
+        let username = jwt
             .as_ref()
-            .and_then(|jwt| jwt.claims.get("email"))
+            .and_then(|jwt| jwt.claims.get("username"))
             .map(|s| s.to_string());
 
         Ok(RequestContext {
             identity_id: IdentityId::new(identity_id),
-            email,
+            username,
         })
     }
 
@@ -55,7 +55,7 @@ mod tests {
     fn create_test_context_with_identity(identity_id: &str) -> ApiGatewayV2httpRequestContext {
         let mut claims = HashMap::new();
         claims.insert("sub".to_string(), identity_id.to_string());
-        claims.insert("email".to_string(), "test@example.com".to_string());
+        claims.insert("username".to_string(), "test_user".to_string());
 
         let jwt = aws_lambda_events::apigw::ApiGatewayRequestAuthorizerJwtDescription {
             claims,
@@ -89,7 +89,7 @@ mod tests {
         assert!(result.is_ok());
         let context = result.unwrap();
         assert_eq!(context.identity_id.0, "user-123");
-        assert_eq!(context.email, Some("test@example.com".to_string()));
+        assert_eq!(context.username, Some("test_user".to_string()));
     }
 
     #[test]
@@ -143,7 +143,7 @@ mod tests {
     fn test_validate_always_succeeds() {
         let context = RequestContext {
             identity_id: IdentityId::new("user-123".to_string()),
-            email: None,
+            username: None,
         };
 
         assert!(context.validate().is_ok());
@@ -156,7 +156,7 @@ mod tests {
 
         assert!(result.is_ok());
         let context = result.unwrap();
-        assert_eq!(context.email, Some("test@example.com".to_string()));
+        assert_eq!(context.username, Some("test_user".to_string()));
     }
 
     #[test]
@@ -182,6 +182,6 @@ mod tests {
         assert!(result.is_ok());
         let context = result.unwrap();
         assert_eq!(context.identity_id.0, "user-123");
-        assert_eq!(context.email, None);
+        assert_eq!(context.username, None);
     }
 }

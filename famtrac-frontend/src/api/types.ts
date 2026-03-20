@@ -104,7 +104,7 @@ export interface ErrorResponse {
 // Share API types
 
 export interface CreateShareRequest {
-  accepter_email: string;
+  accepter_username: string;
   permission_scope: { actions: string[] };
 }
 
@@ -116,7 +116,7 @@ export interface ShareResponse {
   id: string;
   family_id: string;
   requester_id: string;
-  accepter_email: string;
+  accepter_username: string;
   accepter_id?: string;
   permission_scope: { actions: string[] };
   status: string;

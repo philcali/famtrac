@@ -64,7 +64,8 @@ export class FamtracAuthorization extends Construct implements IFamtracAuthoriza
             email: true,
         });
         const readAttributes = writeAttributes.withStandardAttributes({
-            emailVerified: true
+            email: true,
+            emailVerified: true,
         });
 
         let redirectOrigins = [];

@@ -25,7 +25,7 @@ fn apply_expiration(mut share: Share) -> Share {
 /// Request body for creating a new share
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreateShareRequest {
-    pub accepter_email: String,
+    pub accepter_username: String,
     pub permission_scope: PermissionScope,
 }
 
@@ -41,7 +41,7 @@ pub struct ShareResponse {
     pub id: ShareId,
     pub family_id: FamilyId,
     pub requester_id: String,
-    pub accepter_email: String,
+    pub accepter_username: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub accepter_id: Option<String>,
     pub permission_scope: PermissionScope,
@@ -66,7 +66,7 @@ impl From<Share> for ShareResponse {
             id: share.id,
             family_id: share.family_id,
             requester_id: share.requester_id.0,
-            accepter_email: share.accepter_email,
+            accepter_username: share.accepter_username,
             accepter_id: share.accepter_id.map(|id| id.0),
             permission_scope: share.permission_scope,
             status: share.status,
@@ -107,8 +107,8 @@ pub async fn create_share<SR: ShareRepository, FR: FamilyRepository>(
     let family = family.ok_or(HandlerError::NotFound("Family not found".to_string()))?;
 
     // Reject self-sharing (Requirement 1.4)
-    if let Some(ref email) = context.email {
-        if email == &request.accepter_email {
+    if let Some(ref username) = context.username {
+        if username == &request.accepter_username {
             return Err(HandlerError::Validation(ValidationError {
                 field: "accepter_email".to_string(),
                 message: "cannot share with yourself".to_string(),
@@ -119,7 +119,7 @@ pub async fn create_share<SR: ShareRepository, FR: FamilyRepository>(
 
     // Check for duplicate share (Requirement 1.3)
     let existing = share_repo
-        .get_by_family_and_email(family_id, &request.accepter_email)
+        .get_by_family_and_username(family_id, &request.accepter_username)
         .await?;
     if existing.is_some() {
         return Err(HandlerError::Conflict(
@@ -135,7 +135,7 @@ pub async fn create_share<SR: ShareRepository, FR: FamilyRepository>(
         id: ShareId::new(),
         family_id: family.id,
         requester_id: context.identity_id.clone(),
-        accepter_email: request.accepter_email,
+        accepter_username: request.accepter_username,
         accepter_id: None,
         permission_scope: request.permission_scope,
         status: ShareStatus::Pending,
@@ -286,19 +286,21 @@ pub async fn accept_share<SR: ShareRepository>(
     share_repo: &SR,
 ) -> Result<(u16, String), HandlerError> {
     // Get accepter email from context (Requirement 9.1, 9.2)
-    let accepter_email = context.email.as_ref().ok_or_else(|| {
-        HandlerError::Forbidden("Email not available in authentication context".to_string())
+    let accepter_username = context.username.as_ref().ok_or_else(|| {
+        HandlerError::Forbidden("Username not available in authentication context".to_string())
     })?;
 
     // Look up share by accepter email and share ID (Requirement 9.4)
     let share = share_repo
-        .get_by_email_and_share_id(accepter_email, share_id)
+        .get_by_email_and_share_id(accepter_username, share_id)
         .await?;
     let mut share = share.ok_or(HandlerError::NotFound("Share not found".to_string()))?;
 
     // Verify accepter email matches (Requirement 9.2)
-    if &share.accepter_email != accepter_email {
-        return Err(HandlerError::Forbidden("Email does not match".to_string()));
+    if &share.accepter_username != accepter_username {
+        return Err(HandlerError::Forbidden(
+            "Username does not match".to_string(),
+        ));
     }
 
     // Verify share is in Pending status (Requirement 9.3)
@@ -347,11 +349,13 @@ pub async fn list_shares_for_accepter<SR: ShareRepository>(
     share_repo: &SR,
     pagination: PaginationParams,
 ) -> Result<(u16, String), HandlerError> {
-    let email = context.email.as_ref().ok_or_else(|| {
-        HandlerError::Forbidden("Email not available in authentication context".to_string())
+    let username = context.username.as_ref().ok_or_else(|| {
+        HandlerError::Forbidden("Username not available in authentication context".to_string())
     })?;
 
-    let paginated_result = share_repo.list_by_accepter_email(email, pagination).await?;
+    let paginated_result = share_repo
+        .list_by_accepter_username(username, pagination)
+        .await?;
 
     // Apply expiration check to pending shares (Requirement 10.1)
     let shares_response: Vec<ShareResponse> = paginated_result

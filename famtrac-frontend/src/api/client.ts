@@ -64,6 +64,11 @@ export class ApiClient {
         return { error: 'Authentication required' };
       }
 
+      // Handle 204 No Content - no body to parse
+      if (response.status === 204) {
+        return { data: undefined as unknown as T };
+      }
+
       // Parse JSON response
       const data = await response.json();
 

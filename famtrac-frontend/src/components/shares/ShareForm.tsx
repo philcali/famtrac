@@ -4,7 +4,7 @@ import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { PermissionScopeSelector } from './PermissionScopeSelector';
 import { useValidation } from '../../hooks/useValidation';
-import { required, email } from '../../utils/validation';
+import { required } from '../../utils/validation';
 import { validatePermissionScope } from '../../utils/permissions';
 import type { PermissionAction } from '../../types/domain';
 import type { CreateShareRequest } from '../../api/types';
@@ -25,18 +25,18 @@ export interface ShareFormProps {
  * - Calls onSubmit with CreateShareRequest data (Requirement 4.4)
  */
 export function ShareForm({ onSubmit, onCancel, loading = false }: ShareFormProps) {
-  const [accepterEmail, setAccepterEmail] = useState('');
+  const [accepterUsername, setAccepterUsername] = useState('');
   const [selectedActions, setSelectedActions] = useState<PermissionAction[]>(['family_read']);
   const [scopeError, setScopeError] = useState<string | null>(null);
 
   const { validate, validateAll, errors, clearError } = useValidation({
-    email: [required('Email'), email('Email')],
+    username: [required('Username')],
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
 
-    const validation = validateAll({ email: accepterEmail });
+    const validation = validateAll({ email: accepterUsername });
     if (!validation.isValid) {
       return;
     }
@@ -49,20 +49,20 @@ export function ShareForm({ onSubmit, onCancel, loading = false }: ShareFormProp
 
     setScopeError(null);
     await onSubmit({
-      accepter_email: accepterEmail,
+      accepter_username: accepterUsername,
       permission_scope: { actions: selectedActions },
     });
   };
 
-  const handleEmailBlur = () => {
-    validate('email', accepterEmail);
+  const handleUsernameChange = (value: string) => {
+    setAccepterUsername(value);
+    if (errors.username) {
+      clearError('username');
+    }
   };
 
-  const handleEmailChange = (value: string) => {
-    setAccepterEmail(value);
-    if (errors.email) {
-      clearError('email');
-    }
+  const handleUsernameBlur = () => {
+    validate('username', accepterUsername);
   };
 
   const handleActionsChange = (actions: PermissionAction[]) => {
@@ -73,19 +73,18 @@ export function ShareForm({ onSubmit, onCancel, loading = false }: ShareFormProp
   };
 
   const hasErrors = Object.keys(errors).length > 0 || scopeError !== null;
-  const isFormValid = accepterEmail.trim() !== '' && !hasErrors;
+  const isFormValid = accepterUsername.trim() !== '' && !hasErrors;
 
   return (
     <Form onSubmit={handleSubmit}>
       <Input
-        label="Email"
-        type="email"
-        value={accepterEmail}
-        onChange={handleEmailChange}
-        onBlur={handleEmailBlur}
+        label="Username"
+        value={accepterUsername}
+        onChange={handleUsernameChange}
         error={errors.email}
+        onBlur={handleUsernameBlur}
         required
-        placeholder="Enter accepter's email"
+        placeholder="Enter accepter's username"
         disabled={loading}
       />
 

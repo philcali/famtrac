@@ -43,7 +43,7 @@ async fn test_success_response_includes_cors_headers() {
     let repository = MockFamilyRepository::new();
     let context = RequestContext {
         identity_id: IdentityId("test-user".to_string()),
-        email: None,
+        username: None,
     };
 
     let request_body = r#"{"name":"Test Family"}"#;
@@ -73,7 +73,7 @@ async fn test_error_response_includes_cors_headers() {
     let repository = MockFamilyRepository::new();
     let context = RequestContext {
         identity_id: IdentityId("test-user".to_string()),
-        email: None,
+        username: None,
     };
 
     // Invalid JSON should trigger an error
@@ -104,7 +104,7 @@ async fn test_not_found_response_includes_cors_headers() {
     let repository = MockFamilyRepository::new();
     let context = RequestContext {
         identity_id: IdentityId("test-user".to_string()),
-        email: None,
+        username: None,
     };
 
     let non_existent_id = FamilyId::new();

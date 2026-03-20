@@ -349,7 +349,7 @@ mod tests {
     fn create_test_context(identity_id: &str) -> RequestContext {
         RequestContext {
             identity_id: IdentityId::new(identity_id.to_string()),
-            email: None,
+            username: None,
         }
     }
 

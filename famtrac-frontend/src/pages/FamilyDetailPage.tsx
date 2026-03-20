@@ -1,8 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Modal, Card } from 'react-bootstrap';
+import { Container, Row, Col, Modal, Card, Form } from 'react-bootstrap';
 import { DependentList } from '../components/dependents/DependentList';
 import { DependentForm } from '../components/dependents/DependentForm';
+import { ShareList } from '../components/shares/ShareList';
+import { ShareForm } from '../components/shares/ShareForm';
+import { PermissionScopeSelector } from '../components/shares/PermissionScopeSelector';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { SuccessMessage } from '../components/common/SuccessMessage';
 import { ErrorMessage } from '../components/common/ErrorMessage';
@@ -18,7 +21,17 @@ import {
   updateDependent,
   deleteDependent,
 } from '../api/dependents';
-import type { Dependent } from '../types/domain';
+import { getShares, createShare, updateShare, revokeShare } from '../api/shares';
+import type { Dependent, Share, PermissionAction } from '../types/domain';
+import type { CreateShareRequest, UpdateShareRequest } from '../api/types';
+
+function mapShares(raw: { permission_scope: { actions: string[] }; status: string }[]): Share[] {
+  return raw.map((s) => ({
+    ...s,
+    permission_scope: { actions: s.permission_scope.actions as PermissionAction[] },
+    status: s.status as Share['status'],
+  })) as Share[];
+}
 
 /**
  * FamilyDetailPage - View single family with dependents
@@ -35,6 +48,15 @@ export function FamilyDetailPage() {
   const [editingDependent, setEditingDependent] = useState<Dependent | undefined>();
   const [deletingDependent, setDeletingDependent] = useState<Dependent | undefined>();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Share state
+  const [showShareForm, setShowShareForm] = useState(false);
+  const [editingShare, setEditingShare] = useState<Share | undefined>();
+  const [editPermissions, setEditPermissions] = useState<PermissionAction[]>([]);
+  const [revokingShare, setRevokingShare] = useState<Share | undefined>();
+  const [extraShares, setExtraShares] = useState<Share[]>([]);
+  const [lastSharesNextToken, setLastSharesNextToken] = useState<string | null>(null);
+  const [loadingMoreShares, setLoadingMoreShares] = useState(false);
 
   const apiClient = createApiClient(getToken);
 
@@ -70,6 +92,35 @@ export function FamilyDetailPage() {
   // Delete dependent mutation
   const { mutate: deleteDependentMutation, loading: deleteLoading } = useApiMutation((id: string) =>
     deleteDependent(apiClient, familyId ?? 'NA', id)
+  );
+
+  // Fetch shares for this family
+  const {
+    data: sharesData,
+    loading: sharesLoading,
+    error: sharesError,
+    refetch: refetchShares,
+  } = useApi(() => getShares(apiClient, familyId ?? 'NA'), [familyId]);
+
+  // Derive shares from fetched data + any extra pages loaded via "Load More"
+  const initialShares = useMemo(
+    () => (sharesData ? mapShares(sharesData.shares) : []),
+    [sharesData]
+  );
+  const shares = useMemo(() => [...initialShares, ...extraShares], [initialShares, extraShares]);
+  const sharesNextToken = lastSharesNextToken ?? sharesData?.next_token ?? null;
+
+  // Share mutations
+  const { mutate: createShareMutation, loading: createShareLoading } = useApiMutation(
+    (data: CreateShareRequest) => createShare(apiClient, familyId ?? 'NA', data)
+  );
+
+  const { mutate: updateShareMutation, loading: updateShareLoading } = useApiMutation(
+    ({ id, data }: { id: string; data: UpdateShareRequest }) => updateShare(apiClient, id, data)
+  );
+
+  const { mutate: revokeShareMutation, loading: revokeShareLoading } = useApiMutation(
+    (id: string) => revokeShare(apiClient, id)
   );
 
   // Handlers
@@ -137,6 +188,85 @@ export function FamilyDetailPage() {
 
   const handleDeleteCancel = () => {
     setDeletingDependent(undefined);
+  };
+
+  // Share handlers
+  const handleInviteClick = () => {
+    setShowShareForm(true);
+  };
+
+  const handleShareFormSubmit = async (data: CreateShareRequest) => {
+    const response = await createShareMutation(data);
+    if (!response.error) {
+      setSuccessMessage('Share created successfully');
+      setShowShareForm(false);
+      setExtraShares([]);
+      setLastSharesNextToken(null);
+      refetchShares();
+    }
+  };
+
+  const handleShareFormCancel = () => {
+    setShowShareForm(false);
+  };
+
+  const handleShareEditClick = (share: Share) => {
+    setEditingShare(share);
+    setEditPermissions([...share.permission_scope.actions]);
+  };
+
+  const handleShareEditSubmit = async () => {
+    if (editingShare) {
+      const response = await updateShareMutation({
+        id: editingShare.id,
+        data: { permission_scope: { actions: editPermissions } },
+      });
+      if (!response.error) {
+        setSuccessMessage('Share updated successfully');
+        setEditingShare(undefined);
+        setEditPermissions([]);
+        setExtraShares([]);
+        setLastSharesNextToken(null);
+        refetchShares();
+      }
+    }
+  };
+
+  const handleShareEditCancel = () => {
+    setEditingShare(undefined);
+    setEditPermissions([]);
+  };
+
+  const handleShareRevokeClick = (share: Share) => {
+    setRevokingShare(share);
+  };
+
+  const handleShareRevokeConfirm = async () => {
+    if (revokingShare) {
+      const response = await revokeShareMutation(revokingShare.id);
+      if (!response.error) {
+        setSuccessMessage('Share revoked successfully');
+        setRevokingShare(undefined);
+        setExtraShares([]);
+        setLastSharesNextToken(null);
+        refetchShares();
+      }
+    }
+  };
+
+  const handleShareRevokeCancel = () => {
+    setRevokingShare(undefined);
+  };
+
+  const handleLoadMoreShares = async () => {
+    if (!sharesNextToken) return;
+    setLoadingMoreShares(true);
+    const response = await getShares(apiClient, familyId ?? 'NA', { next_token: sharesNextToken });
+    if (response.data) {
+      setExtraShares((prev) => [...prev, ...mapShares(response.data!.shares)]);
+      setLastSharesNextToken(response.data.next_token ?? null);
+    }
+    setLoadingMoreShares(false);
   };
 
   const handleSuccessClose = useCallback(() => {
@@ -221,6 +351,27 @@ export function FamilyDetailPage() {
         onView={handleViewClick}
       />
 
+      {/* Shares Section */}
+      <Row className="mb-3 mt-4">
+        <Col>
+          <h2>Shares</h2>
+        </Col>
+        <Col xs="auto">
+          <Button onClick={handleInviteClick}>Invite User</Button>
+        </Col>
+      </Row>
+
+      <ShareList
+        shares={shares}
+        loading={sharesLoading}
+        error={sharesError || undefined}
+        hasMore={!!sharesNextToken}
+        loadingMore={loadingMoreShares}
+        onLoadMore={handleLoadMoreShares}
+        onEdit={handleShareEditClick}
+        onRevoke={handleShareRevokeClick}
+      />
+
       {/* Create/Edit Modal */}
       <Modal show={showForm} onHide={handleFormCancel} centered>
         <Modal.Header closeButton>
@@ -248,6 +399,64 @@ export function FamilyDetailPage() {
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
         loading={deleteLoading}
+      />
+
+      {/* Create Share Modal */}
+      <Modal show={showShareForm} onHide={handleShareFormCancel} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Invite User</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <ShareForm
+            familyId={familyId ?? 'NA'}
+            onSubmit={handleShareFormSubmit}
+            onCancel={handleShareFormCancel}
+            loading={createShareLoading}
+          />
+        </Modal.Body>
+      </Modal>
+
+      {/* Edit Share Permissions Modal */}
+      <Modal show={!!editingShare} onHide={handleShareEditCancel} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Edit Permissions</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-3">
+            <Form.Label>Permissions</Form.Label>
+            <PermissionScopeSelector value={editPermissions} onChange={setEditPermissions} />
+          </Form.Group>
+          <div className="d-flex gap-2">
+            <Button
+              variant="primary"
+              onClick={handleShareEditSubmit}
+              loading={updateShareLoading}
+              disabled={updateShareLoading}
+            >
+              Save
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={handleShareEditCancel}
+              disabled={updateShareLoading}
+            >
+              Cancel
+            </Button>
+          </div>
+        </Modal.Body>
+      </Modal>
+
+      {/* Revoke Share Confirmation Dialog */}
+      <ConfirmDialog
+        show={!!revokingShare}
+        title="Revoke Share"
+        message={`Are you sure you want to revoke the share for "${revokingShare?.accepter_email}"? This action cannot be undone.`}
+        confirmText="Revoke"
+        cancelText="Cancel"
+        confirmVariant="danger"
+        onConfirm={handleShareRevokeConfirm}
+        onCancel={handleShareRevokeCancel}
+        loading={revokeShareLoading}
       />
     </Container>
   );

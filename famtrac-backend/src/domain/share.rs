@@ -97,7 +97,7 @@ pub struct Share {
     pub id: ShareId,
     pub family_id: FamilyId,
     pub requester_id: IdentityId,
-    pub accepter_email: String,
+    pub accepter_username: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub accepter_id: Option<IdentityId>,
     pub permission_scope: PermissionScope,
