@@ -41,7 +41,7 @@ export function Navigation() {
           <Nav className="ms-auto align-items-center">
             {user && (
               <Navbar.Text className="me-3">
-                Signed in as: <strong>{String(user.email || user.sub)}</strong>
+                Signed in as: <strong>{String(user.username || user.sub)}</strong>
               </Navbar.Text>
             )}
             <Button variant="outline-light" size="sm" onClick={handleLogout}>
