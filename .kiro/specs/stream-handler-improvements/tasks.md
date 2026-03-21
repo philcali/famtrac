@@ -68,8 +68,8 @@ Refactor the `famtrac-stream-handler` monolith into a modular classify-and-route
     - Generate random `HashMap` images with random `sync_token` values; assert stripping produces a map identical to original minus `sync_token` key
     - **Validates: Requirements 6.5**
 
-- [ ] 4. Implement Router
-  - [ ] 4.1 Create `router.rs` with Router struct
+- [x] 4. Implement Router
+  - [x] 4.1 Create `router.rs` with Router struct
     - Create `famtrac-stream-handler/src/router.rs`
     - Implement `Router` with `HashMap<ChangeKind, Vec<HandlerFn>>` dispatch table
     - Implement `register(kind, handler)` and `dispatch(client, table_name, change)` methods
