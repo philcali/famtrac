@@ -8,13 +8,14 @@ use std::sync::Arc;
 use crate::classify::{change_kind, ChangeKind, RecordChange};
 
 /// A handler function signature. Receives the DDB client, table name,
-/// and a shared reference to the classified RecordChange.
+/// the classified RecordChange, and the sync_token for the current invocation.
 /// Uses `Arc<RecordChange>` so multiple handlers can process the same event.
 pub type HandlerFn = Box<
     dyn Fn(
             Arc<Client>,
             String,
             Arc<RecordChange>,
+            String,
         ) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send>>
         + Send
         + Sync,
@@ -34,6 +35,10 @@ impl Router {
         }
     }
 
+    pub fn supported_change_kinds(&self) -> Vec<ChangeKind> {
+        self.handlers.keys().cloned().collect()
+    }
+
     /// Register a handler for the given `ChangeKind`. Multiple handlers can be
     /// registered for the same kind — they all execute on dispatch.
     pub fn register(&mut self, kind: ChangeKind, handler: HandlerFn) {
@@ -51,6 +56,7 @@ impl Router {
         client: Arc<Client>,
         table_name: &str,
         change: RecordChange,
+        sync_token: &str,
     ) -> Result<(), Error> {
         let kind = match change_kind(&change) {
             Some(k) => k,
@@ -70,6 +76,7 @@ impl Router {
                 Arc::clone(&client),
                 table_name.to_string(),
                 Arc::clone(&change),
+                sync_token.to_string(),
             )
             .await
             {
@@ -130,7 +137,7 @@ mod tests {
         let router = Router::new();
         let client = test_client();
         let result = router
-            .dispatch(client, "table", RecordChange::Ignored)
+            .dispatch(client, "table", RecordChange::Ignored, "test-token")
             .await;
         assert!(result.is_ok());
     }
@@ -140,7 +147,7 @@ mod tests {
         let router = Router::new();
         let client = test_client();
         let change = RecordChange::ShareActivated(test_share());
-        let result = router.dispatch(client, "table", change).await;
+        let result = router.dispatch(client, "table", change, "test-token").await;
         assert!(result.is_ok());
     }
 
@@ -152,7 +159,7 @@ mod tests {
         let mut router = Router::new();
         router.register(
             ChangeKind::ShareActivated,
-            Box::new(move |_client, _table, _change| {
+            Box::new(move |_client, _table, _change, _sync_token| {
                 let c = Arc::clone(&counter_clone);
                 Box::pin(async move {
                     c.fetch_add(1, Ordering::SeqCst);
@@ -163,7 +170,7 @@ mod tests {
 
         let client = test_client();
         let change = RecordChange::ShareActivated(test_share());
-        let result = router.dispatch(client, "table", change).await;
+        let result = router.dispatch(client, "table", change, "test-token").await;
         assert!(result.is_ok());
         assert_eq!(counter.load(Ordering::SeqCst), 1);
     }
@@ -177,7 +184,7 @@ mod tests {
             let c = Arc::clone(&counter);
             router.register(
                 ChangeKind::ShareActivated,
-                Box::new(move |_client, _table, _change| {
+                Box::new(move |_client, _table, _change, _sync_token| {
                     let c = Arc::clone(&c);
                     Box::pin(async move {
                         c.fetch_add(1, Ordering::SeqCst);
@@ -189,7 +196,7 @@ mod tests {
 
         let client = test_client();
         let change = RecordChange::ShareActivated(test_share());
-        let result = router.dispatch(client, "table", change).await;
+        let result = router.dispatch(client, "table", change, "test-token").await;
         assert!(result.is_ok());
         assert_eq!(counter.load(Ordering::SeqCst), 3);
     }
@@ -204,7 +211,7 @@ mod tests {
         let c = Arc::clone(&activated_counter);
         router.register(
             ChangeKind::ShareActivated,
-            Box::new(move |_client, _table, _change| {
+            Box::new(move |_client, _table, _change, _sync_token| {
                 let c = Arc::clone(&c);
                 Box::pin(async move {
                     c.fetch_add(1, Ordering::SeqCst);
@@ -216,7 +223,7 @@ mod tests {
         let c = Arc::clone(&revoked_counter);
         router.register(
             ChangeKind::ShareRevoked,
-            Box::new(move |_client, _table, _change| {
+            Box::new(move |_client, _table, _change, _sync_token| {
                 let c = Arc::clone(&c);
                 Box::pin(async move {
                     c.fetch_add(1, Ordering::SeqCst);
@@ -227,7 +234,10 @@ mod tests {
 
         let client = test_client();
         let change = RecordChange::ShareActivated(test_share());
-        router.dispatch(client, "table", change).await.unwrap();
+        router
+            .dispatch(client, "table", change, "test-token")
+            .await
+            .unwrap();
 
         assert_eq!(activated_counter.load(Ordering::SeqCst), 1);
         assert_eq!(revoked_counter.load(Ordering::SeqCst), 0);
@@ -243,7 +253,7 @@ mod tests {
         let c = Arc::clone(&counter);
         router.register(
             ChangeKind::ShareActivated,
-            Box::new(move |_client, _table, _change| {
+            Box::new(move |_client, _table, _change, _sync_token| {
                 let c = Arc::clone(&c);
                 Box::pin(async move {
                     c.fetch_add(1, Ordering::SeqCst);
@@ -256,7 +266,7 @@ mod tests {
         let c = Arc::clone(&counter);
         router.register(
             ChangeKind::ShareActivated,
-            Box::new(move |_client, _table, _change| {
+            Box::new(move |_client, _table, _change, _sync_token| {
                 let c = Arc::clone(&c);
                 Box::pin(async move {
                     c.fetch_add(1, Ordering::SeqCst);
@@ -269,7 +279,7 @@ mod tests {
         let c = Arc::clone(&counter);
         router.register(
             ChangeKind::ShareActivated,
-            Box::new(move |_client, _table, _change| {
+            Box::new(move |_client, _table, _change, _sync_token| {
                 let c = Arc::clone(&c);
                 Box::pin(async move {
                     c.fetch_add(1, Ordering::SeqCst);
@@ -280,7 +290,7 @@ mod tests {
 
         let client = test_client();
         let change = RecordChange::ShareActivated(test_share());
-        let result = router.dispatch(client, "table", change).await;
+        let result = router.dispatch(client, "table", change, "test-token").await;
 
         // All 3 handlers ran despite errors
         assert_eq!(counter.load(Ordering::SeqCst), 3);
@@ -299,7 +309,7 @@ mod tests {
         let c = Arc::clone(&first_counter);
         router.register(
             ChangeKind::ResourceChanged,
-            Box::new(move |_client, _table, _change| {
+            Box::new(move |_client, _table, _change, _sync_token| {
                 let c = Arc::clone(&c);
                 Box::pin(async move {
                     c.fetch_add(1, Ordering::SeqCst);
@@ -312,7 +322,7 @@ mod tests {
         let c = Arc::clone(&second_counter);
         router.register(
             ChangeKind::ResourceChanged,
-            Box::new(move |_client, _table, _change| {
+            Box::new(move |_client, _table, _change, _sync_token| {
                 let c = Arc::clone(&c);
                 Box::pin(async move {
                     c.fetch_add(1, Ordering::SeqCst);
@@ -329,7 +339,10 @@ mod tests {
             new_image: HashMap::new(),
             old_image: HashMap::new(),
         });
-        router.dispatch(client, "table", change).await.unwrap();
+        router
+            .dispatch(client, "table", change, "test-token")
+            .await
+            .unwrap();
 
         // Both handlers invoked
         assert_eq!(first_counter.load(Ordering::SeqCst), 1);

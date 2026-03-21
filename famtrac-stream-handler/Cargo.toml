@@ -15,3 +15,6 @@ aws-config = "1.0"
 tokio = { version = "1.0", features = ["rt", "macros"] }
 serde_dynamo = "4"
 famtrac-backend = { path = "../famtrac-backend" }
+
+[dev-dependencies]
+proptest = "1"

@@ -8,8 +8,10 @@ use aws_lambda_events::event::dynamodb::Event as DynamoDbEvent;
 use aws_sdk_dynamodb::Client;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use serde::Serialize;
+use std::sync::Arc;
 
-use classify::{classify_record, RecordChange};
+use classify::{classify_record, ChangeKind, RecordChange};
+use router::Router;
 
 /// A single failed record identifier for `ReportBatchItemFailures`.
 #[derive(Debug, Serialize)]
@@ -26,70 +28,127 @@ pub struct StreamHandlerResponse {
     pub batch_item_failures: Vec<BatchItemFailure>,
 }
 
+/// Build the Router with all handler registrations.
+fn build_router() -> Router {
+    let mut router = Router::new();
+
+    // Share activation → mirror resources into accepter's partition
+    router.register(
+        ChangeKind::ShareActivated,
+        Box::new(|client, table_name, change, sync_token| {
+            Box::pin(async move {
+                if let RecordChange::ShareActivated(ref share) = *change {
+                    handlers::mirror::handle_share_activated(
+                        &client,
+                        &table_name,
+                        share,
+                        &sync_token,
+                    )
+                    .await?;
+                }
+                Ok(())
+            })
+        }),
+    );
+
+    // Share revocation → delete all mirrored records for the share
+    router.register(
+        ChangeKind::ShareRevoked,
+        Box::new(|client, table_name, change, _sync_token| {
+            Box::pin(async move {
+                if let RecordChange::ShareRevoked {
+                    ref share_id,
+                    ref family_id,
+                    ref accepter_id,
+                } = *change
+                {
+                    handlers::revoke::handle_share_revoked(
+                        &client,
+                        &table_name,
+                        share_id,
+                        family_id,
+                        accepter_id,
+                    )
+                    .await?;
+                }
+                Ok(())
+            })
+        }),
+    );
+
+    // Permission scope updated → update mirrored records
+    router.register(
+        ChangeKind::SharePermissionUpdated,
+        Box::new(|client, table_name, change, _sync_token| {
+            Box::pin(async move {
+                if let RecordChange::SharePermissionUpdated(ref share) = *change {
+                    handlers::permission::handle_permission_updated(&client, &table_name, share)
+                        .await?;
+                }
+                Ok(())
+            })
+        }),
+    );
+
+    // Resource changed → propagate to mirrors or write back to owner
+    router.register(
+        ChangeKind::ResourceChanged,
+        Box::new(|client, table_name, change, sync_token| {
+            Box::pin(async move {
+                if let RecordChange::ResourceChanged(ref rc) = *change {
+                    handlers::propagate::handle_resource_changed(
+                        &client,
+                        &table_name,
+                        rc,
+                        &sync_token,
+                    )
+                    .await?;
+                }
+                Ok(())
+            })
+        }),
+    );
+
+    router
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
-    let client = Client::new(&config);
+    let client = Arc::new(Client::new(&config));
     let table_name = std::env::var("TABLE_NAME").unwrap_or_else(|_| "FamtracData".to_string());
+    let router = Arc::new(build_router());
 
     let handler = service_fn(move |event: LambdaEvent<DynamoDbEvent>| {
-        let client = client.clone();
+        let client = Arc::clone(&client);
         let table_name = table_name.clone();
-        async move { handle_stream_event(event, &client, &table_name).await }
+        let router = Arc::clone(&router);
+        async move { handle_stream_event(event, client, &table_name, &router).await }
     });
     lambda_runtime::run(handler).await?;
     Ok(())
 }
 
-/// Process a single classified record change, returning `Ok(())` on success or
-/// an error if the operation failed.
-async fn process_record(
-    record: &aws_lambda_events::event::dynamodb::EventRecord,
-    client: &Client,
-    table_name: &str,
-) -> Result<(), Error> {
-    match classify_record(record) {
-        RecordChange::ShareActivated(share) => {
-            handlers::mirror::handle_share_activated(client, table_name, &share, "").await?;
-        }
-        RecordChange::ShareRevoked {
-            share_id,
-            family_id,
-            accepter_id,
-        } => {
-            handlers::revoke::handle_share_revoked(
-                client,
-                table_name,
-                &share_id,
-                &family_id,
-                &accepter_id,
-            )
-            .await?;
-        }
-        RecordChange::SharePermissionUpdated(share) => {
-            handlers::permission::handle_permission_updated(client, table_name, &share).await?;
-        }
-        RecordChange::ResourceChanged(change) => {
-            handlers::propagate::handle_resource_changed(client, table_name, &change, "").await?;
-        }
-        RecordChange::Ignored => {}
-    }
-    Ok(())
-}
-
-/// Main stream event handler — classifies each record and dispatches to the appropriate action.
-/// Returns a `StreamHandlerResponse` with `batchItemFailures` listing only the event IDs of
-/// records that failed processing. Successfully processed records are not retried.
+/// Main stream event handler — classifies each record and dispatches through
+/// the Router. Returns a `StreamHandlerResponse` with `batchItemFailures`
+/// listing only the event IDs of records that failed processing.
 async fn handle_stream_event(
     event: LambdaEvent<DynamoDbEvent>,
-    client: &Client,
+    client: Arc<Client>,
     table_name: &str,
+    router: &Router,
 ) -> Result<StreamHandlerResponse, Error> {
+    // Generate sync_token from the Lambda request ID (unique per invocation)
+    let sync_token = event.context.request_id.clone();
     let dynamo_event = event.payload;
     let mut batch_item_failures = Vec::new();
 
     for record in &dynamo_event.records {
-        if let Err(err) = process_record(record, client, table_name).await {
+        let change = classify_record(record);
+        if let Err(err) = router
+            .dispatch(Arc::clone(&client), table_name, change, &sync_token)
+            .await
+        {
             eprintln!("Failed to process record {}: {:?}", record.event_id, err);
             batch_item_failures.push(BatchItemFailure {
                 item_identifier: record.event_id.clone(),
@@ -102,17 +161,9 @@ async fn handle_stream_event(
     })
 }
 
-// ---------------------------------------------------------------------------
-// Stream record classification — moved to classify.rs
-// ---------------------------------------------------------------------------
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // -----------------------------------------------------------------------
-    // Tests for ReportBatchItemFailures response
-    // -----------------------------------------------------------------------
 
     #[test]
     fn test_stream_handler_response_empty_serialization() {
@@ -149,7 +200,13 @@ mod tests {
         };
         let json = serde_json::to_value(&failure).unwrap();
         assert_eq!(json["itemIdentifier"], "test-event-123");
-        // Ensure the field name is camelCase as Lambda expects
         assert!(json.get("item_identifier").is_none());
+    }
+
+    #[test]
+    fn test_build_router_registers_all_handlers() {
+        let router = build_router();
+        // Verify the router has handlers for all 4 change kinds
+        assert!(router.supported_change_kinds().len() == 4);
     }
 }
