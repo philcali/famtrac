@@ -144,8 +144,8 @@ Refactor the `famtrac-stream-handler` monolith into a modular classify-and-route
 - [ ] 7. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Wire everything together in main.rs
-  - [ ] 8.1 Rewrite `main.rs` as thin bootstrap
+- [x] 8. Wire everything together in main.rs
+  - [x] 8.1 Rewrite `main.rs` as thin bootstrap
     - Reduce `main.rs` to: Lambda bootstrap, DDB client init, `sync_token` generation from request ID, Router construction with handler registration, top-level event dispatch loop
     - Register handlers: `mirror::handle_share_activated`, `revoke::handle_share_revoked`, `permission::handle_permission_updated`, `propagate::handle_resource_changed`
     - Remove all moved functions — `main.rs` should only contain bootstrap, Router setup, and the `handle_stream_event` / `process_record` dispatch loop
@@ -154,7 +154,7 @@ Refactor the `famtrac-stream-handler` monolith into a modular classify-and-route
     - Declare all new modules (`mod classify; mod router; mod parser; mod dynamo_util; mod handlers;`)
     - _Requirements: 1.2, 1.4, 5.2, 5.3_
 
-  - [ ] 8.2 Remove `find_owner_for_family` table scan function
+  - [x] 8.2 Remove `find_owner_for_family` table scan function
     - Delete the `find_owner_for_family` function and `find_active_shares_for_family` function from the codebase
     - Ensure all call sites now use `find_active_shares_by_family_id` from `dynamo_util.rs`
     - _Requirements: 2.3_
