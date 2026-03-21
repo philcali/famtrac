@@ -89,15 +89,15 @@ Refactor the `famtrac-stream-handler` monolith into a modular classify-and-route
 - [ ] 5. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Extract handler modules
-  - [ ] 6.1 Create `handlers/mirror.rs` with share activation handler
+- [x] 6. Extract handler modules
+  - [x] 6.1 Create `handlers/mirror.rs` with share activation handler
     - Create `famtrac-stream-handler/src/handlers/mod.rs` and `famtrac-stream-handler/src/handlers/mirror.rs`
     - Move `mirror_resources` logic from `main.rs` into `handle_share_activated`
     - Stamp `sync_token` on every mirrored item written (via `rekey_item` and `annotate_item`)
     - Use functions from `dynamo_util.rs`
     - _Requirements: 5.1, 6.2_
 
-  - [ ] 6.2 Create `handlers/revoke.rs` with share revocation cleanup handler
+  - [x] 6.2 Create `handlers/revoke.rs` with share revocation cleanup handler
     - Create `famtrac-stream-handler/src/handlers/revoke.rs`
     - Implement `handle_share_revoked(client, table_name, share_id, family_id, accepter_id)` per design algorithm:
       1. Delete mirrored Family record at `PK=OWNER#{accepter_id}, SK=FAMILY#{family_id}`
@@ -111,13 +111,13 @@ Refactor the `famtrac-stream-handler` monolith into a modular classify-and-route
     - Generate random sets of items with various `share_id` values; assert revocation deletes exactly those matching the target `share_id`
     - **Validates: Requirements 3.2, 3.3, 3.4**
 
-  - [ ] 6.4 Create `handlers/permission.rs` with permission update handler
+  - [x] 6.4 Create `handlers/permission.rs` with permission update handler
     - Create `famtrac-stream-handler/src/handlers/permission.rs`
     - Move `update_mirrored_permissions` logic from `main.rs` into `handle_permission_updated`
     - Use functions from `dynamo_util.rs`
     - _Requirements: 5.1_
 
-  - [ ] 6.5 Create `handlers/propagate.rs` with resource change propagation handler
+  - [x] 6.5 Create `handlers/propagate.rs` with resource change propagation handler
     - Create `famtrac-stream-handler/src/handlers/propagate.rs`
     - Move `propagate_change`, `propagate_to_mirrors`, `propagate_writeback` from `main.rs`
     - Replace `find_owner_for_family` (scan) with `find_active_shares_by_family_id` (GSI query); derive owner from `requester_id` on returned shares
