@@ -1,6 +1,7 @@
 pub mod classify;
 pub mod dynamo_util;
 pub mod parser;
+pub mod router;
 
 use aws_lambda_events::event::dynamodb::Event as DynamoDbEvent;
 use aws_sdk_dynamodb::types::AttributeValue as DdbAttributeValue;
