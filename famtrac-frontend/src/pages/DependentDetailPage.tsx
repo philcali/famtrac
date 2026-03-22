@@ -210,10 +210,12 @@ export function DependentDetailPage() {
 
       <Row className="mb-4">
         <Col>
-          <Button variant="secondary" onClick={handleBackClick} className="mb-3">
-            ← Back to Family
-          </Button>
-          <h1>{dependent.name}</h1>
+          <h2 className="heading">
+            {dependent.name}
+            <Button variant="secondary" onClick={handleBackClick} className="heading-right">
+              ← Back to Family
+            </Button>
+          </h2>
         </Col>
       </Row>
 

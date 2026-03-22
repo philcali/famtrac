@@ -290,7 +290,7 @@ export function FamilyDetailPage() {
       <Container className="py-4">
         <ErrorMessage message={familyError} />
         <Button onClick={handleBackClick} className="mt-3">
-          Back to Families
+          ← Back to Families
         </Button>
       </Container>
     );
@@ -301,7 +301,7 @@ export function FamilyDetailPage() {
       <Container className="py-4">
         <ErrorMessage message="Family not found" />
         <Button onClick={handleBackClick} className="mt-3">
-          Back to Families
+          ← Back to Families
         </Button>
       </Container>
     );
@@ -311,10 +311,12 @@ export function FamilyDetailPage() {
     <Container className="py-4">
       <Row className="mb-4">
         <Col>
-          <Button variant="secondary" onClick={handleBackClick} className="mb-3">
-            ← Back to Families
-          </Button>
-          <h1>{family.name}</h1>
+          <h2 className="heading">
+            {family.name}
+            <Button variant="secondary" onClick={handleBackClick} className="heading-right">
+              ← Back to Families
+            </Button>
+          </h2>
         </Col>
       </Row>
 
@@ -333,10 +335,12 @@ export function FamilyDetailPage() {
       {/* Dependents Section */}
       <Row className="mb-3">
         <Col>
-          <h2>Dependents</h2>
-        </Col>
-        <Col xs="auto">
-          <Button onClick={handleCreateClick}>Add Dependent</Button>
+          <h2 className="heading">
+            Dependents
+            <Button className="heading-right" onClick={handleCreateClick}>
+              Add Dependent
+            </Button>
+          </h2>
         </Col>
       </Row>
 
@@ -354,10 +358,12 @@ export function FamilyDetailPage() {
       {/* Shares Section */}
       <Row className="mb-3 mt-4">
         <Col>
-          <h2>Shares</h2>
-        </Col>
-        <Col xs="auto">
-          <Button onClick={handleInviteClick}>Invite User</Button>
+          <h2 className="heading">
+            Shares
+            <Button className="heading-right" onClick={handleInviteClick}>
+              Invite User
+            </Button>
+          </h2>
         </Col>
       </Row>
 
@@ -450,7 +456,7 @@ export function FamilyDetailPage() {
       <ConfirmDialog
         show={!!revokingShare}
         title="Revoke Share"
-        message={`Are you sure you want to revoke the share for "${revokingShare?.accepter_email}"? This action cannot be undone.`}
+        message={`Are you sure you want to revoke the share for "${revokingShare?.accepter_username}"? This action cannot be undone.`}
         confirmText="Revoke"
         cancelText="Cancel"
         confirmVariant="danger"

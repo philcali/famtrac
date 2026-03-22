@@ -31,7 +31,7 @@ export function ShareCard({ share, onEdit, onRevoke, onAccept }: ShareCardProps)
     <Card className="mb-3">
       <Card.Body>
         <Card.Title className="d-flex justify-content-between align-items-center">
-          <span>{share.accepter_email}</span>
+          <span>{share.accepter_username}</span>
           <ShareStatusBadge status={share.status} />
         </Card.Title>
         <Card.Text>

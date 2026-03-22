@@ -76,7 +76,7 @@ export interface Share {
   id: string;
   family_id: string;
   requester_id: string;
-  accepter_email: string;
+  accepter_username: string;
   accepter_id?: string;
   permission_scope: PermissionScope;
   status: ShareStatus;

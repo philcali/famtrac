@@ -23,7 +23,7 @@ export function Navigation() {
   }
 
   return (
-    <Navbar bg="primary" variant="dark" expand="lg" className="mb-4">
+    <Navbar bg="primary" variant="dark" expand="lg">
       <Container>
         <Navbar.Brand as={Link} to="/">
           FamTrac

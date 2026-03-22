@@ -98,7 +98,7 @@ export function PendingSharesPage() {
   if (error) {
     return (
       <Container className="py-4">
-        <h1>Shared With Me</h1>
+        <h2 className="heading">Shared With Me</h2>
         <ErrorMessage message={error} />
       </Container>
     );
@@ -108,7 +108,7 @@ export function PendingSharesPage() {
     <Container className="py-4">
       <Row className="mb-4">
         <Col>
-          <h1>Shared With Me</h1>
+          <h2 className="heading">Shared With Me</h2>
         </Col>
       </Row>
 
