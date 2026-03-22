@@ -265,7 +265,7 @@ pub fn is_mirrored_resource(image: &HashMap<String, DdbAttributeValue>) -> bool 
     image.get("share_id").and_then(|v| v.as_s().ok()).is_some()
 }
 
-/// Query the `family_id-index` GSI to find all active shares for a given family.
+/// Query the `GSI-family_id` GSI to find all active shares for a given family.
 /// This replaces both `find_owner_for_family` (table scan) and
 /// `find_active_shares_for_family` (owner-partition query).
 pub async fn find_active_shares_by_family_id(
@@ -276,7 +276,7 @@ pub async fn find_active_shares_by_family_id(
     let result = client
         .query()
         .table_name(table_name)
-        .index_name("family_id-index")
+        .index_name("GSI-family_id")
         .key_condition_expression("family_id = :fid AND begins_with(SK, :sk_prefix)")
         .filter_expression("#st = :active")
         .expression_attribute_names("#st", "status")

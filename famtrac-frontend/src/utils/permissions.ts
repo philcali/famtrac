@@ -18,7 +18,7 @@ export const PERMISSION_LABELS: Record<PermissionAction, string> = {
   dependent_read: 'View Dependents',
   dependent_write: 'Edit Dependents',
   activity_read: 'View Activities',
-  activity_write: 'Log Activities',
+  activity_write: 'Edit Activities',
 };
 
 /**

@@ -113,54 +113,58 @@ export function FamiliesPage() {
   }, []);
 
   return (
-    <Container className="py-4">
-      <Row className="mb-4">
-        <Col>
-          <h1>Families</h1>
-        </Col>
-        <Col xs="auto">
-          <Button onClick={handleCreateClick}>Create Family</Button>
-        </Col>
-      </Row>
+    <>
+      <Container className="py-4">
+        <Row className="mb-4">
+          <Col>
+            <h2 className="heading">
+              Families
+              <Button className="heading-right" onClick={handleCreateClick}>
+                Create Family
+              </Button>
+            </h2>
+          </Col>
+        </Row>
 
-      {successMessage && <SuccessMessage message={successMessage} onClose={handleSuccessClose} />}
+        {successMessage && <SuccessMessage message={successMessage} onClose={handleSuccessClose} />}
 
-      <FamilyList
-        families={families}
-        loading={loading}
-        error={error || undefined}
-        onEdit={handleEditClick}
-        onDelete={handleDeleteClick}
-        onView={handleViewClick}
-      />
+        <FamilyList
+          families={families}
+          loading={loading}
+          error={error || undefined}
+          onEdit={handleEditClick}
+          onDelete={handleDeleteClick}
+          onView={handleViewClick}
+        />
 
-      {/* Create/Edit Modal */}
-      <Modal show={showForm} onHide={handleFormCancel} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>{editingFamily ? 'Edit Family' : 'Create Family'}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <FamilyForm
-            family={editingFamily}
-            onSubmit={handleFormSubmit}
-            onCancel={handleFormCancel}
-            loading={createLoading || updateLoading}
-          />
-        </Modal.Body>
-      </Modal>
+        {/* Create/Edit Modal */}
+        <Modal show={showForm} onHide={handleFormCancel} centered>
+          <Modal.Header closeButton>
+            <Modal.Title>{editingFamily ? 'Edit Family' : 'Create Family'}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <FamilyForm
+              family={editingFamily}
+              onSubmit={handleFormSubmit}
+              onCancel={handleFormCancel}
+              loading={createLoading || updateLoading}
+            />
+          </Modal.Body>
+        </Modal>
 
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        show={!!deletingFamily}
-        title="Delete Family"
-        message={`Are you sure you want to delete "${deletingFamily?.name}"? This action cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        confirmVariant="danger"
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-        loading={deleteLoading}
-      />
-    </Container>
+        {/* Delete Confirmation Dialog */}
+        <ConfirmDialog
+          show={!!deletingFamily}
+          title="Delete Family"
+          message={`Are you sure you want to delete "${deletingFamily?.name}"? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          confirmVariant="danger"
+          onConfirm={handleDeleteConfirm}
+          onCancel={handleDeleteCancel}
+          loading={deleteLoading}
+        />
+      </Container>
+    </>
   );
 }

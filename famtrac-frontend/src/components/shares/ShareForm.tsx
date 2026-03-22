@@ -36,7 +36,7 @@ export function ShareForm({ onSubmit, onCancel, loading = false }: ShareFormProp
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
 
-    const validation = validateAll({ email: accepterUsername });
+    const validation = validateAll({ username: accepterUsername });
     if (!validation.isValid) {
       return;
     }

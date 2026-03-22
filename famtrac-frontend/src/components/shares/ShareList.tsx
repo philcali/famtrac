@@ -1,9 +1,10 @@
-import { Row, Col } from 'react-bootstrap';
-import { ShareCard } from './ShareCard';
+import { Row, Col, Table } from 'react-bootstrap';
 import { SkeletonCard } from '../common/SkeletonCard';
 import { ErrorMessage } from '../common/ErrorMessage';
 import { Button } from '../common/Button';
 import type { Share } from '../../types/domain';
+import { ShareStatusBadge } from './ShareStatusBadge';
+import { SharePermissionBadges } from './SharePermissionBadges';
 
 export interface ShareListProps {
   shares: Share[];
@@ -61,13 +62,43 @@ export function ShareList({
 
   return (
     <>
-      <Row>
-        {shares.map((share) => (
-          <Col key={share.id} xs={12} md={6} lg={4}>
-            <ShareCard share={share} onEdit={onEdit} onRevoke={onRevoke} />
-          </Col>
-        ))}
-      </Row>
+      <Table responsive>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Status</th>
+            <th>Permissions</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {shares.map((share) => (
+            <tr key={share.id}>
+              <td>{share.accepter_username}</td>
+              <td>
+                <ShareStatusBadge status={share.status} />
+              </td>
+              <td>
+                <SharePermissionBadges share={share} />
+              </td>
+              <td>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mb-1"
+                  onClick={() => onEdit(share)}
+                  disabled={share.status === 'expired'}
+                >
+                  Edit
+                </Button>{' '}
+                <Button variant="danger" size="sm" className="mb-1" onClick={() => onRevoke(share)}>
+                  Revoke
+                </Button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
       {hasMore && (
         <div className="text-center mt-3">
           <Button

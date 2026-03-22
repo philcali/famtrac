@@ -57,7 +57,7 @@ export function PermissionScopeSelector({
         return (
           <Form.Check
             key={action}
-            type="checkbox"
+            type="switch"
             id={`permission-${action}`}
             label={PERMISSION_LABELS[action]}
             checked={isChecked}

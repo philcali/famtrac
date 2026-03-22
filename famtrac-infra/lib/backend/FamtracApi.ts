@@ -66,9 +66,8 @@ export class FamtracApi extends Construct implements IFamtracApi {
                 stream: StreamViewType.NEW_AND_OLD_IMAGES,
                 timeToLiveAttribute: 'expires_in',
             });
-            let indexName = "GSI-1";
             newTable.addGlobalSecondaryIndex({
-                indexName,
+                indexName: 'GSI-1',
                 partitionKey: {
                     name: 'PK',
                     type: AttributeType.STRING,
@@ -81,7 +80,22 @@ export class FamtracApi extends Construct implements IFamtracApi {
                 readCapacity: 1,
                 writeCapacity: 1,
             });
-            indexes.push(indexName);
+            indexes.push('GSI-1');
+            newTable.addGlobalSecondaryIndex({
+                indexName: 'GSI-family_id',
+                partitionKey: {
+                    name: 'family_id',
+                    type: AttributeType.STRING,
+                },
+                sortKey: {
+                    name: 'SK',
+                    type: AttributeType.STRING,
+                },
+                projectionType: ProjectionType.ALL,
+                readCapacity: 1,
+                writeCapacity: 1,
+            });
+            indexes.push('GSI-family_id');
             table = newTable;
         }
         this.table = table;
