@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Modal } from 'react-bootstrap';
 import { ErrorMessage } from '../components/common/ErrorMessage';
@@ -43,6 +43,11 @@ export function DependentDetailPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [activityTypeFilter, setActivityTypeFilter] = useState<ActivityType | ''>('');
+
+  // Pagination state
+  const [extraActivities, setExtraActivities] = useState<ActivityResponse[]>([]);
+  const [lastActivitiesNextToken, setLastActivitiesNextToken] = useState<string | null>(null);
+  const [loadingMoreActivities, setLoadingMoreActivities] = useState(false);
 
   // Fetch dependent details
   const {
@@ -112,6 +117,7 @@ export function DependentDetailPage() {
     if (editingActivity) {
       // Update existing activity
       const updateData: UpdateActivityRequest = {
+        type: data.type,
         timestamp: data.timestamp,
         feeding_type: data.feeding_type,
         contents: data.contents,
@@ -129,6 +135,8 @@ export function DependentDetailPage() {
         setSuccessMessage('Activity updated successfully');
         setShowActivityForm(false);
         setEditingActivity(undefined);
+        setExtraActivities([]);
+        setLastActivitiesNextToken(null);
         await refetchActivities();
       }
     } else {
@@ -138,6 +146,8 @@ export function DependentDetailPage() {
       if (!response.error) {
         setSuccessMessage('Activity created successfully');
         setShowActivityForm(false);
+        setExtraActivities([]);
+        setLastActivitiesNextToken(null);
         await refetchActivities();
       }
     }
@@ -155,6 +165,8 @@ export function DependentDetailPage() {
       if (!response.error) {
         setSuccessMessage('Activity deleted successfully');
         setDeletingActivity(undefined);
+        setExtraActivities([]);
+        setLastActivitiesNextToken(null);
         await refetchActivities();
       }
     }
@@ -168,7 +180,32 @@ export function DependentDetailPage() {
     setStartDate('');
     setEndDate('');
     setActivityTypeFilter('');
+    setExtraActivities([]);
+    setLastActivitiesNextToken(null);
   };
+
+  const handleLoadMoreActivities = async () => {
+    if (!activitiesNextToken) return;
+    setLoadingMoreActivities(true);
+    const response = await getActivities(apiClient, familyId ?? 'NA', dependentId ?? 'NA', {
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      activityType: activityTypeFilter || undefined,
+      next_token: activitiesNextToken,
+    });
+    if (response.data) {
+      setExtraActivities((prev) => [...prev, ...response.data!.activities]);
+      setLastActivitiesNextToken(response.data.next_token ?? null);
+    }
+    setLoadingMoreActivities(false);
+  };
+
+  const initialActivities = useMemo(() => activitiesData?.activities || [], [activitiesData]);
+  const activities = useMemo(
+    () => [...initialActivities, ...extraActivities],
+    [initialActivities, extraActivities]
+  );
+  const activitiesNextToken = lastActivitiesNextToken ?? activitiesData?.next_token ?? null;
 
   if (dependentLoading) {
     return (
@@ -183,7 +220,7 @@ export function DependentDetailPage() {
       <Container className="py-4">
         <ErrorMessage message={dependentError} />
         <Button onClick={handleBackClick} className="mt-3">
-          Back
+          ← Back to Family
         </Button>
       </Container>
     );
@@ -194,13 +231,11 @@ export function DependentDetailPage() {
       <Container className="py-4">
         <ErrorMessage message="Dependent not found" />
         <Button onClick={handleBackClick} className="mt-3">
-          Back
+          ← Back to Family
         </Button>
       </Container>
     );
   }
-
-  const activities = activitiesData?.activities || [];
 
   return (
     <Container className="py-4">
@@ -225,12 +260,12 @@ export function DependentDetailPage() {
       {/* Activities Section */}
       <Row className="mb-3">
         <Col>
-          <h2>Activities</h2>
-        </Col>
-        <Col className="text-end">
-          <Button variant="primary" onClick={handleAddActivity}>
-            Add Activity
-          </Button>
+          <h2 className="heading">
+            Activities
+            <Button className="heading-right" variant="primary" onClick={handleAddActivity}>
+              Add Activity
+            </Button>
+          </h2>
         </Col>
       </Row>
 
@@ -250,6 +285,9 @@ export function DependentDetailPage() {
         activities={activities}
         loading={activitiesLoading}
         error={activitiesError || undefined}
+        hasMore={!!activitiesNextToken}
+        loadingMore={loadingMoreActivities}
+        onLoadMore={handleLoadMoreActivities}
         onEdit={handleEditActivity}
         onDelete={handleDeleteActivity}
       />

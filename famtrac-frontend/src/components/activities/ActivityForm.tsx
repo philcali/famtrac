@@ -79,7 +79,11 @@ export function ActivityForm({
     return formatISOValue(activity?.end_time);
   });
   const [volumeMl, setVolumeMl] = useState(
-    activity?.type === 'pumping' && activity.volume_ml ? activity.volume_ml.toString() : ''
+    (activity?.type === 'pumping' ||
+      (activity?.type === 'feeding' && activity.feeding_type === 'bottle')) &&
+      activity.volume_ml
+      ? activity.volume_ml.toString()
+      : ''
   );
 
   // Custom validation rule for sleep time range
@@ -173,6 +177,9 @@ export function ActivityForm({
 
     if (activityType === 'feeding') {
       data.feeding_type = feedingType;
+      if (feedingType === 'bottle') {
+        data.volume_ml = parseInt(volumeMl, 10);
+      }
     } else if (activityType === 'diaper_change') {
       data.contents = contents;
     } else if (activityType === 'sleep') {
@@ -332,7 +339,7 @@ export function ActivityForm({
       )}
 
       {/* Pumping-specific fields */}
-      {activityType === 'pumping' && (
+      {(activityType === 'pumping' || feedingType === 'bottle') && (
         <Input
           label="Volume (ml)"
           type="number"

@@ -67,6 +67,7 @@ export interface CreateActivityRequest {
 }
 
 export interface UpdateActivityRequest {
+  type: ActivityType;
   timestamp: string;
   feeding_type?: FeedingType;
   contents?: DiaperContents;

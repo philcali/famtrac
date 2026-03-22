@@ -20,6 +20,8 @@ export async function getActivities(
     startDate?: string; // ISO 8601 format
     endDate?: string; // ISO 8601 format
     activityType?: ActivityType;
+    limit?: number;
+    next_token?: string;
   }
 ): Promise<ApiResponse<ActivityListResponse>> {
   let path = `/families/${familyId}/dependents/${dependentId}/activities`;
@@ -34,6 +36,12 @@ export async function getActivities(
   }
   if (options?.activityType) {
     params.append('activity_type', options.activityType);
+  }
+  if (options?.limit) {
+    params.append('limit', String(options.limit));
+  }
+  if (options?.next_token) {
+    params.append('next_token', options.next_token);
   }
 
   // Append query string if there are any parameters
