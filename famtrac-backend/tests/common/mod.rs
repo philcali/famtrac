@@ -136,14 +136,14 @@ impl DynamoDbLocalInstance {
                     .index_name("GSI-1")
                     .key_schema(
                         KeySchemaElement::builder()
-                            .attribute_name("owner_id")
+                            .attribute_name("PK")
                             .key_type(KeyType::Hash)
                             .build()
                             .map_err(|e| format!("Failed to build GSI-1 PK: {}", e))?,
                     )
                     .key_schema(
                         KeySchemaElement::builder()
-                            .attribute_name("created_at")
+                            .attribute_name("timestamp")
                             .key_type(KeyType::Range)
                             .build()
                             .map_err(|e| format!("Failed to build GSI-1 SK: {}", e))?,

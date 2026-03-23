@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import { FamiliesPage } from './pages/FamiliesPage';
 import { FamilyDetailPage } from './pages/FamilyDetailPage';
 import { DependentDetailPage } from './pages/DependentDetailPage';
+import { ReportPage } from './pages/ReportPage';
 import { PendingSharesPage } from './pages/PendingSharesPage';
 import { CallbackPage } from './pages/CallbackPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -46,6 +47,14 @@ function App() {
           element={
             <ProtectedRoute>
               <DependentDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/families/:familyId/dependents/:dependentId/reports"
+          element={
+            <ProtectedRoute>
+              <ReportPage />
             </ProtectedRoute>
           }
         />
