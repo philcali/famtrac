@@ -251,7 +251,7 @@ export function DependentDetailPage() {
               ← Back to Family
             </Button>
             <Button
-              variant="outline-secondary"
+              variant="secondary"
               onClick={() => navigate(`/families/${familyId}/dependents/${dependentId}/reports`)}
               className="heading-right me-2"
             >
