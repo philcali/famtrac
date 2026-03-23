@@ -250,6 +250,13 @@ export function DependentDetailPage() {
             <Button variant="secondary" onClick={handleBackClick} className="heading-right">
               ← Back to Family
             </Button>
+            <Button
+              variant="outline-secondary"
+              onClick={() => navigate(`/families/${familyId}/dependents/${dependentId}/reports`)}
+              className="heading-right me-2"
+            >
+              Reports
+            </Button>
           </h2>
         </Col>
       </Row>

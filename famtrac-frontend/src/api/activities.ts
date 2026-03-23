@@ -17,8 +17,8 @@ export async function getActivities(
   familyId: string,
   dependentId: string,
   options?: {
-    startDate?: string; // ISO 8601 format
-    endDate?: string; // ISO 8601 format
+    startDate?: string; // YYYY-MM-DD date format
+    endDate?: string; // YYYY-MM-DD date format
     activityType?: ActivityType;
     limit?: number;
     next_token?: string;
