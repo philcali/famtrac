@@ -814,26 +814,18 @@ impl ActivityRepository for DynamoDbActivityRepository {
         if params.start_date.is_some() || params.end_date.is_some() {
             query_builder = query_builder.expression_attribute_names("#timestamp", "timestamp");
 
-            if let Some(start_date) = params.start_date {
-                let start_datetime = start_date
-                    .0
-                    .and_hms_opt(0, 0, 0)
-                    .unwrap()
-                    .and_utc()
-                    .to_rfc3339();
-                query_builder = query_builder
-                    .expression_attribute_values(":start_date", AttributeValue::S(start_datetime));
+            if let Some(start_ts) = params.start_date {
+                query_builder = query_builder.expression_attribute_values(
+                    ":start_date",
+                    AttributeValue::S(start_ts.to_iso8601()),
+                );
             }
 
-            if let Some(end_date) = params.end_date {
-                let end_datetime = end_date
-                    .0
-                    .and_hms_opt(23, 59, 59)
-                    .unwrap()
-                    .and_utc()
-                    .to_rfc3339();
-                query_builder = query_builder
-                    .expression_attribute_values(":end_date", AttributeValue::S(end_datetime));
+            if let Some(end_ts) = params.end_date {
+                query_builder = query_builder.expression_attribute_values(
+                    ":end_date",
+                    AttributeValue::S(end_ts.to_iso8601()),
+                );
             }
         }
 
@@ -1131,9 +1123,9 @@ impl ShareRepository for DynamoDbShareRepository {
         }
     }
 
-    async fn get_by_email_and_share_id(
+    async fn get_by_username_and_share_id(
         &self,
-        accepter_email: &str,
+        accepter_username: &str,
         share_id: ShareId,
     ) -> Result<Option<Share>, StoreError> {
         let result = self
@@ -1142,7 +1134,7 @@ impl ShareRepository for DynamoDbShareRepository {
             .table_name(&self.table_name)
             .key(
                 "PK",
-                AttributeValue::S(format!("SHARE_EMAIL#{}", accepter_email)),
+                AttributeValue::S(format!("SHARE_USERNAME#{}", accepter_username)),
             )
             .key("SK", AttributeValue::S(format!("SHARE#{}", share_id.0)))
             .send()

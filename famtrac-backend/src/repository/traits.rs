@@ -1,6 +1,6 @@
 use crate::domain::{
-    Activity, ActivityType, Date, Dependent, DependentId, Family, FamilyId, IdentityId, Share,
-    ShareId,
+    Activity, ActivityType, Dependent, DependentId, Family, FamilyId, IdentityId, Share, ShareId,
+    Timestamp,
 };
 use crate::errors::StoreError;
 use crate::handlers::{PaginatedResponse, PaginationParams};
@@ -57,12 +57,16 @@ pub trait DependentRepository: Send + Sync {
 }
 
 /// Query parameters for activity queries
+///
+/// `start_date` and `end_date` are pre-computed UTC timestamps that already
+/// account for the client's timezone offset. The repository layer uses them
+/// directly without further timezone conversion.
 #[derive(Debug, Clone)]
 pub struct ActivityQueryParams {
     pub family_id: FamilyId,
     pub dependent_id: DependentId,
-    pub start_date: Option<Date>,
-    pub end_date: Option<Date>,
+    pub start_date: Option<Timestamp>,
+    pub end_date: Option<Timestamp>,
     pub activity_type: Option<ActivityType>,
 }
 
@@ -113,7 +117,7 @@ pub trait ShareRepository: Send + Sync {
     ) -> Result<Option<Share>, StoreError>;
 
     /// Get a share by accepter email and share ID (email partition direct lookup)
-    async fn get_by_email_and_share_id(
+    async fn get_by_username_and_share_id(
         &self,
         accepter_email: &str,
         share_id: ShareId,

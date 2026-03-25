@@ -441,7 +441,7 @@ pub mod mocks {
                 .cloned())
         }
 
-        async fn get_by_email_and_share_id(
+        async fn get_by_username_and_share_id(
             &self,
             accepter_username: &str,
             share_id: ShareId,
