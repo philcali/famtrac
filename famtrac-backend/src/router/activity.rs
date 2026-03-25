@@ -5,7 +5,7 @@
 
 use crate::context::RequestContext;
 use crate::domain::{
-    ActivityId, ActivityType, Date, DependentId, DiaperContents, FamilyId, FeedingType, Timestamp,
+    ActivityId, ActivityType, DependentId, DiaperContents, FamilyId, FeedingType, Timestamp,
 };
 use crate::errors::HandlerError;
 use crate::handlers;
@@ -58,14 +58,34 @@ pub async fn route_activity(
         // GET .../activities - Query activities for a dependent (with query params)
         ("GET", "") | ("GET", "/") => {
             let query_params = &request.query_string_parameters;
-            let start_date = query_params
-                .first("start_date")
-                .and_then(|s| s.parse::<chrono::NaiveDate>().ok())
-                .map(Date::from_naive_date);
-            let end_date = query_params
-                .first("end_date")
-                .and_then(|s| s.parse::<chrono::NaiveDate>().ok())
-                .map(Date::from_naive_date);
+
+            // Parse start_date/end_date as ISO 8601 datetime with timezone offset.
+            // The client sends the local day boundaries with its UTC offset so the
+            // server can compute the correct UTC range for the user's timezone.
+            // Falls back to NaiveDate (YYYY-MM-DD) for backwards compatibility,
+            // treating it as UTC midnight.
+            let start_date = query_params.first("start_date").and_then(|s| {
+                chrono::DateTime::parse_from_rfc3339(s)
+                    .map(|dt| Timestamp::from_datetime(dt.with_timezone(&chrono::Utc)))
+                    .ok()
+                    .or_else(|| {
+                        s.parse::<chrono::NaiveDate>()
+                            .ok()
+                            .and_then(|d| d.and_hms_opt(0, 0, 0))
+                            .map(|dt| Timestamp::from_datetime(dt.and_utc()))
+                    })
+            });
+            let end_date = query_params.first("end_date").and_then(|s| {
+                chrono::DateTime::parse_from_rfc3339(s)
+                    .map(|dt| Timestamp::from_datetime(dt.with_timezone(&chrono::Utc)))
+                    .ok()
+                    .or_else(|| {
+                        s.parse::<chrono::NaiveDate>()
+                            .ok()
+                            .and_then(|d| d.and_hms_opt(23, 59, 59))
+                            .map(|dt| Timestamp::from_datetime(dt.and_utc()))
+                    })
+            });
             let activity_type =
                 query_params
                     .first("activity_type")

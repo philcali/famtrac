@@ -9,6 +9,46 @@ import type {
 } from './types';
 
 /**
+ * Converts a YYYY-MM-DD date string to an ISO 8601 datetime string
+ * at the start of that day in the user's local timezone.
+ * e.g. "2024-01-15" in UTC-5 → "2024-01-15T00:00:00-05:00"
+ */
+function toLocalStartOfDay(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const local = new Date(y, m - 1, d, 0, 0, 0);
+  return toISOWithOffset(local);
+}
+
+/**
+ * Converts a YYYY-MM-DD date string to an ISO 8601 datetime string
+ * at the end of that day in the user's local timezone.
+ * e.g. "2024-01-15" in UTC-5 → "2024-01-15T23:59:59-05:00"
+ */
+function toLocalEndOfDay(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const local = new Date(y, m - 1, d, 23, 59, 59);
+  return toISOWithOffset(local);
+}
+
+/**
+ * Formats a Date as an ISO 8601 string with the local timezone offset.
+ * e.g. "2024-01-15T00:00:00-05:00"
+ */
+function toISOWithOffset(date: Date): string {
+  const off = -date.getTimezoneOffset();
+  const sign = off >= 0 ? '+' : '-';
+  const absOff = Math.abs(off);
+  const hh = String(Math.floor(absOff / 60)).padStart(2, '0');
+  const mm = String(absOff % 60).padStart(2, '0');
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}` +
+    `${sign}${hh}:${mm}`
+  );
+}
+
+/**
  * Get all activities for a specific dependent
  * Supports optional filtering by date range and activity type
  */
@@ -29,10 +69,10 @@ export async function getActivities(
   // Build query parameters for filtering
   const params = new URLSearchParams();
   if (options?.startDate) {
-    params.append('start_date', options.startDate);
+    params.append('start_date', toLocalStartOfDay(options.startDate));
   }
   if (options?.endDate) {
-    params.append('end_date', options.endDate);
+    params.append('end_date', toLocalEndOfDay(options.endDate));
   }
   if (options?.activityType) {
     params.append('activity_type', options.activityType);

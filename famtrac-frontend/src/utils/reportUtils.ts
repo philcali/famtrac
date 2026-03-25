@@ -38,7 +38,8 @@ export interface PumpingSummary {
 
 /**
  * Formats a Date as a YYYY-MM-DD string (date-only, no time component).
- * The backend expects NaiveDate (chrono) which parses YYYY-MM-DD only.
+ * The API layer converts this to a full ISO 8601 datetime with timezone offset
+ * before sending to the backend.
  */
 function formatDateOnly(date: Date): string {
   const y = date.getFullYear();

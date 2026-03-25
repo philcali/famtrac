@@ -1,7 +1,7 @@
 use super::permission::check_permission;
 use crate::context::RequestContext;
 use crate::domain::{
-    Activity, ActivityId, ActivityType, Date, DependentId, FamilyId, PermissionAction, Timestamp,
+    Activity, ActivityId, ActivityType, DependentId, FamilyId, PermissionAction, Timestamp,
 };
 use crate::errors::{validate_activity_timestamp, validate_activity_type, HandlerError};
 use crate::handlers::pagination::PaginationParams;
@@ -353,8 +353,8 @@ pub async fn query_activities<
 >(
     family_id: FamilyId,
     dependent_id: DependentId,
-    start_date: Option<Date>,
-    end_date: Option<Date>,
+    start_date: Option<Timestamp>,
+    end_date: Option<Timestamp>,
     activity_type: Option<ActivityType>,
     context: &RequestContext,
     family_repository: &F,

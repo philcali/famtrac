@@ -292,7 +292,7 @@ pub async fn accept_share<SR: ShareRepository>(
 
     // Look up share by accepter email and share ID (Requirement 9.4)
     let share = share_repo
-        .get_by_email_and_share_id(accepter_username, share_id)
+        .get_by_username_and_share_id(accepter_username, share_id)
         .await?;
     let mut share = share.ok_or(HandlerError::NotFound("Share not found".to_string()))?;
 
