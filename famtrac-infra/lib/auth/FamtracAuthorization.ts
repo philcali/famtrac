@@ -74,7 +74,7 @@ export class FamtracAuthorization extends Construct implements IFamtracAuthoriza
         }
         props?.customOrigins?.forEach(origin => redirectOrigins.push(origin));
         const userPoolClient = userPool.addClient('Client', {
-            generateSecret: true,
+            generateSecret: false,
             authFlows: {
                 userSrp: true,
                 userPassword: true,
@@ -89,7 +89,6 @@ export class FamtracAuthorization extends Construct implements IFamtracAuthoriza
             oAuth: {
                 flows: {
                     authorizationCodeGrant: true,
-                    implicitCodeGrant: true,   
                 },
                 scopes: [
                     OAuthScope.OPENID,
