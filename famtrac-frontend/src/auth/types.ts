@@ -10,7 +10,7 @@ export interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: CognitoUser | null;
-  login: () => void;
+  login: () => Promise<void>;
   logout: () => void;
   getToken: () => Promise<string | null>;
 }
