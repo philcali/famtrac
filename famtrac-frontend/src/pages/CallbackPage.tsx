@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Container, Spinner } from 'react-bootstrap';
 import { exchangeCodeForTokens, storeRefreshToken, clearTokens } from '../auth/tokenService';
 
@@ -10,7 +10,15 @@ import { exchangeCodeForTokens, storeRefreshToken, clearTokens } from '../auth/t
  * (Requirements 1.3, 1.4, 1.5)
  */
 export function CallbackPage() {
+  // Guard against React StrictMode double-invocation of useEffect in dev mode.
+  // The code verifier is consumed (read + deleted) on the first run, so a second
+  // run would fail with "No code verifier found".
+  const exchangeStarted = useRef(false);
+
   useEffect(() => {
+    if (exchangeStarted.current) return;
+    exchangeStarted.current = true;
+
     const handleCallback = async () => {
       try {
         const params = new URLSearchParams(window.location.search);

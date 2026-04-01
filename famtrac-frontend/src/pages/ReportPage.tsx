@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Alert, ButtonGroup, Button as BsButton } from 'react-bootstrap';
 import { ErrorMessage } from '../components/common/ErrorMessage';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
 import { TimeRangeSelector } from '../components/reports/TimeRangeSelector';
 import { ActivitySummaryCard } from '../components/reports/ActivitySummaryCard';
+import { ActivityChart } from '../components/reports/ActivityChart';
 import { useAuth } from '../auth/useAuth';
 import { useApi } from '../hooks/useApi';
 import { useReportData } from '../hooks/useReportData';
@@ -17,8 +18,11 @@ import {
   computeSleepSummary,
   computeDiaperSummary,
   computePumpingSummary,
+  transformSleepChartData,
+  transformDiaperStackedChartData,
+  transformVolumeTrendData,
 } from '../utils/reportUtils';
-import type { TimeRangePreset } from '../utils/reportUtils';
+import type { TimeRangePreset, TrendWindow } from '../utils/reportUtils';
 
 /**
  * ReportPage - Displays activity summaries for a dependent over a configurable time range.
@@ -41,6 +45,7 @@ export function ReportPage() {
   const [startDate, setStartDate] = useState(defaultRange.startDate);
   const [endDate, setEndDate] = useState(defaultRange.endDate);
   const [activePreset, setActivePreset] = useState<TimeRangePreset | null>('today');
+  const [trendWindow, setTrendWindow] = useState<TrendWindow>('1h');
 
   // Fetch dependent details for page heading
   const {
@@ -64,6 +69,18 @@ export function ReportPage() {
   const sleepSummary = useMemo(() => computeSleepSummary(activities), [activities]);
   const diaperSummary = useMemo(() => computeDiaperSummary(activities), [activities]);
   const pumpingSummary = useMemo(() => computePumpingSummary(activities), [activities]);
+
+  // Compute chart data from activities
+  const feedingChartData = useMemo(
+    () => transformVolumeTrendData(activities, 'feeding', trendWindow),
+    [activities, trendWindow]
+  );
+  const sleepChartData = useMemo(() => transformSleepChartData(activities), [activities]);
+  const diaperChartData = useMemo(() => transformDiaperStackedChartData(activities), [activities]);
+  const pumpingChartData = useMemo(
+    () => transformVolumeTrendData(activities, 'pumping', trendWindow),
+    [activities, trendWindow]
+  );
 
   // Handlers
   const handleBackClick = () => {
@@ -220,6 +237,78 @@ export function ReportPage() {
             />
           </Col>
         </Row>
+      )}
+
+      {/* Charts */}
+      {!activitiesLoading && !activitiesError && activities.length > 0 && (
+        <>
+          <Row className="mt-4 mb-3">
+            <Col className="d-flex align-items-center gap-2">
+              <span className="text-muted">Trend window:</span>
+              <ButtonGroup size="sm">
+                {(['1h', '6h', '1d'] as TrendWindow[]).map((w) => (
+                  <BsButton
+                    key={w}
+                    variant={trendWindow === w ? 'primary' : 'outline-primary'}
+                    onClick={() => setTrendWindow(w)}
+                  >
+                    {w === '1h' ? '1 Hour' : w === '6h' ? '6 Hours' : '1 Day'}
+                  </BsButton>
+                ))}
+              </ButtonGroup>
+            </Col>
+          </Row>
+          <Row>
+            <Col md={6}>
+              <ActivityChart
+                title="Feeding Volume Trend (avg)"
+                data={feedingChartData}
+                chartType="line"
+                yAxisLabel="Avg Volume (ml)"
+                xAxisLabel="Time"
+                color="#28a745"
+                emptyMessage="No feeding data with volume for the selected period."
+              />
+            </Col>
+            <Col md={6}>
+              <ActivityChart
+                title="Sleep Duration Per Day"
+                data={sleepChartData}
+                chartType="bar"
+                yAxisLabel="Duration (min)"
+                xAxisLabel="Day"
+                color="#17a2b8"
+                emptyMessage="No sleep data for the selected period."
+              />
+            </Col>
+            <Col md={6}>
+              <ActivityChart
+                title="Diaper Changes Per Day"
+                data={diaperChartData}
+                chartType="stacked-bar"
+                yAxisLabel="Count"
+                xAxisLabel="Day"
+                stackedBars={[
+                  { dataKey: 'wet', color: '#17a2b8', name: 'Wet' },
+                  { dataKey: 'dirty', color: '#6f4e37', name: 'Dirty' },
+                  { dataKey: 'both', color: '#ffc107', name: 'Both' },
+                ]}
+                emptyMessage="No diaper change data for the selected period."
+              />
+            </Col>
+            <Col md={6}>
+              <ActivityChart
+                title="Pumping Volume Trend (avg)"
+                data={pumpingChartData}
+                chartType="line"
+                yAxisLabel="Avg Volume (ml)"
+                xAxisLabel="Time"
+                color="#007bff"
+                emptyMessage="No pumping data with volume for the selected period."
+              />
+            </Col>
+          </Row>
+        </>
       )}
     </Container>
   );

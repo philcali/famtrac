@@ -107,20 +107,20 @@ Implement a reporting page for dependents that shows activity summaries and char
 - [ ] 8. Checkpoint - Verify summaries end-to-end
   - Ensure all tests pass, ask the user if questions arise. At this point the feature should be usable: navigate to reports, pick a time range, and see summary stats.
 
-- [ ] 9. Install Recharts and implement ActivityChart component
-  - [ ] 9.1 Install Recharts dependency
+- [x] 9. Install Recharts and implement ActivityChart component
+  - [x] 9.1 Install Recharts dependency
     - Run `npm install recharts` in `famtrac-frontend`
     - _Requirements: 8.1_
 
-  - [ ] 9.2 Create `src/components/reports/ActivityChart.tsx`
+  - [x] 9.2 Create `src/components/reports/ActivityChart.tsx`
     - Accept `title`, `data`, `chartType` (`'line' | 'bar'`), `yAxisLabel`, `xAxisLabel`, `color`, `emptyMessage` props
     - Render `ResponsiveContainer` wrapping `LineChart` or `BarChart` based on `chartType`
     - Include `XAxis`, `YAxis`, `Tooltip`, and `Line`/`Bar` components
     - When `data` is empty, render `emptyMessage` text instead of chart
     - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-- [ ] 10. Integrate charts into ReportPage
-  - [ ] 10.1 Update `src/pages/ReportPage.tsx` to include charts
+- [x] 10. Integrate charts into ReportPage
+  - [x] 10.1 Update `src/pages/ReportPage.tsx` to include charts
     - Compute chart data using `transformFeedingChartData`, `transformSleepChartData`, `transformDiaperChartData`, `transformPumpingChartData`
     - Render four `ActivityChart` components: feeding line, sleep bar, diaper bar, pumping line
     - Pass appropriate empty state messages for each chart type
