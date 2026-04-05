@@ -36,6 +36,25 @@ pub enum ActivityType {
     Pumping {
         volume_ml: u32,
     },
+    ActivityTime {
+        start_time: Timestamp,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        end_time: Option<Timestamp>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        description: Option<String>,
+    },
+    TummyTime {
+        start_time: Timestamp,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        end_time: Option<Timestamp>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        notes: Option<String>,
+    },
+    WakeWindow {
+        start_time: Timestamp,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        end_time: Option<Timestamp>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

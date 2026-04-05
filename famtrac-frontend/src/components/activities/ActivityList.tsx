@@ -20,6 +20,7 @@ export interface ActivityListProps {
   onLoadMore?: () => void;
   onEdit: (activity: ActivityResponse) => void;
   onDelete: (activity: ActivityResponse) => void;
+  onStop: (activity: ActivityResponse) => void;
 }
 
 /**
@@ -41,6 +42,7 @@ export function ActivityList({
   onLoadMore,
   onEdit,
   onDelete,
+  onStop,
 }: ActivityListProps) {
   // Sort activities in reverse chronological order (newest first)
   const sortedActivities = useMemo(() => {
@@ -67,6 +69,13 @@ export function ActivityList({
     );
   }
 
+  const isProgressing = (activity: ActivityResponse) => {
+    const isStopwatchType = ['sleep', 'activity_time', 'tummy_time', 'wake_window'].includes(
+      activity.type
+    );
+    return isStopwatchType && !activity.end_time;
+  };
+
   return (
     <>
       <Table responsive>
@@ -92,19 +101,26 @@ export function ActivityList({
                 <Button
                   variant="secondary"
                   size="sm"
+                  icon="pencil"
                   className="me-1 mb-1"
                   onClick={() => onEdit(activity)}
-                >
-                  Edit
-                </Button>
+                ></Button>
+                {isProgressing(activity) && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="me-1 mb-1"
+                    icon="stop"
+                    onClick={() => onStop(activity)}
+                  ></Button>
+                )}
                 <Button
                   variant="danger"
                   size="sm"
+                  icon="trash"
                   className="mb-1"
                   onClick={() => onDelete(activity)}
-                >
-                  Delete
-                </Button>
+                ></Button>
               </td>
             </tr>
           ))}

@@ -596,6 +596,9 @@ impl DynamoDbActivityRepository {
             ActivityType::DiaperChange { .. } => "diaper_change",
             ActivityType::Sleep { .. } => "sleep",
             ActivityType::Pumping { .. } => "pumping",
+            ActivityType::ActivityTime { .. } => "activity_time",
+            ActivityType::TummyTime { .. } => "tummy_time",
+            ActivityType::WakeWindow { .. } => "wake_window",
         };
         item.insert(
             "activity_type_name".to_string(),
@@ -838,6 +841,9 @@ impl ActivityRepository for DynamoDbActivityRepository {
                     ActivityType::DiaperChange { .. } => "diaper_change",
                     ActivityType::Sleep { .. } => "sleep",
                     ActivityType::Pumping { .. } => "pumping",
+                    ActivityType::ActivityTime { .. } => "activity_time",
+                    ActivityType::TummyTime { .. } => "tummy_time",
+                    ActivityType::WakeWindow { .. } => "wake_window",
                 };
                 query_builder = query_builder.expression_attribute_values(
                     ":activity_type",

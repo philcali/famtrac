@@ -21,3 +21,6 @@ export type { SkeletonCardProps } from './SkeletonCard';
 
 export { ErrorBoundary } from './ErrorBoundary';
 export { Navigation } from './Navigation';
+
+export { Icon } from './Icon';
+export type { IconProps } from './Icon';

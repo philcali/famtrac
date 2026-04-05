@@ -151,7 +151,43 @@ export function transformSleepChartData(activities: ActivityResponse[]): ChartDa
 
   return Array.from(byDay.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([label, value]) => ({ label, value }));
+    .map(([label, value]) => ({ label, value: Number((value / 60).toFixed(2)) }));
+}
+
+export function computeWakeWindowSummary(activities: ActivityResponse[]): SleepSummary {
+  const wakeWindows = activities.filter((a) => a.type === 'wake_window');
+  const validWakeWindows = wakeWindows.filter((a) => a.start_time != null && a.end_time != null);
+
+  const totalDurationMinutes = validWakeWindows.reduce((sum, a) => {
+    const start = new Date(a.start_time!).getTime();
+    const end = new Date(a.end_time!).getTime();
+    return sum + (end - start) / 60000;
+  }, 0);
+
+  return {
+    totalCount: wakeWindows.length,
+    totalDurationMinutes,
+    averageDurationMinutes:
+      validWakeWindows.length > 0 ? totalDurationMinutes / validWakeWindows.length : 0,
+  };
+}
+
+export function transformWakeWindowChartData(activities: ActivityResponse[]): ChartDataPoint[] {
+  const validWakeWindows = activities.filter(
+    (a) => a.type === 'wake_window' && a.start_time != null && a.end_time != null
+  );
+
+  const byDay = new Map<string, number>();
+  for (const a of validWakeWindows) {
+    const day = a.start_time!.slice(0, 10);
+    const durationMin =
+      (new Date(a.end_time!).getTime() - new Date(a.start_time!).getTime()) / 60000;
+    byDay.set(day, (byDay.get(day) ?? 0) + durationMin);
+  }
+
+  return Array.from(byDay.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([label, value]) => ({ label, value: Number((value / 60).toFixed(2)) }));
 }
 
 export function transformDiaperChartData(activities: ActivityResponse[]): ChartDataPoint[] {

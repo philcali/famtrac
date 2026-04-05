@@ -7,6 +7,7 @@ import { required, notFutureDate, positiveInteger } from '../../utils/validation
 import type { ActivityType, FeedingType, DiaperContents } from '../../types/domain';
 import type { ActivityResponse } from '../../api/types';
 import type { ValidationRule } from '../../hooks/useValidation';
+import { formatISOValue } from '../../utils/dateUtils';
 
 export interface ActivityFormProps {
   activity?: ActivityResponse;
@@ -22,6 +23,8 @@ export interface ActivityFormProps {
     start_time?: string;
     end_time?: string;
     volume_ml?: number;
+    description?: string;
+    notes?: string;
   }) => Promise<void>;
   onCancel: () => void;
   loading?: boolean;
@@ -48,26 +51,23 @@ export function ActivityForm({
   onCancel,
   loading = false,
 }: ActivityFormProps) {
-  const formatISOValue = (date?: string | Date) => {
-    const browserDate = new Date();
-    let d: Date;
-    if (date) {
-      d = new Date(date);
-    } else {
-      d = new Date();
-    }
-    d.setTime(d.getTime() - browserDate.getTimezoneOffset() * 60 * 1000);
-    return d.toISOString().slice(0, 16);
-  };
+  const isStopwatchType = (type: ActivityType) =>
+    type === 'sleep' || type === 'activity_time' || type === 'tummy_time' || type === 'wake_window';
+
   // Form state
   const [activityType, setActivityType] = useState<ActivityType>(activity?.type || 'feeding');
   const [timestamp, setTimestamp] = useState(() => {
     return formatISOValue(activity?.timestamp);
   });
+  const [stopwatchMode, setStopwatchMode] = useState(false);
+
+  // New activity type fields
+  const [description, setDescription] = useState(activity?.description ?? '');
+  const [notes, setNotes] = useState(activity?.notes ?? '');
 
   // Activity-specific fields
   const [feedingType, setFeedingType] = useState<FeedingType>(
-    activity?.type === 'feeding' && activity.feeding_type ? activity.feeding_type : 'breast'
+    activity?.type === 'feeding' && activity.feeding_type ? activity.feeding_type : 'bottle'
   );
   const [contents, setContents] = useState<DiaperContents>(
     activity?.type === 'diaper_change' && activity.contents ? activity.contents : 'wet'
@@ -86,10 +86,10 @@ export function ActivityForm({
       : ''
   );
 
-  // Custom validation rule for sleep time range
-  const sleepTimeRange = (): ValidationRule => {
+  // Custom validation rule for time range (sleep and other stopwatch types)
+  const timeRange = (): ValidationRule => {
     return () => {
-      if (activityType === 'sleep') {
+      if (isStopwatchType(activityType) && !stopwatchMode) {
         const start = new Date(startTime);
         const end = new Date(endTime);
 
@@ -115,9 +115,11 @@ export function ActivityForm({
       rules.feeding_type = [required('Feeding type')];
     } else if (activityType === 'diaper_change') {
       rules.contents = [required('Contents')];
-    } else if (activityType === 'sleep') {
+    } else if (isStopwatchType(activityType)) {
       rules.start_time = [required('Start time'), notFutureDate('Start time')];
-      rules.end_time = [required('End time'), notFutureDate('End time'), sleepTimeRange()];
+      if (!stopwatchMode) {
+        rules.end_time = [required('End time'), notFutureDate('End time'), timeRange()];
+      }
     } else if (activityType === 'pumping') {
       rules.volume_ml = [required('Volume'), positiveInteger('Volume')];
     }
@@ -128,7 +130,7 @@ export function ActivityForm({
   const { validate, validateAll, errors, clearError, clearAllErrors } =
     useValidation(getValidationRules());
 
-  // Clear errors when activity type changes
+  // Clear errors and reset stopwatch mode when activity type changes
   useEffect(() => {
     clearAllErrors();
   }, [activityType, clearAllErrors]);
@@ -145,9 +147,11 @@ export function ActivityForm({
       values.feeding_type = feedingType;
     } else if (activityType === 'diaper_change') {
       values.contents = contents;
-    } else if (activityType === 'sleep') {
+    } else if (isStopwatchType(activityType)) {
       values.start_time = startTime;
-      values.end_time = endTime;
+      if (!stopwatchMode) {
+        values.end_time = endTime;
+      }
     } else if (activityType === 'pumping') {
       values.volume_ml = volumeMl;
     }
@@ -168,11 +172,16 @@ export function ActivityForm({
       start_time?: string;
       end_time?: string;
       volume_ml?: number;
+      description?: string;
+      notes?: string;
     } = {
       family_id: familyId,
       dependent_id: dependentId,
       type: activityType,
-      timestamp: new Date(timestamp).toISOString(),
+      timestamp:
+        stopwatchMode && isStopwatchType(activityType)
+          ? new Date(startTime).toISOString()
+          : new Date(timestamp).toISOString(),
     };
 
     if (activityType === 'feeding') {
@@ -182,9 +191,17 @@ export function ActivityForm({
       }
     } else if (activityType === 'diaper_change') {
       data.contents = contents;
-    } else if (activityType === 'sleep') {
+    } else if (isStopwatchType(activityType)) {
       data.start_time = new Date(startTime).toISOString();
-      data.end_time = new Date(endTime).toISOString();
+      if (!stopwatchMode) {
+        data.end_time = new Date(endTime).toISOString();
+      }
+      if (activityType === 'activity_time' && description.trim()) {
+        data.description = description.trim();
+      }
+      if (activityType === 'tummy_time' && notes.trim()) {
+        data.notes = notes.trim();
+      }
     } else if (activityType === 'pumping') {
       data.volume_ml = parseInt(volumeMl, 10);
     }
@@ -254,6 +271,9 @@ export function ActivityForm({
           <option value="diaper_change">Diaper Change</option>
           <option value="sleep">Sleep</option>
           <option value="pumping">Pumping</option>
+          <option value="activity_time">Activity Time</option>
+          <option value="tummy_time">Tummy Time</option>
+          <option value="wake_window">Wake Window</option>
         </Form.Select>
       </Form.Group>
 
@@ -312,9 +332,19 @@ export function ActivityForm({
         </Form.Group>
       )}
 
-      {/* Sleep-specific fields */}
-      {activityType === 'sleep' && (
+      {/* Stopwatch-type fields (sleep, activity_time, tummy_time, wake_window) */}
+      {isStopwatchType(activityType) && (
         <>
+          <Form.Group className="mb-3">
+            <Form.Check
+              type="switch"
+              id="stopwatch-mode-toggle"
+              label="Stopwatch Mode"
+              checked={stopwatchMode}
+              onChange={(e) => setStopwatchMode(e.target.checked)}
+              disabled={loading}
+            />
+          </Form.Group>
           <Input
             label="Start Time"
             type="datetime-local"
@@ -325,21 +355,43 @@ export function ActivityForm({
             required
             disabled={loading}
           />
-          <Input
-            label="End Time"
-            type="datetime-local"
-            value={endTime}
-            onChange={handleEndTimeChange}
-            onBlur={handleEndTimeBlur}
-            error={errors.end_time}
-            required
-            disabled={loading}
-          />
+          {!stopwatchMode && (
+            <Input
+              label="End Time"
+              type="datetime-local"
+              value={endTime}
+              onChange={handleEndTimeChange}
+              onBlur={handleEndTimeBlur}
+              error={errors.end_time}
+              required
+              disabled={loading}
+            />
+          )}
+          {activityType === 'activity_time' && (
+            <Input
+              label="Description"
+              type="text"
+              value={description}
+              onChange={setDescription}
+              placeholder="Optional description"
+              disabled={loading}
+            />
+          )}
+          {activityType === 'tummy_time' && (
+            <Input
+              label="Notes"
+              type="text"
+              value={notes}
+              onChange={setNotes}
+              placeholder="Optional notes"
+              disabled={loading}
+            />
+          )}
         </>
       )}
 
       {/* Pumping-specific fields */}
-      {(activityType === 'pumping' || feedingType === 'bottle') && (
+      {(activityType === 'pumping' || (activityType === 'feeding' && feedingType === 'bottle')) && (
         <Input
           label="Volume (ml)"
           type="number"

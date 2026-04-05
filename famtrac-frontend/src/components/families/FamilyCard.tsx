@@ -26,15 +26,14 @@ export function FamilyCard({ family, onEdit, onDelete, onView }: FamilyCardProps
           Updated: {formatDate(family.updated_at)}
         </Card.Text>
         <div className="d-flex gap-2">
-          <Button variant="primary" size="sm" onClick={() => onView(family)}>
-            View
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => onEdit(family)}>
-            Edit
-          </Button>
-          <Button variant="danger" size="sm" onClick={() => onDelete(family)}>
-            Delete
-          </Button>
+          <Button variant="primary" size="sm" icon="eye" onClick={() => onView(family)}></Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon="pencil"
+            onClick={() => onEdit(family)}
+          ></Button>
+          <Button variant="danger" size="sm" icon="trash" onClick={() => onDelete(family)}></Button>
         </div>
       </Card.Body>
     </Card>

@@ -337,7 +337,7 @@ export function FamilyDetailPage() {
         <Col>
           <h2 className="heading">
             Dependents
-            <Button className="heading-right" onClick={handleCreateClick}>
+            <Button className="heading-right" icon="plus" onClick={handleCreateClick}>
               Add Dependent
             </Button>
           </h2>
@@ -360,7 +360,7 @@ export function FamilyDetailPage() {
         <Col>
           <h2 className="heading">
             Shares
-            <Button className="heading-right" onClick={handleInviteClick}>
+            <Button className="heading-right" icon="plus" onClick={handleInviteClick}>
               Invite User
             </Button>
           </h2>
