@@ -149,9 +149,9 @@ export function ReportPage() {
       <Row className="mb-4">
         <Col>
           <h2 className="heading">
-            Reports for {dependent.name}
+            Reports
             <Button variant="secondary" onClick={handleBackClick} className="heading-right">
-              ← Back to Dependent
+              ← Back to {dependent.name}
             </Button>
           </h2>
         </Col>
