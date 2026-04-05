@@ -18,11 +18,14 @@ import {
   computeSleepSummary,
   computeDiaperSummary,
   computePumpingSummary,
+  computeWakeWindowSummary,
   transformSleepChartData,
+  transformWakeWindowChartData,
   transformDiaperStackedChartData,
   transformVolumeTrendData,
 } from '../utils/reportUtils';
 import type { TimeRangePreset, TrendWindow } from '../utils/reportUtils';
+import { formatDuration } from '../utils/formatDuration';
 
 /**
  * ReportPage - Displays activity summaries for a dependent over a configurable time range.
@@ -69,6 +72,7 @@ export function ReportPage() {
   const sleepSummary = useMemo(() => computeSleepSummary(activities), [activities]);
   const diaperSummary = useMemo(() => computeDiaperSummary(activities), [activities]);
   const pumpingSummary = useMemo(() => computePumpingSummary(activities), [activities]);
+  const wakeWindowSummary = useMemo(() => computeWakeWindowSummary(activities), [activities]);
 
   // Compute chart data from activities
   const feedingChartData = useMemo(
@@ -76,6 +80,7 @@ export function ReportPage() {
     [activities, trendWindow]
   );
   const sleepChartData = useMemo(() => transformSleepChartData(activities), [activities]);
+  const wakeWindowChartData = useMemo(() => transformWakeWindowChartData(activities), [activities]);
   const diaperChartData = useMemo(() => transformDiaperStackedChartData(activities), [activities]);
   const pumpingChartData = useMemo(
     () => transformVolumeTrendData(activities, 'pumping', trendWindow),
@@ -104,16 +109,6 @@ export function ReportPage() {
     setStartDate(newStartDate);
     setEndDate(newEndDate);
     setActivePreset(null);
-  };
-
-  // Format helpers for display
-  const formatMinutes = (minutes: number): string => {
-    const hours = Math.floor(minutes / 60);
-    const mins = Math.round(minutes % 60);
-    if (hours > 0) {
-      return `${hours}h ${mins}m`;
-    }
-    return `${mins}m`;
   };
 
   // Loading state
@@ -204,11 +199,11 @@ export function ReportPage() {
                 { label: 'Total Sessions', value: String(sleepSummary.totalCount) },
                 {
                   label: 'Total Duration',
-                  value: formatMinutes(sleepSummary.totalDurationMinutes),
+                  value: formatDuration(sleepSummary.totalDurationMinutes),
                 },
                 {
                   label: 'Avg Duration',
-                  value: formatMinutes(sleepSummary.averageDurationMinutes),
+                  value: formatDuration(sleepSummary.averageDurationMinutes),
                 },
               ]}
             />
@@ -233,6 +228,23 @@ export function ReportPage() {
                 { label: 'Total Sessions', value: String(pumpingSummary.totalCount) },
                 { label: 'Total Volume', value: `${Math.round(pumpingSummary.totalVolumeMl)} ml` },
                 { label: 'Avg Volume', value: `${Math.round(pumpingSummary.averageVolumeMl)} ml` },
+              ]}
+            />
+          </Col>
+          <Col md={6} lg={3}>
+            <ActivitySummaryCard
+              title="Wake Windows"
+              variant="secondary"
+              metrics={[
+                { label: 'Total Sessions', value: String(wakeWindowSummary.totalCount) },
+                {
+                  label: 'Total Duration',
+                  value: formatDuration(wakeWindowSummary.totalDurationMinutes),
+                },
+                {
+                  label: 'Avg Duration',
+                  value: formatDuration(wakeWindowSummary.averageDurationMinutes),
+                },
               ]}
             />
           </Col>
@@ -275,10 +287,21 @@ export function ReportPage() {
                 title="Sleep Duration Per Day"
                 data={sleepChartData}
                 chartType="bar"
-                yAxisLabel="Duration (min)"
+                yAxisLabel="Duration (hours)"
                 xAxisLabel="Day"
                 color="#17a2b8"
                 emptyMessage="No sleep data for the selected period."
+              />
+            </Col>
+            <Col md={6}>
+              <ActivityChart
+                title="Wake Window Duration Per Day"
+                data={wakeWindowChartData}
+                chartType="bar"
+                yAxisLabel="Duration (hours)"
+                xAxisLabel="Day"
+                color="#fd7e14"
+                emptyMessage="No wake window data for the selected period."
               />
             </Col>
             <Col md={6}>

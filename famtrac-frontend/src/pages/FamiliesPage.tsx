@@ -119,7 +119,7 @@ export function FamiliesPage() {
           <Col>
             <h2 className="heading">
               Families
-              <Button className="heading-right" onClick={handleCreateClick}>
+              <Button className="heading-right" icon="plus" onClick={handleCreateClick}>
                 Create Family
               </Button>
             </h2>

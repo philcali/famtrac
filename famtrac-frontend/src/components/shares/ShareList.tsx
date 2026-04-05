@@ -85,15 +85,18 @@ export function ShareList({
                 <Button
                   variant="secondary"
                   size="sm"
+                  icon="pencil"
                   className="mb-1 me-1"
                   onClick={() => onEdit(share)}
                   disabled={share.status === 'expired'}
-                >
-                  Edit
-                </Button>
-                <Button variant="danger" size="sm" className="mb-1" onClick={() => onRevoke(share)}>
-                  Revoke
-                </Button>
+                ></Button>
+                <Button
+                  icon="trash"
+                  variant="danger"
+                  size="sm"
+                  className="mb-1"
+                  onClick={() => onRevoke(share)}
+                ></Button>
               </td>
             </tr>
           ))}

@@ -1,5 +1,7 @@
+import { Spinner } from 'react-bootstrap';
 import type { ActivityResponse } from '../../api/types';
 import { formatDateTime, formatTime } from '../../utils/dateUtils';
+import { formatDuration } from '../../utils/formatDuration';
 
 export const formatActivityTimestamp = (activity: ActivityResponse) => {
   const now = new Date();
@@ -22,6 +24,12 @@ export const getActivityTypeLabel = (type: string) => {
       return 'Sleep';
     case 'pumping':
       return 'Pumping';
+    case 'activity_time':
+      return 'Activity Time';
+    case 'tummy_time':
+      return 'Tummy Time';
+    case 'wake_window':
+      return 'Wake Window';
     default:
       return type;
   }
@@ -37,10 +45,34 @@ export const getActivityTypeBadgeVariant = (type: string) => {
       return 'info';
     case 'pumping':
       return 'success';
+    case 'activity_time':
+      return 'danger';
+    case 'tummy_time':
+      return 'dark';
+    case 'wake_window':
+      return 'light';
     default:
       return 'secondary';
   }
 };
+
+/** Renders the shared start / end / duration block for stopwatch-type activities. */
+const renderTimedDetails = (startTime?: string, endTime?: string) => (
+  <>
+    <strong>Start:</strong> {startTime ? formatTime(startTime) : 'N/A'}
+    <br />
+    <strong>End: </strong>
+    {endTime && <span>{formatTime(endTime)}</span>}
+    {!endTime && <Spinner animation="border" size="sm" />}
+    <br />
+    <strong>Duration:</strong>{' '}
+    {startTime && endTime
+      ? formatDuration(
+          Math.round((new Date(endTime).getTime() - new Date(startTime).getTime()) / (1000 * 60))
+        )
+      : 'In Progress'}
+  </>
+);
 
 export const renderActivityDetails = (activity: ActivityResponse) => {
   switch (activity.type) {
@@ -70,20 +102,30 @@ export const renderActivityDetails = (activity: ActivityResponse) => {
         </>
       );
     case 'sleep':
+    case 'wake_window':
+      return renderTimedDetails(activity.start_time, activity.end_time);
+    case 'activity_time':
       return (
         <>
-          <strong>Start:</strong> {activity.start_time ? formatTime(activity.start_time) : 'N/A'}
-          <br />
-          <strong>End:</strong> {activity.end_time ? formatTime(activity.end_time) : 'N/A'}
-          <br />
-          <strong>Duration:</strong>{' '}
-          {activity.start_time && activity.end_time
-            ? Math.round(
-                (new Date(activity.end_time).getTime() - new Date(activity.start_time).getTime()) /
-                  (1000 * 60)
-              )
-            : 0}{' '}
-          minutes
+          {renderTimedDetails(activity.start_time, activity.end_time)}
+          {activity.description && (
+            <>
+              <br />
+              <strong>Description:</strong> {activity.description}
+            </>
+          )}
+        </>
+      );
+    case 'tummy_time':
+      return (
+        <>
+          {renderTimedDetails(activity.start_time, activity.end_time)}
+          {activity.notes && (
+            <>
+              <br />
+              <strong>Notes:</strong> {activity.notes}
+            </>
+          )}
         </>
       );
     case 'pumping':

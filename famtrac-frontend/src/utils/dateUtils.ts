@@ -18,6 +18,18 @@ export function formatDate(date: string | Date, options?: Intl.DateTimeFormatOpt
   );
 }
 
+export function formatISOValue(date: string | Date | undefined) {
+  const browserDate = new Date();
+  let d: Date;
+  if (date) {
+    d = new Date(date);
+  } else {
+    d = new Date();
+  }
+  d.setTime(d.getTime() - browserDate.getTimezoneOffset() * 60 * 1000);
+  return d.toISOString().slice(0, 16);
+}
+
 export function formatDateTime(date: string | Date): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleString('en-US', {

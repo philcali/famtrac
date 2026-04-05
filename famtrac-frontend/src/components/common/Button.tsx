@@ -1,8 +1,9 @@
 import { Button as BootstrapButton, Spinner } from 'react-bootstrap';
 import type { ReactNode } from 'react';
+import { Icon } from './Icon';
 
 export interface ButtonProps {
-  children: ReactNode;
+  children?: ReactNode;
   onClick?: () => void;
   type?: 'button' | 'submit' | 'reset';
   variant?:
@@ -19,6 +20,7 @@ export interface ButtonProps {
   loading?: boolean;
   size?: 'sm' | 'lg';
   className?: string;
+  icon?: string;
 }
 
 /**
@@ -36,6 +38,7 @@ export function Button({
   loading = false,
   size,
   className,
+  icon,
 }: ButtonProps) {
   return (
     <BootstrapButton
@@ -61,6 +64,7 @@ export function Button({
           <span className="visually-hidden">Loading...</span>
         </>
       )}
+      {icon && <Icon name={icon} size={14} />}
       {children}
     </BootstrapButton>
   );

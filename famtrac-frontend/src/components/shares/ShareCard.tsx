@@ -42,6 +42,7 @@ export function ShareCard({ share, onEdit, onRevoke, onAccept }: ShareCardProps)
             <Button
               variant="secondary"
               size="sm"
+              icon="pencil"
               onClick={() => onEdit(share)}
               disabled={share.status === 'expired'}
             >
@@ -49,12 +50,12 @@ export function ShareCard({ share, onEdit, onRevoke, onAccept }: ShareCardProps)
             </Button>
           )}
           {onRevoke && (
-            <Button variant="danger" size="sm" onClick={() => onRevoke(share)}>
+            <Button variant="danger" size="sm" icon="trash" onClick={() => onRevoke(share)}>
               Revoke
             </Button>
           )}
           {onAccept && (
-            <Button variant="success" size="sm" onClick={() => onAccept(share)}>
+            <Button variant="success" size="sm" icon="plus" onClick={() => onAccept(share)}>
               Accept
             </Button>
           )}

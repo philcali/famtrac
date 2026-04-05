@@ -52,7 +52,14 @@ export interface DependentListResponse {
 
 export type FeedingType = 'breast' | 'bottle' | 'solid';
 export type DiaperContents = 'wet' | 'dirty' | 'both';
-export type ActivityType = 'feeding' | 'diaper_change' | 'sleep' | 'pumping';
+export type ActivityType =
+  | 'feeding'
+  | 'diaper_change'
+  | 'sleep'
+  | 'pumping'
+  | 'activity_time'
+  | 'tummy_time'
+  | 'wake_window';
 
 export interface CreateActivityRequest {
   family_id: string;
@@ -64,6 +71,8 @@ export interface CreateActivityRequest {
   start_time?: string;
   end_time?: string;
   volume_ml?: number;
+  description?: string;
+  notes?: string;
 }
 
 export interface UpdateActivityRequest {
@@ -74,6 +83,8 @@ export interface UpdateActivityRequest {
   start_time?: string;
   end_time?: string;
   volume_ml?: number;
+  description?: string;
+  notes?: string;
 }
 
 export interface ActivityResponse {
@@ -88,6 +99,8 @@ export interface ActivityResponse {
   start_time?: string;
   end_time?: string;
   volume_ml?: number;
+  description?: string;
+  notes?: string;
 }
 
 export interface ActivityListResponse {

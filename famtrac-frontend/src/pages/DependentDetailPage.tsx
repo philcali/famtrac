@@ -113,32 +113,52 @@ export function DependentDetailPage() {
     setDeletingActivity(activity);
   };
 
+  const handleUpdateActivity = async (
+    data: CreateActivityRequest,
+    previousActivity: ActivityResponse
+  ) => {
+    const updateData: UpdateActivityRequest = {
+      type: data.type,
+      timestamp: data.timestamp,
+      feeding_type: data.feeding_type,
+      contents: data.contents,
+      notes: data.notes,
+      description: data.description,
+      end_time: data.end_time,
+      volume_ml: data.volume_ml,
+      start_time: data.start_time,
+    };
+
+    const response = await updateActivityMutation({
+      id: previousActivity.id,
+      data: updateData,
+    });
+
+    if (!response.error) {
+      setSuccessMessage('Activity updated successfully');
+      setShowActivityForm(false);
+      setEditingActivity(undefined);
+      setExtraActivities([]);
+      setLastActivitiesNextToken(null);
+      await refetchActivities();
+    }
+  };
+
+  const handleStopTimeButton = async (previousActivity: ActivityResponse) => {
+    handleUpdateActivity(
+      {
+        ...previousActivity,
+        family_id: familyId ?? 'NA',
+        end_time: new Date().toISOString(),
+      },
+      previousActivity
+    );
+  };
+
   const handleActivityFormSubmit = async (data: CreateActivityRequest) => {
     if (editingActivity) {
       // Update existing activity
-      const updateData: UpdateActivityRequest = {
-        type: data.type,
-        timestamp: data.timestamp,
-        feeding_type: data.feeding_type,
-        contents: data.contents,
-        start_time: data.start_time,
-        end_time: data.end_time,
-        volume_ml: data.volume_ml,
-      };
-
-      const response = await updateActivityMutation({
-        id: editingActivity.id,
-        data: updateData,
-      });
-
-      if (!response.error) {
-        setSuccessMessage('Activity updated successfully');
-        setShowActivityForm(false);
-        setEditingActivity(undefined);
-        setExtraActivities([]);
-        setLastActivitiesNextToken(null);
-        await refetchActivities();
-      }
+      handleUpdateActivity(data, editingActivity);
     } else {
       // Create new activity
       const response = await createActivityMutation(data);
@@ -269,7 +289,12 @@ export function DependentDetailPage() {
         <Col>
           <h2 className="heading">
             Activities
-            <Button className="heading-right" variant="primary" onClick={handleAddActivity}>
+            <Button
+              className="heading-right"
+              variant="primary"
+              icon="plus"
+              onClick={handleAddActivity}
+            >
               Add Activity
             </Button>
           </h2>
@@ -297,6 +322,7 @@ export function DependentDetailPage() {
         onLoadMore={handleLoadMoreActivities}
         onEdit={handleEditActivity}
         onDelete={handleDeleteActivity}
+        onStop={handleStopTimeButton}
       />
 
       {/* Activity Form Modal */}

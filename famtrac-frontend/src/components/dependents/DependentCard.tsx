@@ -46,19 +46,28 @@ export function DependentCard({
         {(onEdit || onDelete || onView) && (
           <div className="d-flex gap-2">
             {onView && (
-              <Button variant="primary" size="sm" onClick={() => onView(dependent)}>
-                View
-              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                icon="eye"
+                onClick={() => onView(dependent)}
+              ></Button>
             )}
             {onEdit && (
-              <Button variant="secondary" size="sm" onClick={() => onEdit(dependent)}>
-                Edit
-              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon="pencil"
+                onClick={() => onEdit(dependent)}
+              ></Button>
             )}
             {onDelete && (
-              <Button variant="danger" size="sm" onClick={() => onDelete(dependent)}>
-                Delete
-              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                icon="trash"
+                onClick={() => onDelete(dependent)}
+              ></Button>
             )}
           </div>
         )}

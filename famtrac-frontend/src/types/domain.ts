@@ -20,7 +20,14 @@ export interface Dependent {
 // Activity type enums
 export type FeedingType = 'breast' | 'bottle' | 'solid';
 export type DiaperContents = 'wet' | 'dirty' | 'both';
-export type ActivityType = 'feeding' | 'diaper_change' | 'sleep' | 'pumping';
+export type ActivityType =
+  | 'feeding'
+  | 'diaper_change'
+  | 'sleep'
+  | 'pumping'
+  | 'activity_time'
+  | 'tummy_time'
+  | 'wake_window';
 
 // Base activity interface
 export interface BaseActivity {
@@ -46,7 +53,7 @@ export interface DiaperActivity extends BaseActivity {
 export interface SleepActivity extends BaseActivity {
   activity_type: 'sleep';
   start_time: string;
-  end_time: string;
+  end_time?: string;
 }
 
 export interface PumpingActivity extends BaseActivity {
@@ -54,8 +61,35 @@ export interface PumpingActivity extends BaseActivity {
   volume_ml: number;
 }
 
+export interface ActivityTimeActivity extends BaseActivity {
+  activity_type: 'activity_time';
+  start_time: string;
+  end_time?: string;
+  description?: string;
+}
+
+export interface TummyTimeActivity extends BaseActivity {
+  activity_type: 'tummy_time';
+  start_time: string;
+  end_time?: string;
+  notes?: string;
+}
+
+export interface WakeWindowActivity extends BaseActivity {
+  activity_type: 'wake_window';
+  start_time: string;
+  end_time?: string;
+}
+
 // Union type for all activities
-export type Activity = FeedingActivity | DiaperActivity | SleepActivity | PumpingActivity;
+export type Activity =
+  | FeedingActivity
+  | DiaperActivity
+  | SleepActivity
+  | PumpingActivity
+  | ActivityTimeActivity
+  | TummyTimeActivity
+  | WakeWindowActivity;
 
 // Share types
 
