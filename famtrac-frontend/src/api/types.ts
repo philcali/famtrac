@@ -59,7 +59,8 @@ export type ActivityType =
   | 'pumping'
   | 'activity_time'
   | 'tummy_time'
-  | 'wake_window';
+  | 'wake_window'
+  | 'bath';
 
 export interface CreateActivityRequest {
   family_id: string;

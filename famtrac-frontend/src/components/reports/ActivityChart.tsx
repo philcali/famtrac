@@ -3,6 +3,7 @@ import {
   ResponsiveContainer,
   LineChart,
   BarChart,
+  ComposedChart,
   XAxis,
   YAxis,
   Tooltip,
@@ -36,6 +37,8 @@ interface SimpleChartProps extends BaseChartProps {
   chartType: ChartType;
   color: string;
   stackedBars?: never;
+  compositeBarColor?: never;
+  compositeLineColor?: never;
 }
 
 interface StackedChartProps extends BaseChartProps {
@@ -44,9 +47,21 @@ interface StackedChartProps extends BaseChartProps {
   chartType: 'stacked-bar';
   stackedBars: StackedBarSeries[];
   color?: never;
+  compositeBarColor?: never;
+  compositeLineColor?: never;
 }
 
-export type ActivityChartProps = SimpleChartProps | StackedChartProps;
+interface CompositeChartProps extends BaseChartProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: Record<string, any>[];
+  chartType: 'composite';
+  compositeBarColor: string;
+  compositeLineColor: string;
+  color?: never;
+  stackedBars?: never;
+}
+
+export type ActivityChartProps = SimpleChartProps | StackedChartProps | CompositeChartProps;
 
 /**
  * ActivityChart renders a line or bar chart for activity data using Recharts.
@@ -79,6 +94,24 @@ export function ActivityChart(props: ActivityChartProps) {
                 <Tooltip />
                 <Line type="monotone" dataKey="value" stroke={props.color} dot />
               </LineChart>
+            ) : chartType === 'composite' ? (
+              <ComposedChart data={data}>
+                <XAxis
+                  dataKey="label"
+                  label={{ value: xAxisLabel, position: 'insideBottom', offset: -5 }}
+                />
+                <YAxis label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="total" fill={props.compositeBarColor} name="Total" />
+                <Line
+                  type="monotone"
+                  dataKey="average"
+                  stroke={props.compositeLineColor}
+                  name="Average"
+                  dot
+                />
+              </ComposedChart>
             ) : chartType === 'stacked-bar' ? (
               <BarChart data={data}>
                 <XAxis

@@ -204,6 +204,32 @@ pub fn validate_activity_type(activity_type: &ActivityType) -> Result<(), Valida
             }
             Ok(())
         }
+        ActivityType::Bath {
+            start_time,
+            end_time,
+            notes,
+        } => {
+            if let Some(end) = end_time {
+                if end.0 <= start_time.0 {
+                    return Err(ValidationError {
+                        field: "end_time".to_string(),
+                        message: "Bath end time must be after start time".to_string(),
+                        constraint: Some("end must be > start".to_string()),
+                    });
+                }
+            }
+            if let Some(n) = notes {
+                let sanitized = sanitize_string(n);
+                if sanitized.len() > 500 {
+                    return Err(ValidationError {
+                        field: "notes".to_string(),
+                        message: "Notes is too long".to_string(),
+                        constraint: Some("must be 500 characters or fewer".to_string()),
+                    });
+                }
+            }
+            Ok(())
+        }
     }
 }
 

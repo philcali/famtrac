@@ -52,7 +52,11 @@ export function ActivityForm({
   loading = false,
 }: ActivityFormProps) {
   const isStopwatchType = (type: ActivityType) =>
-    type === 'sleep' || type === 'activity_time' || type === 'tummy_time' || type === 'wake_window';
+    type === 'sleep' ||
+    type === 'activity_time' ||
+    type === 'tummy_time' ||
+    type === 'wake_window' ||
+    type === 'bath';
 
   // Form state
   const [activityType, setActivityType] = useState<ActivityType>(activity?.type || 'feeding');
@@ -202,6 +206,9 @@ export function ActivityForm({
       if (activityType === 'tummy_time' && notes.trim()) {
         data.notes = notes.trim();
       }
+      if (activityType === 'bath' && notes.trim()) {
+        data.notes = notes.trim();
+      }
     } else if (activityType === 'pumping') {
       data.volume_ml = parseInt(volumeMl, 10);
     }
@@ -274,6 +281,7 @@ export function ActivityForm({
           <option value="activity_time">Activity Time</option>
           <option value="tummy_time">Tummy Time</option>
           <option value="wake_window">Wake Window</option>
+          <option value="bath">Bath</option>
         </Form.Select>
       </Form.Group>
 
@@ -378,6 +386,16 @@ export function ActivityForm({
             />
           )}
           {activityType === 'tummy_time' && (
+            <Input
+              label="Notes"
+              type="text"
+              value={notes}
+              onChange={setNotes}
+              placeholder="Optional notes"
+              disabled={loading}
+            />
+          )}
+          {activityType === 'bath' && (
             <Input
               label="Notes"
               type="text"

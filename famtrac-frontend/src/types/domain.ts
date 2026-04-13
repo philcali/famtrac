@@ -27,7 +27,8 @@ export type ActivityType =
   | 'pumping'
   | 'activity_time'
   | 'tummy_time'
-  | 'wake_window';
+  | 'wake_window'
+  | 'bath';
 
 // Base activity interface
 export interface BaseActivity {
@@ -81,6 +82,13 @@ export interface WakeWindowActivity extends BaseActivity {
   end_time?: string;
 }
 
+export interface BathActivity extends BaseActivity {
+  activity_type: 'bath';
+  start_time: string;
+  end_time?: string;
+  notes?: string;
+}
+
 // Union type for all activities
 export type Activity =
   | FeedingActivity
@@ -89,7 +97,8 @@ export type Activity =
   | PumpingActivity
   | ActivityTimeActivity
   | TummyTimeActivity
-  | WakeWindowActivity;
+  | WakeWindowActivity
+  | BathActivity;
 
 // Share types
 

@@ -55,6 +55,13 @@ pub enum ActivityType {
         #[serde(skip_serializing_if = "Option::is_none")]
         end_time: Option<Timestamp>,
     },
+    Bath {
+        start_time: Timestamp,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        end_time: Option<Timestamp>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        notes: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

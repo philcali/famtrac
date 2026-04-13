@@ -34,6 +34,12 @@ export interface PumpingSummary {
   averageVolumeMl: number;
 }
 
+export interface BathSummary {
+  totalCount: number;
+  totalDurationMinutes: number;
+  averageDurationMinutes: number;
+}
+
 // --- Date Range Presets ---
 
 /**
@@ -127,6 +133,23 @@ export function computePumpingSummary(activities: ActivityResponse[]): PumpingSu
   };
 }
 
+export function computeBathSummary(activities: ActivityResponse[]): BathSummary {
+  const baths = activities.filter((a) => a.type === 'bath');
+  const validBaths = baths.filter((a) => a.start_time != null && a.end_time != null);
+
+  const totalDurationMinutes = validBaths.reduce((sum, a) => {
+    const start = new Date(a.start_time!).getTime();
+    const end = new Date(a.end_time!).getTime();
+    return sum + (end - start) / 60000;
+  }, 0);
+
+  return {
+    totalCount: baths.length,
+    totalDurationMinutes,
+    averageDurationMinutes: validBaths.length > 0 ? totalDurationMinutes / validBaths.length : 0,
+  };
+}
+
 // --- Chart Data Transformations ---
 
 export function transformFeedingChartData(activities: ActivityResponse[]): ChartDataPoint[] {
@@ -190,6 +213,22 @@ export function transformWakeWindowChartData(activities: ActivityResponse[]): Ch
     .map(([label, value]) => ({ label, value: Number((value / 60).toFixed(2)) }));
 }
 
+export function transformBathChartData(activities: ActivityResponse[]): ChartDataPoint[] {
+  const validBaths = activities.filter(
+    (a) => a.type === 'bath' && a.start_time != null && a.end_time != null
+  );
+
+  const byDay = new Map<string, number>();
+  for (const a of validBaths) {
+    const day = a.start_time!.slice(0, 10);
+    byDay.set(day, (byDay.get(day) ?? 0) + 1);
+  }
+
+  return Array.from(byDay.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([label, value]) => ({ label, value }));
+}
+
 export function transformDiaperChartData(activities: ActivityResponse[]): ChartDataPoint[] {
   const diapers = activities.filter((a) => a.type === 'diaper_change');
 
@@ -240,6 +279,14 @@ export function transformPumpingChartData(activities: ActivityResponse[]): Chart
     .filter((a) => a.type === 'pumping' && a.volume_ml != null)
     .map((a) => ({ label: a.timestamp, value: a.volume_ml! }))
     .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+// --- Composite (Bar + Line) Transformations ---
+
+export interface CompositeDataPoint {
+  label: string;
+  total: number;
+  average: number;
 }
 
 // --- Trend (Running Average) Transformations ---
@@ -300,5 +347,56 @@ export function transformVolumeTrendData(
     .map(([bucketKey, { sum, count }]) => ({
       label: formatLabel(bucketKey),
       value: Math.round(sum / count),
+    }));
+}
+
+/**
+ * Buckets volume-based activities into fixed time windows and returns both
+ * the raw total and the average volume per window — suitable for a composite
+ * bar (total) + line (average) chart.
+ */
+export function transformVolumeCompositeData(
+  activities: ActivityResponse[],
+  activityType: 'feeding' | 'pumping',
+  window: TrendWindow
+): CompositeDataPoint[] {
+  const filtered = activities
+    .filter((a) => a.type === activityType && a.volume_ml != null)
+    .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+
+  if (filtered.length === 0) return [];
+
+  const windowMs = TREND_WINDOW_MS[window];
+  const buckets = new Map<number, { sum: number; count: number }>();
+
+  for (const a of filtered) {
+    const ts = new Date(a.timestamp).getTime();
+    const bucketKey = Math.floor(ts / windowMs) * windowMs;
+    const existing = buckets.get(bucketKey);
+    if (existing) {
+      existing.sum += a.volume_ml!;
+      existing.count += 1;
+    } else {
+      buckets.set(bucketKey, { sum: a.volume_ml!, count: 1 });
+    }
+  }
+
+  const formatLabel = (ms: number): string => {
+    const d = new Date(ms);
+    if (window === '1d') {
+      return formatDateOnly(d);
+    }
+    const date = formatDateOnly(d);
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    return `${date} ${h}:${m}`;
+  };
+
+  return Array.from(buckets.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([bucketKey, { sum, count }]) => ({
+      label: formatLabel(bucketKey),
+      total: Math.round(sum),
+      average: Math.round(sum / count),
     }));
 }
