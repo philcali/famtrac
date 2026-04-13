@@ -19,10 +19,13 @@ import {
   computeDiaperSummary,
   computePumpingSummary,
   computeWakeWindowSummary,
+  computeBathSummary,
   transformSleepChartData,
   transformWakeWindowChartData,
+  transformBathChartData,
   transformDiaperStackedChartData,
   transformVolumeTrendData,
+  transformVolumeCompositeData,
 } from '../utils/reportUtils';
 import type { TimeRangePreset, TrendWindow } from '../utils/reportUtils';
 import { formatDuration } from '../utils/formatDuration';
@@ -73,14 +76,16 @@ export function ReportPage() {
   const diaperSummary = useMemo(() => computeDiaperSummary(activities), [activities]);
   const pumpingSummary = useMemo(() => computePumpingSummary(activities), [activities]);
   const wakeWindowSummary = useMemo(() => computeWakeWindowSummary(activities), [activities]);
+  const bathSummary = useMemo(() => computeBathSummary(activities), [activities]);
 
   // Compute chart data from activities
-  const feedingChartData = useMemo(
-    () => transformVolumeTrendData(activities, 'feeding', trendWindow),
+  const feedingCompositeData = useMemo(
+    () => transformVolumeCompositeData(activities, 'feeding', trendWindow),
     [activities, trendWindow]
   );
   const sleepChartData = useMemo(() => transformSleepChartData(activities), [activities]);
   const wakeWindowChartData = useMemo(() => transformWakeWindowChartData(activities), [activities]);
+  const bathChartData = useMemo(() => transformBathChartData(activities), [activities]);
   const diaperChartData = useMemo(() => transformDiaperStackedChartData(activities), [activities]);
   const pumpingChartData = useMemo(
     () => transformVolumeTrendData(activities, 'pumping', trendWindow),
@@ -248,6 +253,23 @@ export function ReportPage() {
               ]}
             />
           </Col>
+          <Col md={6} lg={3}>
+            <ActivitySummaryCard
+              title="Baths"
+              variant="info"
+              metrics={[
+                { label: 'Total Baths', value: String(bathSummary.totalCount) },
+                {
+                  label: 'Total Duration',
+                  value: formatDuration(bathSummary.totalDurationMinutes),
+                },
+                {
+                  label: 'Avg Duration',
+                  value: formatDuration(bathSummary.averageDurationMinutes),
+                },
+              ]}
+            />
+          </Col>
         </Row>
       )}
 
@@ -273,12 +295,13 @@ export function ReportPage() {
           <Row>
             <Col md={6}>
               <ActivityChart
-                title="Feeding Volume Trend (avg)"
-                data={feedingChartData}
-                chartType="line"
-                yAxisLabel="Avg Volume (ml)"
+                title="Feeding Volume Trend"
+                data={feedingCompositeData}
+                chartType="composite"
+                yAxisLabel="Volume (ml)"
                 xAxisLabel="Time"
-                color="#28a745"
+                compositeBarColor="#28a745"
+                compositeLineColor="#155724"
                 emptyMessage="No feeding data with volume for the selected period."
               />
             </Col>
@@ -328,6 +351,17 @@ export function ReportPage() {
                 xAxisLabel="Time"
                 color="#007bff"
                 emptyMessage="No pumping data with volume for the selected period."
+              />
+            </Col>
+            <Col md={6}>
+              <ActivityChart
+                title="Baths Per Day"
+                data={bathChartData}
+                chartType="bar"
+                yAxisLabel="Count"
+                xAxisLabel="Day"
+                color="#0dcaf0"
+                emptyMessage="No bath data for the selected period."
               />
             </Col>
           </Row>

@@ -599,6 +599,7 @@ impl DynamoDbActivityRepository {
             ActivityType::ActivityTime { .. } => "activity_time",
             ActivityType::TummyTime { .. } => "tummy_time",
             ActivityType::WakeWindow { .. } => "wake_window",
+            ActivityType::Bath { .. } => "bath",
         };
         item.insert(
             "activity_type_name".to_string(),
@@ -844,6 +845,7 @@ impl ActivityRepository for DynamoDbActivityRepository {
                     ActivityType::ActivityTime { .. } => "activity_time",
                     ActivityType::TummyTime { .. } => "tummy_time",
                     ActivityType::WakeWindow { .. } => "wake_window",
+                    ActivityType::Bath { .. } => "bath",
                 };
                 query_builder = query_builder.expression_attribute_values(
                     ":activity_type",

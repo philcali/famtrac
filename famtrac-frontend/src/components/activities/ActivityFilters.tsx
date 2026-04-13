@@ -63,6 +63,7 @@ export function ActivityFilters({
               <option value="diaper_change">Diaper Change</option>
               <option value="sleep">Sleep</option>
               <option value="pumping">Pumping</option>
+              <option value="bath">Bath</option>
             </Form.Select>
           </Form.Group>
         </Col>

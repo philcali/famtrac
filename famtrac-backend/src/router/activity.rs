@@ -105,6 +105,14 @@ pub async fn route_activity(
                             })
                         }
                         "pumping" => Some(ActivityType::Pumping { volume_ml: 0 }),
+                        "bath" => {
+                            let now = Timestamp::now();
+                            Some(ActivityType::Bath {
+                                start_time: now,
+                                end_time: Some(now),
+                                notes: None,
+                            })
+                        }
                         _ => None,
                     });
 
