@@ -1,5 +1,5 @@
 use crate::domain::{
-    Activity, ActivityType, Dependent, DependentId, Family, FamilyId, IdentityId, Share, ShareId,
+    Activity, ActivityType, ApiToken, ApiTokenStatus, Dependent, DependentId, Family, FamilyId, IdentityId, Share, ShareId,
     Timestamp,
 };
 use crate::errors::StoreError;
@@ -150,4 +150,24 @@ pub trait ShareRepository: Send + Sync {
         family_id: FamilyId,
         accepter_username: &str,
     ) -> Result<Option<Share>, StoreError>;
+}
+
+/// Repository trait for API Token operations
+#[async_trait]
+pub trait ApiTokenRepository: Send + Sync {
+    /// Create a new API token
+    async fn create(&self, token: ApiToken) -> Result<ApiToken, StoreError>;
+
+    /// Get an API token by its token string
+    async fn get_by_token(&self, token: &str) -> Result<Option<ApiToken>, StoreError>;
+
+    /// List all API tokens for a user
+    async fn list_by_user(
+        &self,
+        user_id: IdentityId,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<ApiToken>, StoreError>;
+
+    /// Revoke an API token
+    async fn revoke(&self, user_id: IdentityId, token: &str) -> Result<(), StoreError>;
 }

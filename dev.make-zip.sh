@@ -5,8 +5,8 @@ set -e
 APP="${1:-backend}"
 echo $APP
 
-if [ "$APP" != "backend" ] && [ "$APP" != "stream-handler" ]; then
-    echo >&2 ERROR: you must supply an argument, either 'backend' or 'stream-handler'
+if [ "$APP" != "backend" ] && [ "$APP" != "stream-handler" ] && [ "$APP" != "authorizer" ]; then
+    echo >&2 ERROR: you must supply an argument, either 'backend', 'stream-handler', or 'authorizer'
     exit 1
 fi
 

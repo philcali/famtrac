@@ -21,6 +21,13 @@ export interface FamtracApiAuthorizationProps {
     readonly scopes?: string[];
 }
 
+export interface FamtracApiTokenAuthorizerProps {
+    readonly authorizerCode: Code;
+    readonly cognitoIssuer: string;
+    readonly cognitoAudience: string;
+    readonly dataTableName: string;
+}
+
 export interface IFamtracApi {
     readonly table: ITable;
     readonly apiId: string;
@@ -44,7 +51,7 @@ export class FamtracApi extends Construct implements IFamtracApi {
     readonly apiId: string;
     readonly stageId: string;
 
-    constructor(scope: Construct, id: string, props: FamtracApiProps) {
+    constructor(scope: Construct, id: string, props: FamtracApiProps & { readonly authorizerProps?: FamtracApiTokenAuthorizerProps }) {
         super(scope, id);
 
         let table = props.table;
@@ -200,7 +207,49 @@ export class FamtracApi extends Construct implements IFamtracApi {
             routeKey: '$default',
             target: `integrations/${resourceIntegration.ref}`,
         };
-        if (props.authorization) {
+        if (props.authorization && props.authorizerProps) {
+            // Create the custom authorizer Lambda
+            const authorizerFunction = new Function(this, 'AuthorizerFunction', {
+                code: props.authorizerProps.authorizerCode,
+                handler: 'bootstrap',
+                runtime: Runtime.PROVIDED_AL2023,
+                memorySize: 256,
+                timeout: Duration.seconds(10),
+                environment: {
+                    COGNITO_ISSUER: props.authorizerProps.cognitoIssuer,
+                    COGNITO_AUDIENCE: props.authorizerProps.cognitoAudience,
+                    API_TOKENS_TABLE: props.authorizerProps.dataTableName,
+                },
+                architecture: Architecture.X86_64,
+            });
+
+            // Create the TOKEN authorizer
+            const tokenAuth = new CfnAuthorizer(this, 'TokenAuthorizer', {
+                apiId: this.apiId,
+                authorizerType: 'TOKEN',
+                identitySource: [
+                    '$request.header.Authorization',
+                ],
+                authorizerUri: `arn:aws:apigateway:${Stack.of(this).region}:lambda:path/2015-03-31/functions/${authorizerFunction.functionArn}/invocations`,
+                authorizerResultTtlInSeconds: 300,
+                name: `${apiName}-token-auth`,
+            });
+
+            // Define explicit routes so we can set authorization per-route
+            // OPTIONS needs no auth (CORS preflight)
+            new CfnRoute(this, 'UnauthorizedRoute', {
+                ...functionRouteProps,
+                routeKey: 'OPTIONS /{proxy+}',
+            });
+
+            // All other methods use the TOKEN authorizer
+            functionRouteProps = {
+                ...functionRouteProps,
+                authorizationType: 'CUSTOM',
+                authorizerId: tokenAuth.ref,
+            };
+        } else if (props.authorization) {
+            // Legacy path: keep JWT authorizer for backward compatibility
             new CfnRoute(this, 'UnauthorizedRoute', {
                 ...functionRouteProps,
                 routeKey: 'OPTIONS /{proxy+}',

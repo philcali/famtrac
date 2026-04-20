@@ -1,4 +1,5 @@
 mod activity;
+mod api_token;
 mod dependent;
 mod family;
 mod pagination;
@@ -9,6 +10,7 @@ pub use activity::{
     create_activity, delete_activity, get_activity, query_activities, update_activity,
     ActivityListResponse, ActivityResponse, CreateActivityRequest, UpdateActivityRequest,
 };
+pub use api_token::{create_api_token, list_api_tokens, revoke_api_token};
 pub use dependent::{
     create_dependent, delete_dependent, get_dependent, list_dependents, update_dependent,
     CreateDependentRequest, DependentListResponse, DependentResponse, UpdateDependentRequest,
