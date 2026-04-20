@@ -72,6 +72,7 @@ export interface CreateActivityRequest {
   start_time?: string;
   end_time?: string;
   volume_ml?: number;
+  medicine_added?: boolean;
   description?: string;
   notes?: string;
 }
@@ -84,6 +85,7 @@ export interface UpdateActivityRequest {
   start_time?: string;
   end_time?: string;
   volume_ml?: number;
+  medicine_added?: boolean;
   description?: string;
   notes?: string;
 }
@@ -100,6 +102,7 @@ export interface ActivityResponse {
   start_time?: string;
   end_time?: string;
   volume_ml?: number;
+  medicine_added?: boolean;
   description?: string;
   notes?: string;
 }

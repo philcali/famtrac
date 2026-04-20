@@ -24,6 +24,8 @@ pub enum ActivityType {
         feeding_type: FeedingType,
         #[serde(skip_serializing_if = "Option::is_none")]
         volume_ml: Option<u32>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        medicine_added: Option<bool>,
     },
     DiaperChange {
         contents: DiaperContents,

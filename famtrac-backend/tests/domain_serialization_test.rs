@@ -61,6 +61,7 @@ fn test_activity_type_serialization() {
     let feeding = ActivityType::Feeding {
         feeding_type: FeedingType::Bottle,
         volume_ml: Some(120),
+        medicine_added: Some(true),
     };
 
     let json = serde_json::to_string(&feeding).unwrap();

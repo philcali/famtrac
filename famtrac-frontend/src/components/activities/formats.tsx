@@ -90,6 +90,12 @@ export const renderActivityDetails = (activity: ActivityResponse) => {
               {' ' + activity.volume_ml}ml
             </>
           )}
+          {activity.medicine_added && (
+            <>
+              <br />
+              <strong>Medicine:</strong> Yes
+            </>
+          )}
         </>
       );
     case 'diaper_change':
