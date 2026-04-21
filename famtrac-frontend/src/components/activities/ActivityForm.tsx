@@ -23,6 +23,7 @@ export interface ActivityFormProps {
     start_time?: string;
     end_time?: string;
     volume_ml?: number;
+    medicine_added?: boolean;
     description?: string;
     notes?: string;
   }) => Promise<void>;
@@ -88,6 +89,9 @@ export function ActivityForm({
       activity.volume_ml
       ? activity.volume_ml.toString()
       : ''
+  );
+  const [medicineAdded, setMedicineAdded] = useState(
+    activity?.type === 'feeding' && activity.medicine_added ? activity.medicine_added : false
   );
 
   // Custom validation rule for time range (sleep and other stopwatch types)
@@ -176,6 +180,7 @@ export function ActivityForm({
       start_time?: string;
       end_time?: string;
       volume_ml?: number;
+      medicine_added?: boolean;
       description?: string;
       notes?: string;
     } = {
@@ -190,6 +195,7 @@ export function ActivityForm({
 
     if (activityType === 'feeding') {
       data.feeding_type = feedingType;
+      data.medicine_added = medicineAdded;
       if (feedingType === 'bottle') {
         data.volume_ml = parseInt(volumeMl, 10);
       }
@@ -406,6 +412,20 @@ export function ActivityForm({
             />
           )}
         </>
+      )}
+
+      {/* Medicine added flag for feeding */}
+      {activityType === 'feeding' && (
+        <Form.Group className="mb-3">
+          <Form.Check
+            type="switch"
+            id="medicine-added-toggle"
+            label="Medicine Added"
+            checked={medicineAdded}
+            onChange={(e) => setMedicineAdded(e.target.checked)}
+            disabled={loading}
+          />
+        </Form.Group>
       )}
 
       {/* Pumping-specific fields */}

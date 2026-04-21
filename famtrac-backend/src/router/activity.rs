@@ -93,6 +93,7 @@ pub async fn route_activity(
                         "feeding" => Some(ActivityType::Feeding {
                             feeding_type: FeedingType::Breast,
                             volume_ml: None,
+                            medicine_added: None,
                         }),
                         "diaper_change" => Some(ActivityType::DiaperChange {
                             contents: DiaperContents::Wet,

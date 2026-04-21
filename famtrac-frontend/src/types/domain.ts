@@ -44,6 +44,7 @@ export interface BaseActivity {
 export interface FeedingActivity extends BaseActivity {
   activity_type: 'feeding';
   feeding_type: FeedingType;
+  medicine_added?: boolean;
 }
 
 export interface DiaperActivity extends BaseActivity {
