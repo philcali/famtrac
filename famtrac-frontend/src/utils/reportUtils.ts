@@ -13,6 +13,7 @@ export interface FeedingSummary {
   totalCount: number;
   totalVolumeMl: number;
   averageVolumeMl: number;
+  medicineCount: number;
 }
 
 export interface SleepSummary {
@@ -90,6 +91,7 @@ export function computeFeedingSummary(activities: ActivityResponse[]): FeedingSu
     totalCount: feedings.length,
     totalVolumeMl,
     averageVolumeMl: withVolume.length > 0 ? totalVolumeMl / withVolume.length : 0,
+    medicineCount: feedings.filter((a) => a.medicine_added).length,
   };
 }
 

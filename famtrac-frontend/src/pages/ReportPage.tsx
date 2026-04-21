@@ -193,6 +193,7 @@ export function ReportPage() {
                 { label: 'Total Feedings', value: String(feedingSummary.totalCount) },
                 { label: 'Total Volume', value: `${Math.round(feedingSummary.totalVolumeMl)} ml` },
                 { label: 'Avg Volume', value: `${Math.round(feedingSummary.averageVolumeMl)} ml` },
+                { label: 'With Medicine', value: String(feedingSummary.medicineCount) },
               ]}
             />
           </Col>
