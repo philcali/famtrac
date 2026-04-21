@@ -30,6 +30,8 @@ export const getActivityTypeLabel = (type: string) => {
       return 'Tummy Time';
     case 'wake_window':
       return 'Wake Window';
+    case 'bath':
+      return 'Bath';
     default:
       return type;
   }
@@ -41,6 +43,7 @@ export const getActivityTypeBadgeVariant = (type: string) => {
       return 'primary';
     case 'diaper_change':
       return 'warning';
+    case 'bath':
     case 'sleep':
       return 'info';
     case 'pumping':
@@ -122,6 +125,7 @@ export const renderActivityDetails = (activity: ActivityResponse) => {
           )}
         </>
       );
+    case 'bath':
     case 'tummy_time':
       return (
         <>

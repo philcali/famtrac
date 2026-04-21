@@ -353,7 +353,7 @@ pub mod mocks {
                 .cloned()
                 .collect();
             // Sort by timestamp descending to match GSI behavior
-            all.sort_by(|a, b| b.timestamp.0.cmp(&a.timestamp.0));
+            all.sort_by_key(|b| std::cmp::Reverse(b.timestamp.0));
             let offset = pagination
                 .next_token
                 .as_deref()
