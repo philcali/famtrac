@@ -127,6 +127,7 @@ export function DependentDetailPage() {
       end_time: data.end_time,
       volume_ml: data.volume_ml,
       start_time: data.start_time,
+      medicine_added: data.medicine_added,
     };
 
     const response = await updateActivityMutation({

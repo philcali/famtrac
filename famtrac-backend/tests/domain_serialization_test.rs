@@ -1,5 +1,6 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use famtrac_backend::domain::*;
+use famtrac_backend::handlers::{CreateActivityRequest, UpdateActivityRequest};
 
 #[test]
 fn test_timestamp_iso8601_serialization() {
@@ -95,4 +96,46 @@ fn test_sleep_activity_serialization() {
 
     let deserialized: ActivityType = serde_json::from_str(&json).unwrap();
     assert_eq!(sleep, deserialized);
+}
+
+#[test]
+fn test_feeding_with_medicine_deserialize() {
+    let json = r#"{"family_id":"00000000-0000-0000-0000-000000000001","dependent_id":"00000000-0000-0000-0000-000000000002","timestamp":"2024-01-15T10:30:00Z","type":"feeding","feeding_type":"bottle","medicine_added":true,"volume_ml":120}"#;
+    let request: CreateActivityRequest = serde_json::from_str(json).unwrap();
+    assert!(matches!(
+        request.activity_type,
+        ActivityType::Feeding {
+            feeding_type: FeedingType::Bottle,
+            medicine_added: Some(true),
+            ..
+        }
+    ));
+}
+
+#[test]
+fn test_feeding_without_medicine_deserialize() {
+    let json = r#"{"family_id":"00000000-0000-0000-0000-000000000001","dependent_id":"00000000-0000-0000-0000-000000000002","timestamp":"2024-01-15T10:30:00Z","type":"feeding","feeding_type":"bottle","volume_ml":null}"#;
+    let request: CreateActivityRequest = serde_json::from_str(json).unwrap();
+    assert!(matches!(
+        request.activity_type,
+        ActivityType::Feeding {
+            feeding_type: FeedingType::Bottle,
+            medicine_added: None,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn test_update_activity_with_medicine() {
+    let json = r#"{"timestamp":"2024-01-15T10:30:00Z","type":"feeding","feeding_type":"bottle","medicine_added":true}"#;
+    let request: UpdateActivityRequest = serde_json::from_str(json).unwrap();
+    assert!(matches!(
+        request.activity_type,
+        ActivityType::Feeding {
+            feeding_type: FeedingType::Bottle,
+            medicine_added: Some(true),
+            ..
+        }
+    ));
 }
