@@ -289,6 +289,8 @@ export interface CompositeDataPoint {
   label: string;
   total: number;
   average: number;
+  totalOz: number;
+  averageOz: number;
 }
 
 // --- Trend (Running Average) Transformations ---
@@ -400,5 +402,7 @@ export function transformVolumeCompositeData(
       label: formatLabel(bucketKey),
       total: Math.round(sum),
       average: Math.round(sum / count),
+      totalOz: Math.round((sum / 29.574) * 10) / 10,
+      averageOz: Math.round(((sum / count) / 29.574) * 10) / 10,
     }));
 }

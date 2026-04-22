@@ -12,6 +12,20 @@ import {
   Bar,
 } from 'recharts';
 
+const formatCompositeTooltip = (value: number, unit: string) => `${value} ${unit}`;
+
+const CustomCompositeTooltip = ({ active, payload }: any) => {
+  if (!active || !payload || !payload.length) return null;
+  const data = payload[0].payload;
+  return (
+    <div className="bg-white border rounded p-2 shadow-sm" style={{ fontSize: '13px' }}>
+      <div className="fw-bold mb-1">{data.label}</div>
+      <div>Total: {data.total} ml / {data.totalOz} oz</div>
+      <div>Average: {data.average} ml / {data.averageOz} oz</div>
+    </div>
+  );
+};
+
 type ChartType = 'line' | 'bar';
 
 export interface ChartDataPoint {
@@ -101,7 +115,7 @@ export function ActivityChart(props: ActivityChartProps) {
                   label={{ value: xAxisLabel, position: 'insideBottom', offset: -5 }}
                 />
                 <YAxis label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }} />
-                <Tooltip />
+                <Tooltip content={<CustomCompositeTooltip />} />
                 <Legend />
                 <Bar dataKey="total" fill={props.compositeBarColor} name="Total" />
                 <Line
