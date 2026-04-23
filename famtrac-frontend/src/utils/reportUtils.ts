@@ -403,6 +403,6 @@ export function transformVolumeCompositeData(
       total: Math.round(sum),
       average: Math.round(sum / count),
       totalOz: Math.round((sum / 29.574) * 10) / 10,
-      averageOz: Math.round(((sum / count) / 29.574) * 10) / 10,
+      averageOz: Math.round((sum / count / 29.574) * 10) / 10,
     }));
 }

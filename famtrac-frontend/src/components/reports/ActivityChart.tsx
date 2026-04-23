@@ -10,18 +10,22 @@ import {
   Legend,
   Line,
   Bar,
+  type TooltipContentProps,
 } from 'recharts';
+import type { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
 
-const formatCompositeTooltip = (value: number, unit: string) => `${value} ${unit}`;
-
-const CustomCompositeTooltip = ({ active, payload }: any) => {
+const CustomCompositeTooltip = ({ active, payload }: TooltipContentProps<ValueType, NameType>) => {
   if (!active || !payload || !payload.length) return null;
   const data = payload[0].payload;
   return (
     <div className="bg-white border rounded p-2 shadow-sm" style={{ fontSize: '13px' }}>
       <div className="fw-bold mb-1">{data.label}</div>
-      <div>Total: {data.total} ml / {data.totalOz} oz</div>
-      <div>Average: {data.average} ml / {data.averageOz} oz</div>
+      <div>
+        Total: {data.total} ml / {data.totalOz} oz
+      </div>
+      <div>
+        Average: {data.average} ml / {data.averageOz} oz
+      </div>
     </div>
   );
 };
@@ -115,7 +119,7 @@ export function ActivityChart(props: ActivityChartProps) {
                   label={{ value: xAxisLabel, position: 'insideBottom', offset: -5 }}
                 />
                 <YAxis label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }} />
-                <Tooltip content={<CustomCompositeTooltip />} />
+                <Tooltip content={CustomCompositeTooltip} />
                 <Legend />
                 <Bar dataKey="total" fill={props.compositeBarColor} name="Total" />
                 <Line
