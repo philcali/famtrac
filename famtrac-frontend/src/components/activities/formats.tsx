@@ -90,7 +90,8 @@ export const renderActivityDetails = (activity: ActivityResponse) => {
             <>
               <br />
               <strong>Volume:</strong>
-              {' ' + activity.volume_ml}ml
+              {' ' + activity.volume_ml}ml / {' '}
+              {Math.round((activity.volume_ml / 29.574) * 10) / 10}oz
             </>
           )}
           {activity.medicine_added && (
@@ -141,7 +142,10 @@ export const renderActivityDetails = (activity: ActivityResponse) => {
     case 'pumping':
       return (
         <>
-          <strong>Volume:</strong> {activity.volume_ml ?? 'N/A'} ml
+          <strong>Volume:</strong>{' '}
+          {activity.volume_ml != null
+            ? `${activity.volume_ml} ml / ${Math.round((activity.volume_ml / 29.574) * 10) / 10}oz`
+            : 'N/A'}
         </>
       );
     default:
