@@ -77,6 +77,12 @@ const renderTimedDetails = (startTime?: string, endTime?: string) => (
   </>
 );
 
+export const isBottleExpired = (activity: ActivityResponse) => {
+  if (activity.type !== 'feeding' || activity.feeding_type !== 'bottle') return false;
+  const elapsed = Date.now() - new Date(activity.timestamp).getTime();
+  return elapsed > 60 * 60 * 1000;
+};
+
 export const renderActivityDetails = (activity: ActivityResponse) => {
   switch (activity.type) {
     case 'feeding':
@@ -90,14 +96,19 @@ export const renderActivityDetails = (activity: ActivityResponse) => {
             <>
               <br />
               <strong>Volume:</strong>
-              {' ' + activity.volume_ml}ml / {' '}
-              {Math.round((activity.volume_ml / 29.574) * 10) / 10}oz
+              {' ' + activity.volume_ml}ml / {Math.round((activity.volume_ml / 29.574) * 10) / 10}oz
             </>
           )}
           {activity.medicine_added && (
             <>
               <br />
               <strong>Medicine:</strong> Yes
+            </>
+          )}
+          {isBottleExpired(activity) && (
+            <>
+              <br />
+              <span className="text-danger fw-semibold">Bottle expired</span>
             </>
           )}
         </>
