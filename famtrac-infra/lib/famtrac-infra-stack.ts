@@ -1,7 +1,8 @@
 import { ArnFormat, AssetOptions, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { FamtracApi, FamtracApiAuthorizationProps, IFamtracApi } from './backend/FamtracApi';
-import { AssetCode } from 'aws-cdk-lib/aws-lambda';
+import { AssetCode, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
+import { ITable } from 'aws-cdk-lib/aws-dynamodb';
 import { FamtracAuthorization, IFamtracAuthorization } from './auth/FamtracAuthorization';
 import { Certificate, ICertificate } from 'aws-cdk-lib/aws-certificatemanager';
 import { HostedZone, IHostedZone } from 'aws-cdk-lib/aws-route53';
@@ -103,6 +104,7 @@ class FamtracBackendStack extends Stack {
         super(scope, id, props);
 
         let authorization: FamtracApiAuthorizationProps | undefined;
+        let dataTableName: string | undefined;
         if (props?.authorization) {
             authorization = {
                 issuer: props.authorization.userPool.userPoolProviderUrl,
@@ -112,6 +114,7 @@ class FamtracBackendStack extends Stack {
             };
         }
         const rootPath = p.join(__dirname, '..', '..');
+        const authorizerRootPath = p.join(__dirname, '..', '..');
         let api = new FamtracApi(this, 'Api', {
             apiName: 'famtrac-api',
             enableDevelopmentOrigin: true,
@@ -128,6 +131,20 @@ class FamtracBackendStack extends Stack {
                 buildOutput: 'famtrac-stream-handler/build_famtrac_stream_handler_function.zip',
             }),
         });
+        dataTableName = api.table.tableName;
+
+        // Set authorizer props after api is created so we can reference the table name
+        if (authorization && dataTableName && props?.authorization) {
+            (api as any).authorizerProps = {
+                authorizerCode: new LocalModuleAsset(authorizerRootPath, {
+                    buildCommand: './dev.make-zip.sh authorizer',
+                    buildOutput: 'famtrac-authorizer/build_famtrac_authorizer_function.zip',
+                }),
+                cognitoIssuer: props.authorization.userPool.userPoolProviderUrl,
+                cognitoAudience: props.authorization.userPoolClient.userPoolClientId,
+                dataTableName: dataTableName,
+            };
+        }
         if (props?.config.enableCustomDomain && props.config.certificate && props.config.hostedZone) {
             api.addDomain('CustomDomain', {
                 certificate: props.config.certificate,

@@ -6,7 +6,7 @@
 use crate::context::RequestContext;
 use crate::errors::HandlerError;
 use crate::repository::{
-    DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
+    DynamoDbActivityRepository, DynamoDbApiTokenRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
     DynamoDbShareRepository,
 };
 use crate::utils::cors::CorsConfig;
@@ -14,6 +14,7 @@ use crate::utils::response::HttpResponse;
 use aws_lambda_events::apigw::ApiGatewayV2httpRequest;
 
 pub mod activity;
+pub mod api_token;
 pub mod dependent;
 pub mod extractors;
 pub mod family;
@@ -54,6 +55,7 @@ pub async fn route_request(
     dependent_repo: &DynamoDbDependentRepository,
     activity_repo: &DynamoDbActivityRepository,
     share_repo: &DynamoDbShareRepository,
+    token_repo: &DynamoDbApiTokenRepository,
     cors_config: &CorsConfig,
 ) -> HttpResponse {
     // Extract HTTP method, path, and body from request
@@ -63,6 +65,19 @@ pub async fn route_request(
 
     // Log routing information (Requirement 7.4)
     eprintln!("Routing: {} {}", method, path);
+
+    // Check for API token routes first
+    if path == "/tokens" || path.starts_with("/tokens/") {
+        return api_token::route_api_tokens(
+            method,
+            path,
+            body,
+            context,
+            token_repo,
+            cors_config,
+        )
+        .await;
+    }
 
     // Check for share routes first (top-level /shares paths)
     if path == "/shares" || (path.starts_with("/shares/") && !path.starts_with("/shared-families"))

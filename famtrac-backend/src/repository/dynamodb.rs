@@ -4,14 +4,14 @@ use aws_sdk_dynamodb::Client;
 use std::collections::HashMap;
 
 use crate::domain::{
-    Activity, ActivityId, ActivityType, Date, Dependent, DependentId, Family, FamilyId, IdentityId,
+    Activity, ActivityId, ActivityType, ApiToken, ApiTokenStatus, Date, Dependent, DependentId, Family, FamilyId, IdentityId,
     PermissionScope, Share, ShareId, ShareStatus, Timestamp,
 };
 use crate::errors::StoreError;
 use crate::handlers::{PaginatedResponse, PaginationParams};
 
 use super::traits::{
-    ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository, ShareRepository,
+    ActivityQueryParams, ActivityRepository, ApiTokenRepository, DependentRepository, FamilyRepository, ShareRepository,
 };
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
@@ -1328,5 +1328,246 @@ impl ShareRepository for DynamoDbShareRepository {
             Some(item) => Ok(Some(self.parse_share_item(item)?)),
             None => Ok(None),
         }
+    }
+}
+
+/// DynamoDB implementation of ApiTokenRepository
+#[derive(Clone)]
+pub struct DynamoDbApiTokenRepository {
+    client: Client,
+    table_name: String,
+}
+
+impl DynamoDbApiTokenRepository {
+    pub fn new(client: Client, table_name: String) -> Self {
+        Self { client, table_name }
+    }
+
+    fn to_item(&self, token: &ApiToken) -> HashMap<String, AttributeValue> {
+        let mut item = HashMap::new();
+        item.insert(
+            "PK".to_string(),
+            AttributeValue::S(format!("OWNER#{}", token.user_id.0)),
+        );
+        item.insert(
+            "SK".to_string(),
+            AttributeValue::S(format!("API_TOKEN#{}", token.token)),
+        );
+        item.insert("Type".to_string(), AttributeValue::S("ApiToken".to_string()));
+        item.insert(
+            "token".to_string(),
+            AttributeValue::S(token.token.clone()),
+        );
+        item.insert(
+            "user_id".to_string(),
+            AttributeValue::S(token.user_id.0.clone()),
+        );
+        if let Some(ref username) = token.username {
+            item.insert(
+                "username".to_string(),
+                AttributeValue::S(username.clone()),
+            );
+        }
+        if let Some(ref name) = token.name {
+            item.insert(
+                "name".to_string(),
+                AttributeValue::S(name.clone()),
+            );
+        }
+        let status_str = match &token.status {
+            ApiTokenStatus::Active => "active",
+            ApiTokenStatus::Revoked => "revoked",
+        };
+        item.insert("status".to_string(), AttributeValue::S(status_str.to_string()));
+        item.insert(
+            "created_at".to_string(),
+            AttributeValue::S(token.created_at.0.to_rfc3339()),
+        );
+        item.insert(
+            "updated_at".to_string(),
+            AttributeValue::S(token.updated_at.0.to_rfc3339()),
+        );
+        if let Some(ref expires_at) = token.expires_at {
+            item.insert(
+                "expires_at".to_string(),
+                AttributeValue::S(expires_at.0.to_rfc3339()),
+            );
+            item.insert(
+                "expires_in".to_string(),
+                AttributeValue::N(expires_at.0.timestamp().to_string()),
+            );
+        }
+        item
+    }
+
+    fn parse_item(&self, item: &HashMap<String, AttributeValue>) -> Result<ApiToken, StoreError> {
+        let token = item
+            .get("token")
+            .and_then(|v| v.as_s().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing token".to_string()))?
+            .clone();
+
+        let user_id = item
+            .get("user_id")
+            .and_then(|v| v.as_s().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing user_id".to_string()))?
+            .clone();
+
+        let username = item
+            .get("username")
+            .and_then(|v| v.as_s().ok())
+            .map(|s| s.clone());
+
+        let name = item
+            .get("name")
+            .and_then(|v| v.as_s().ok())
+            .map(|s| s.clone());
+
+        let status_str = item
+            .get("status")
+            .and_then(|v| v.as_s().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing status".to_string()))?;
+
+        let status = match status_str.as_str() {
+            "active" => ApiTokenStatus::Active,
+            "revoked" => ApiTokenStatus::Revoked,
+            _ => return Err(StoreError::QueryError(format!("Invalid status: {}", status_str))),
+        };
+
+        let created_at = item
+            .get("created_at")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid created_at".to_string()))?;
+
+        let updated_at = item
+            .get("updated_at")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid updated_at".to_string()))?;
+
+        let expires_at = item
+            .get("expires_in")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .map(Timestamp::from_datetime);
+
+        Ok(ApiToken {
+            token,
+            user_id: IdentityId::new(user_id),
+            username,
+            name,
+            status,
+            created_at: Timestamp::from_datetime(created_at),
+            updated_at: Timestamp::from_datetime(updated_at),
+            expires_at,
+        })
+    }
+}
+
+#[async_trait]
+impl ApiTokenRepository for DynamoDbApiTokenRepository {
+    async fn create(&self, token: ApiToken) -> Result<ApiToken, StoreError> {
+        let item = self.to_item(&token);
+
+        self.client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item))
+            .condition_expression("attribute_not_exists(PK) AND attribute_not_exists(SK)")
+            .send()
+            .await
+            .map_err(|e| {
+                let err_str = format!("{}", e);
+                if err_str.contains("ConditionalCheckFailed") {
+                    StoreError::ConflictError("API token already exists".to_string())
+                } else {
+                    StoreError::QueryError(format!("Failed to create API token: {}", e))
+                }
+            })?;
+
+        Ok(token)
+    }
+
+    async fn get_by_token(&self, token_str: &str) -> Result<Option<ApiToken>, StoreError> {
+        let result = self
+            .client
+            .get_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("API_TOKEN#{}", token_str)))
+            .key("SK", AttributeValue::S("#token".to_string()))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to get API token: {}", e)))?;
+
+        match result.item {
+            Some(item) => Ok(Some(self.parse_item(&item)?)),
+            None => Ok(None),
+        }
+    }
+
+    async fn list_by_user(
+        &self,
+        user_id: IdentityId,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<ApiToken>, StoreError> {
+        let exclusive_start_key = decode_next_token(&pagination.next_token)?;
+
+        let mut query_builder = self
+            .client
+            .query()
+            .table_name(&self.table_name)
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+            .expression_attribute_values(
+                ":pk",
+                AttributeValue::S(format!("OWNER#{}", user_id.0)),
+            )
+            .expression_attribute_values(
+                ":sk_prefix",
+                AttributeValue::S("API_TOKEN#".to_string()),
+            )
+            .limit(pagination.effective_limit() as i32);
+
+        if let Some(start_key) = exclusive_start_key {
+            query_builder = query_builder.set_exclusive_start_key(Some(start_key));
+        }
+
+        let result = query_builder.send().await.map_err(|e| {
+            StoreError::QueryError(format!("Failed to list API tokens: {}", e))
+        })?;
+
+        let tokens = result
+            .items
+            .unwrap_or_default()
+            .iter()
+            .map(|item| self.parse_item(item))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let next_token = encode_last_evaluated_key(&result.last_evaluated_key)?;
+
+        Ok(PaginatedResponse::with_next_token(tokens, next_token))
+    }
+
+    async fn revoke(&self, user_id: IdentityId, token_str: &str) -> Result<(), StoreError> {
+        let item = AttributeValue::S("revoked".to_string());
+
+        self.client
+            .update_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("OWNER#{}", user_id.0)))
+            .key("SK", AttributeValue::S(format!("API_TOKEN#{}", token_str)))
+            .update_expression("SET #status = :status, #updated_at = :updated_at")
+            .expression_attribute_names("#status", "status")
+            .expression_attribute_names("#updated_at", "updated_at")
+            .expression_attribute_values(":status", item)
+            .expression_attribute_values(
+                ":updated_at",
+                AttributeValue::S(chrono::Utc::now().to_rfc3339()),
+            )
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to revoke API token: {}", e)))?;
+
+        Ok(())
     }
 }

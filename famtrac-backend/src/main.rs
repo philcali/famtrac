@@ -7,7 +7,7 @@ use lambda_runtime::{service_fn, Error, LambdaEvent};
 use famtrac_backend::context::RequestContext;
 use famtrac_backend::errors::{AuthError, HandlerError};
 use famtrac_backend::repository::{
-    DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
+    DynamoDbActivityRepository, DynamoDbApiTokenRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
     DynamoDbShareRepository,
 };
 use famtrac_backend::router;
@@ -33,7 +33,8 @@ async fn main() -> Result<(), Error> {
         DynamoDbDependentRepository::new(dynamodb_client.clone(), table_name.clone());
     let activity_repo =
         DynamoDbActivityRepository::new(dynamodb_client.clone(), table_name.clone());
-    let share_repo = DynamoDbShareRepository::new(dynamodb_client, table_name);
+    let share_repo = DynamoDbShareRepository::new(dynamodb_client.clone(), table_name.clone());
+    let token_repo = DynamoDbApiTokenRepository::new(dynamodb_client, table_name);
 
     // Initialize CORS config
     let cors_config = CorsConfig::default();
@@ -44,6 +45,7 @@ async fn main() -> Result<(), Error> {
         let dependent_repo = dependent_repo.clone();
         let activity_repo = activity_repo.clone();
         let share_repo = share_repo.clone();
+        let token_repo = token_repo.clone();
         let cors_config = cors_config.clone();
 
         async move {
@@ -53,6 +55,7 @@ async fn main() -> Result<(), Error> {
                 &dependent_repo,
                 &activity_repo,
                 &share_repo,
+                &token_repo,
                 &cors_config,
             )
             .await
@@ -70,6 +73,7 @@ async fn handle_request(
     dependent_repo: &DynamoDbDependentRepository,
     activity_repo: &DynamoDbActivityRepository,
     share_repo: &DynamoDbShareRepository,
+    token_repo: &DynamoDbApiTokenRepository,
     cors_config: &CorsConfig,
 ) -> Result<ApiGatewayV2httpResponse, Error> {
     // Log request for debugging (Requirement 9.4)
@@ -108,6 +112,7 @@ async fn handle_request(
         dependent_repo,
         activity_repo,
         share_repo,
+        token_repo,
         cors_config,
     )
     .await;
