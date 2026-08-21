@@ -1,4 +1,3 @@
-import { Row, Col, Table } from 'react-bootstrap';
 import { SkeletonCard } from '../common/SkeletonCard';
 import { ErrorMessage } from '../common/ErrorMessage';
 import { Button } from '../common/Button';
@@ -40,11 +39,9 @@ export function ShareList({
 }: ShareListProps) {
   if (loading) {
     return (
-      <Row>
-        <Col xs={12} md={6} lg={4}>
-          <SkeletonCard count={3} />
-        </Col>
-      </Row>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <SkeletonCard count={3} />
+      </div>
     );
   }
 
@@ -62,46 +59,50 @@ export function ShareList({
 
   return (
     <>
-      <Table responsive>
-        <thead>
-          <tr>
-            <th>Username</th>
-            <th>Status</th>
-            <th>Permissions</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {shares.map((share) => (
-            <tr key={share.id}>
-              <td>{share.accepter_username}</td>
-              <td>
-                <ShareStatusBadge status={share.status} />
-              </td>
-              <td>
-                <SharePermissionBadges share={share} />
-              </td>
-              <td>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon="pencil"
-                  className="mb-1 me-1"
-                  onClick={() => onEdit(share)}
-                  disabled={share.status === 'expired'}
-                ></Button>
-                <Button
-                  icon="trash"
-                  variant="danger"
-                  size="sm"
-                  className="mb-1"
-                  onClick={() => onRevoke(share)}
-                ></Button>
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th className="py-2 pr-4 font-medium text-gray-500">Username</th>
+              <th className="py-2 pr-4 font-medium text-gray-500">Status</th>
+              <th className="py-2 pr-4 font-medium text-gray-500">Permissions</th>
+              <th className="py-2 font-medium text-gray-500">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </Table>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {shares.map((share) => (
+              <tr key={share.id} className="align-top">
+                <td className="py-3 pr-4 align-top text-sm font-medium">
+                  {share.accepter_username}
+                </td>
+                <td className="py-3 pr-4 align-top">
+                  <ShareStatusBadge status={share.status} />
+                </td>
+                <td className="py-3 pr-4 align-top text-sm">
+                  <SharePermissionBadges share={share} />
+                </td>
+                <td className="py-3 align-top">
+                  <div className="flex gap-1">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon="pencil"
+                      onClick={() => onEdit(share)}
+                      disabled={share.status === 'expired'}
+                    ></Button>
+                    <Button
+                      icon="trash"
+                      variant="danger"
+                      size="sm"
+                      onClick={() => onRevoke(share)}
+                    ></Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {hasMore && (
         <div className="text-center mt-3">
           <Button

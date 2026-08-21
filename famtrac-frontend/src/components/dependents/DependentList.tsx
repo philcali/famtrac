@@ -1,4 +1,3 @@
-import { Row, Col } from 'react-bootstrap';
 import { DependentCard } from './DependentCard';
 import { SkeletonCard } from '../common/SkeletonCard';
 import { ErrorMessage } from '../common/ErrorMessage';
@@ -29,11 +28,9 @@ export function DependentList({
 }: DependentListProps) {
   if (loading) {
     return (
-      <Row>
-        <Col xs={12} md={6} lg={4}>
-          <SkeletonCard count={3} />
-        </Col>
-      </Row>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <SkeletonCard count={3} />
+      </div>
     );
   }
 
@@ -50,17 +47,16 @@ export function DependentList({
   }
 
   return (
-    <Row>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {dependents.map((dependent) => (
-        <Col key={dependent.id} xs={12} md={6} lg={4}>
-          <DependentCard
-            dependent={dependent}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onView={onView}
-          />
-        </Col>
+        <DependentCard
+          key={dependent.id}
+          dependent={dependent}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onView={onView}
+        />
       ))}
-    </Row>
+    </div>
   );
 }

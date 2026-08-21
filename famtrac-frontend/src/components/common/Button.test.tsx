@@ -37,15 +37,15 @@ describe('Button', () => {
   it('applies correct variant class', () => {
     render(<Button variant="danger">Delete</Button>);
     const button = screen.getByRole('button');
-    expect(button).toHaveClass('btn-danger');
+    expect(button).toHaveClass('bg-red-600');
   });
 
   it('has minimum touch target size', () => {
     render(<Button>Click me</Button>);
     const button = screen.getByRole('button');
 
-    // Check that minHeight and minWidth are set to 44px
-    expect(button.style.minHeight).toBe('44px');
-    expect(button.style.minWidth).toBe('44px');
+    // Check that min-h-[44px] and min-w-[44px] classes are present
+    expect(button.classList.contains('min-h-[44px]')).toBe(true);
+    expect(button.classList.contains('min-w-[44px]')).toBe(true);
   });
 });

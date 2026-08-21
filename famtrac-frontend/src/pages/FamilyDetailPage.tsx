@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Modal, Card, Form } from 'react-bootstrap';
 import { DependentList } from '../components/dependents/DependentList';
 import { DependentForm } from '../components/dependents/DependentForm';
 import { ShareList } from '../components/shares/ShareList';
@@ -277,72 +276,94 @@ export function FamilyDetailPage() {
     navigate('/');
   };
 
+  const renderModal = (
+    title: string,
+    body: React.ReactNode,
+    onClose: () => void,
+    footer?: React.ReactNode
+  ) => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-xl">
+        <div className="flex justify-between items-center p-4 border-b border-gray-100">
+          <h3 className="text-base font-semibold">{title}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <div className="p-4">{body}</div>
+        {footer && <div className="px-4 pb-4">{footer}</div>}
+      </div>
+    </div>
+  );
+
   if (familyLoading) {
     return (
-      <Container className="py-4">
+      <div className="py-4">
         <LoadingSpinner />
-      </Container>
+      </div>
     );
   }
 
   if (familyError) {
     return (
-      <Container className="py-4">
+      <div className="py-4 max-w-5xl mx-auto px-4">
         <ErrorMessage message={familyError} />
         <Button onClick={handleBackClick} className="mt-3">
           ← Back to Families
         </Button>
-      </Container>
+      </div>
     );
   }
 
   if (!family) {
     return (
-      <Container className="py-4">
+      <div className="py-4 max-w-5xl mx-auto px-4">
         <ErrorMessage message="Family not found" />
         <Button onClick={handleBackClick} className="mt-3">
           ← Back to Families
         </Button>
-      </Container>
+      </div>
     );
   }
 
   return (
-    <Container className="py-4">
-      <Row className="mb-4">
-        <Col>
-          <h2 className="heading">
-            {family.name}
-            <Button variant="secondary" onClick={handleBackClick} className="heading-right">
-              ← Back to Families
-            </Button>
-          </h2>
-        </Col>
-      </Row>
+    <div className="py-4 max-w-5xl mx-auto px-4">
+      <div className="mb-4">
+        <h2 className="heading">
+          {family.name}
+          <Button variant="secondary" onClick={handleBackClick} className="heading-right">
+            ← Back to Families
+          </Button>
+        </h2>
+      </div>
 
       {/* Family Information Card */}
-      <Card className="mb-4">
-        <Card.Body>
-          <Card.Title>Family Information</Card.Title>
-          <Card.Text>
-            <strong>Created:</strong> {new Date(family.created_at).toLocaleDateString()}
-            <br />
-            <strong>Updated:</strong> {new Date(family.updated_at).toLocaleDateString()}
-          </Card.Text>
-        </Card.Body>
-      </Card>
+      <div className="mb-4 p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+        <h3 className="text-base font-semibold mb-2">Family Information</h3>
+        <div className="text-sm">
+          <strong>Created:</strong> {new Date(family.created_at).toLocaleDateString()}
+          <br />
+          <strong>Updated:</strong> {new Date(family.updated_at).toLocaleDateString()}
+        </div>
+      </div>
 
       {/* Dependents Section */}
-      <Row className="mb-3">
-        <Col>
-          <h2 className="heading">
-            Dependents
-            <Button className="heading-right" icon="plus" onClick={handleCreateClick}>
-              Add Dependent
-            </Button>
-          </h2>
-        </Col>
-      </Row>
+      <div className="mb-3">
+        <h2 className="heading">
+          Dependents
+          <Button className="heading-right" icon="plus" onClick={handleCreateClick}>
+            Add Dependent
+          </Button>
+        </h2>
+      </div>
 
       {successMessage && <SuccessMessage message={successMessage} onClose={handleSuccessClose} />}
 
@@ -356,16 +377,14 @@ export function FamilyDetailPage() {
       />
 
       {/* Shares Section */}
-      <Row className="mb-3 mt-4">
-        <Col>
-          <h2 className="heading">
-            Shares
-            <Button className="heading-right" icon="plus" onClick={handleInviteClick}>
-              Invite User
-            </Button>
-          </h2>
-        </Col>
-      </Row>
+      <div className="mb-3 mt-4">
+        <h2 className="heading">
+          Shares
+          <Button className="heading-right" icon="plus" onClick={handleInviteClick}>
+            Invite User
+          </Button>
+        </h2>
+      </div>
 
       <ShareList
         shares={shares}
@@ -379,20 +398,18 @@ export function FamilyDetailPage() {
       />
 
       {/* Create/Edit Modal */}
-      <Modal show={showForm} onHide={handleFormCancel} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>{editingDependent ? 'Edit Dependent' : 'Add Dependent'}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
+      {showForm &&
+        renderModal(
+          editingDependent ? 'Edit Dependent' : 'Add Dependent',
           <DependentForm
             dependent={editingDependent}
             familyId={familyId ?? 'NA'}
             onSubmit={handleFormSubmit}
             onCancel={handleFormCancel}
             loading={createLoading || updateLoading}
-          />
-        </Modal.Body>
-      </Modal>
+          />,
+          handleFormCancel
+        )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
@@ -408,31 +425,30 @@ export function FamilyDetailPage() {
       />
 
       {/* Create Share Modal */}
-      <Modal show={showShareForm} onHide={handleShareFormCancel} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Invite User</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
+      {showShareForm &&
+        renderModal(
+          'Invite User',
           <ShareForm
             familyId={familyId ?? 'NA'}
             onSubmit={handleShareFormSubmit}
             onCancel={handleShareFormCancel}
             loading={createShareLoading}
-          />
-        </Modal.Body>
-      </Modal>
+          />,
+          handleShareFormCancel
+        )}
 
       {/* Edit Share Permissions Modal */}
-      <Modal show={!!editingShare} onHide={handleShareEditCancel} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>Edit Permissions</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form.Group className="mb-3">
-            <Form.Label>Permissions</Form.Label>
-            <PermissionScopeSelector value={editPermissions} onChange={setEditPermissions} />
-          </Form.Group>
-          <div className="d-flex gap-2">
+      {editingShare &&
+        renderModal(
+          'Edit Permissions',
+          <>
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Permissions</label>
+              <PermissionScopeSelector value={editPermissions} onChange={setEditPermissions} />
+            </div>
+          </>,
+          handleShareEditCancel,
+          <div className="flex gap-2">
             <Button
               variant="primary"
               onClick={handleShareEditSubmit}
@@ -449,8 +465,7 @@ export function FamilyDetailPage() {
               Cancel
             </Button>
           </div>
-        </Modal.Body>
-      </Modal>
+        )}
 
       {/* Revoke Share Confirmation Dialog */}
       <ConfirmDialog
@@ -464,6 +479,6 @@ export function FamilyDetailPage() {
         onCancel={handleShareRevokeCancel}
         loading={revokeShareLoading}
       />
-    </Container>
+    </div>
   );
 }

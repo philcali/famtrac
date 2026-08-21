@@ -1,4 +1,4 @@
-import { Badge } from 'react-bootstrap';
+import { Badge } from '../common/Badge';
 import type { ShareStatus } from '../../types/domain';
 
 export interface ShareStatusBadgeProps {
@@ -21,5 +21,5 @@ export function ShareStatusBadge({ status }: ShareStatusBadgeProps) {
   const variant = STATUS_VARIANT[status];
   const label = status.charAt(0).toUpperCase() + status.slice(1);
 
-  return <Badge bg={variant}>{label}</Badge>;
+  return <Badge variant={variant}>{label}</Badge>;
 }

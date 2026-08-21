@@ -1,4 +1,4 @@
-import { Container, Button, Alert } from 'react-bootstrap';
+import { Button } from '../components/common/Button';
 import { useNavigate } from 'react-router-dom';
 
 interface ErrorPageProps {
@@ -26,33 +26,30 @@ export function ErrorPage({ error, resetError }: ErrorPageProps) {
   };
 
   return (
-    <Container
-      className="d-flex flex-column align-items-center justify-content-center"
-      style={{ minHeight: '100vh' }}
-    >
+    <div className="flex flex-col items-center justify-center min-h-screen px-4">
       <div className="text-center" style={{ maxWidth: '600px' }}>
-        <h1 className="display-4 fw-bold text-danger mb-4">Something went wrong</h1>
-        <Alert variant="danger" className="text-start">
-          <Alert.Heading>An unexpected error occurred</Alert.Heading>
+        <h1 className="text-4xl font-bold text-red-500 mb-4">Something went wrong</h1>
+        <div className="text-left p-4 bg-red-50 border border-red-100 rounded-xl mb-4">
+          <h2 className="text-base font-semibold mb-2">An unexpected error occurred</h2>
           {error && (
             <p className="mb-0">
-              <small className="font-monospace">{error.message}</small>
+              <small className="font-mono text-sm">{error.message}</small>
             </p>
           )}
-        </Alert>
+        </div>
         <p className="text-muted mb-4">
           We're sorry for the inconvenience. Please try reloading the page or returning to the home
           page.
         </p>
-        <div className="d-flex gap-2 justify-content-center">
+        <div className="flex gap-2 justify-center">
           <Button variant="primary" onClick={handleGoHome}>
             Go to Home
           </Button>
-          <Button variant="outline-secondary" onClick={handleReload}>
+          <Button variant="secondary" onClick={handleReload}>
             Reload Page
           </Button>
         </div>
       </div>
-    </Container>
+    </div>
   );
 }

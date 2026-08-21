@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Container, Row, Col } from 'react-bootstrap';
 import { ShareCard } from '../components/shares/ShareCard';
 import { SuccessMessage } from '../components/common/SuccessMessage';
 import { ErrorMessage } from '../components/common/ErrorMessage';
@@ -89,28 +88,26 @@ export function PendingSharesPage() {
 
   if (loading) {
     return (
-      <Container className="py-4">
+      <div className="py-4">
         <LoadingSpinner />
-      </Container>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Container className="py-4">
+      <div className="py-4">
         <h2 className="heading">Shared With Me</h2>
         <ErrorMessage message={error} />
-      </Container>
+      </div>
     );
   }
 
   return (
-    <Container className="py-4">
-      <Row className="mb-4">
-        <Col>
-          <h2 className="heading">Shared With Me</h2>
-        </Col>
-      </Row>
+    <div className="py-4 max-w-5xl mx-auto px-4">
+      <div className="mb-4">
+        <h2 className="heading">Shared With Me</h2>
+      </div>
 
       {successMessage && <SuccessMessage message={successMessage} onClose={handleSuccessClose} />}
       {acceptError && (
@@ -121,13 +118,11 @@ export function PendingSharesPage() {
         <p>No shared families found.</p>
       ) : (
         <>
-          <Row>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {shares.map((share) => (
-              <Col key={share.id} md={6} lg={4} className="mb-3">
-                <ShareCard share={share} onAccept={handleAccept} />
-              </Col>
+              <ShareCard key={share.id} share={share} onAccept={handleAccept} />
             ))}
-          </Row>
+          </div>
 
           {nextToken && shares.length > 0 && (
             <div className="text-center mt-3">
@@ -143,6 +138,6 @@ export function PendingSharesPage() {
           )}
         </>
       )}
-    </Container>
+    </div>
   );
 }

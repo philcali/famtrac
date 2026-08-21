@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Form } from 'react-bootstrap';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { useValidation } from '../../hooks/useValidation';
@@ -269,16 +268,20 @@ export function ActivityForm({
   const hasErrors = Object.keys(errors).length > 0;
   const isFormValid = !hasErrors && timestamp !== '';
 
+  const selectClass = (hasError: boolean) =>
+    `w-full px-3 py-2.5 rounded-xl border ${hasError ? 'border-red-300 bg-red-50' : 'border-gray-200'} bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400`;
+
   return (
-    <Form onSubmit={handleSubmit}>
-      <Form.Group className="mb-3">
-        <Form.Label>
-          Activity Type <span className="text-danger">*</span>
-        </Form.Label>
-        <Form.Select
+    <form onSubmit={handleSubmit}>
+      <div className="mb-3">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Activity Type <span className="text-red-500">*</span>
+        </label>
+        <select
           value={activityType}
           onChange={(e) => setActivityType(e.target.value as ActivityType)}
           disabled={loading || !!activity}
+          className={selectClass(false)}
         >
           <option value="feeding">Feeding</option>
           <option value="diaper_change">Diaper Change</option>
@@ -288,8 +291,8 @@ export function ActivityForm({
           <option value="tummy_time">Tummy Time</option>
           <option value="wake_window">Wake Window</option>
           <option value="bath">Bath</option>
-        </Form.Select>
-      </Form.Group>
+        </select>
+      </div>
 
       <Input
         label="Timestamp"
@@ -304,61 +307,68 @@ export function ActivityForm({
 
       {/* Feeding-specific fields */}
       {activityType === 'feeding' && (
-        <Form.Group className="mb-3">
-          <Form.Label>
-            Feeding Type <span className="text-danger">*</span>
-          </Form.Label>
-          <Form.Select
+        <div className="mb-3">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Feeding Type <span className="text-red-500">*</span>
+          </label>
+          <select
             value={feedingType}
             onChange={(e) => setFeedingType(e.target.value as FeedingType)}
             disabled={loading}
-            isInvalid={!!errors.feeding_type}
+            className={selectClass(!!errors.feeding_type)}
           >
             <option value="breast">Breast</option>
             <option value="bottle">Bottle</option>
             <option value="solid">Solid</option>
-          </Form.Select>
+          </select>
           {errors.feeding_type && (
-            <Form.Control.Feedback type="invalid">{errors.feeding_type}</Form.Control.Feedback>
+            <p className="mt-1 text-xs text-red-500" role="alert">
+              {errors.feeding_type}
+            </p>
           )}
-        </Form.Group>
+        </div>
       )}
 
       {/* Diaper change-specific fields */}
       {activityType === 'diaper_change' && (
-        <Form.Group className="mb-3">
-          <Form.Label>
-            Contents <span className="text-danger">*</span>
-          </Form.Label>
-          <Form.Select
+        <div className="mb-3">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Contents <span className="text-red-500">*</span>
+          </label>
+          <select
             value={contents}
             onChange={(e) => setContents(e.target.value as DiaperContents)}
             disabled={loading}
-            isInvalid={!!errors.contents}
+            className={selectClass(!!errors.contents)}
           >
             <option value="wet">Wet</option>
             <option value="dirty">Dirty</option>
             <option value="both">Both</option>
-          </Form.Select>
+          </select>
           {errors.contents && (
-            <Form.Control.Feedback type="invalid">{errors.contents}</Form.Control.Feedback>
+            <p className="mt-1 text-xs text-red-500" role="alert">
+              {errors.contents}
+            </p>
           )}
-        </Form.Group>
+        </div>
       )}
 
       {/* Stopwatch-type fields (sleep, activity_time, tummy_time, wake_window) */}
       {isStopwatchType(activityType) && (
         <>
-          <Form.Group className="mb-3">
-            <Form.Check
-              type="switch"
-              id="stopwatch-mode-toggle"
-              label="Stopwatch Mode"
-              checked={stopwatchMode}
-              onChange={(e) => setStopwatchMode(e.target.checked)}
-              disabled={loading}
-            />
-          </Form.Group>
+          <div className="mb-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                id="stopwatch-mode-toggle"
+                checked={stopwatchMode}
+                onChange={(e) => setStopwatchMode(e.target.checked)}
+                disabled={loading}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm font-medium text-gray-700">Stopwatch Mode</span>
+            </label>
+          </div>
           <Input
             label="Start Time"
             type="datetime-local"
@@ -416,16 +426,19 @@ export function ActivityForm({
 
       {/* Medicine added flag for feeding */}
       {activityType === 'feeding' && (
-        <Form.Group className="mb-3">
-          <Form.Check
-            type="switch"
-            id="medicine-added-toggle"
-            label="Medicine Added"
-            checked={medicineAdded}
-            onChange={(e) => setMedicineAdded(e.target.checked)}
-            disabled={loading}
-          />
-        </Form.Group>
+        <div className="mb-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              id="medicine-added-toggle"
+              checked={medicineAdded}
+              onChange={(e) => setMedicineAdded(e.target.checked)}
+              disabled={loading}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <span className="text-sm font-medium text-gray-700">Medicine Added</span>
+          </label>
+        </div>
       )}
 
       {/* Pumping-specific fields */}
@@ -443,7 +456,7 @@ export function ActivityForm({
         />
       )}
 
-      <div className="d-flex gap-2">
+      <div className="flex gap-2">
         <Button
           type="submit"
           variant="primary"
@@ -456,6 +469,6 @@ export function ActivityForm({
           Cancel
         </Button>
       </div>
-    </Form>
+    </form>
   );
 }

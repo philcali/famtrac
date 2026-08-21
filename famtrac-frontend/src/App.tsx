@@ -9,7 +9,6 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { Navigation } from './components/common/Navigation';
-import './App.css';
 
 /**
  * App component - Main application with routing

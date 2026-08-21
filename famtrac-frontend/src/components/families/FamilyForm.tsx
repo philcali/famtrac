@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Form } from 'react-bootstrap';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { useValidation } from '../../hooks/useValidation';
@@ -53,7 +52,7 @@ export function FamilyForm({ family, onSubmit, onCancel, loading = false }: Fami
   const isFormValid = name.length >= 1 && !errors.name;
 
   return (
-    <Form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit}>
       <Input
         label="Family Name"
         value={name}
@@ -65,7 +64,7 @@ export function FamilyForm({ family, onSubmit, onCancel, loading = false }: Fami
         disabled={loading}
       />
 
-      <div className="d-flex gap-2 justify-content-end">
+      <div className="flex gap-2 justify-end mt-3">
         <Button variant="secondary" onClick={onCancel} disabled={loading}>
           Cancel
         </Button>
@@ -78,6 +77,6 @@ export function FamilyForm({ family, onSubmit, onCancel, loading = false }: Fami
           {family ? 'Update' : 'Create'} Family
         </Button>
       </div>
-    </Form>
+    </form>
   );
 }

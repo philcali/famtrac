@@ -1,4 +1,4 @@
-import { Spinner } from 'react-bootstrap';
+import { LoadingSpinner } from '../common/LoadingSpinner';
 import type { ActivityResponse } from '../../api/types';
 import { formatDateTime, formatTime } from '../../utils/dateUtils';
 import { formatDuration } from '../../utils/formatDuration';
@@ -66,7 +66,7 @@ const renderTimedDetails = (startTime?: string, endTime?: string) => (
     <br />
     <strong>End: </strong>
     {endTime && <span>{formatTime(endTime)}</span>}
-    {!endTime && <Spinner animation="border" size="sm" />}
+    {!endTime && <LoadingSpinner size="sm" />}
     <br />
     <strong>Duration:</strong>{' '}
     {startTime && endTime
@@ -108,7 +108,7 @@ export const renderActivityDetails = (activity: ActivityResponse) => {
           {isBottleExpired(activity) && (
             <>
               <br />
-              <span className="text-danger fw-semibold">Bottle expired</span>
+              <span className="text-red-500 font-semibold">Bottle expired</span>
             </>
           )}
         </>

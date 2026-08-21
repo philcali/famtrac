@@ -1,5 +1,3 @@
-import { Alert } from 'react-bootstrap';
-
 export interface ErrorMessageProps {
   message: string;
   onClose?: () => void;
@@ -18,8 +16,20 @@ export function ErrorMessage({
   className,
 }: ErrorMessageProps) {
   return (
-    <Alert variant="danger" onClose={onClose} dismissible={dismissible} className={className}>
+    <div
+      className={`mb-4 p-4 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm relative ${className ?? ''}`}
+      role="alert"
+    >
+      {dismissible && onClose && (
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 text-red-400 hover:text-red-600"
+          aria-label="Dismiss"
+        >
+          ×
+        </button>
+      )}
       {message}
-    </Alert>
+    </div>
   );
 }

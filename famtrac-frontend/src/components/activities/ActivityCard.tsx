@@ -1,4 +1,4 @@
-import { Card, Badge } from 'react-bootstrap';
+import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
 import { Icon } from '../common/Icon';
 import type { ActivityResponse } from '../../api/types';
@@ -27,28 +27,26 @@ export function ActivityCard({ activity, onEdit, onDelete }: ActivityCardProps) 
   const isInProgress = isStopwatchType && !activity.end_time;
 
   return (
-    <Card className="mb-3">
-      <Card.Body>
-        <div className="d-flex justify-content-between align-items-start mb-2">
-          <Badge bg={getActivityTypeBadgeVariant(activity.type)}>
-            <Icon name={activity.type} size={14} className="me-1" />
-            {getActivityTypeLabel(activity.type)}
-          </Badge>
-          <span className="text-muted small">{formatDateTime(activity.timestamp)}</span>
-        </div>
-        <Card.Text>
-          {renderActivityDetails(activity)}
-          {isInProgress && <Icon name="stop" size={14} className="text-danger ms-1" />}
-        </Card.Text>
-        <div className="d-flex gap-2">
-          <Button variant="secondary" size="sm" icon="pencil" onClick={() => onEdit(activity)}>
-            Edit
-          </Button>
-          <Button variant="danger" size="sm" icon="trash" onClick={() => onDelete(activity)}>
-            Delete
-          </Button>
-        </div>
-      </Card.Body>
-    </Card>
+    <div className="mb-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+      <div className="flex justify-between items-start mb-2">
+        <Badge variant={getActivityTypeBadgeVariant(activity.type)}>
+          <Icon name={activity.type} size={14} className="me-1" />
+          {getActivityTypeLabel(activity.type)}
+        </Badge>
+        <span className="text-muted text-sm">{formatDateTime(activity.timestamp)}</span>
+      </div>
+      <div className="text-sm mb-2">
+        {renderActivityDetails(activity)}
+        {isInProgress && <Icon name="stop" size={14} className="text-red-500 ms-1" />}
+      </div>
+      <div className="flex gap-2">
+        <Button variant="secondary" size="sm" icon="pencil" onClick={() => onEdit(activity)}>
+          Edit
+        </Button>
+        <Button variant="danger" size="sm" icon="trash" onClick={() => onDelete(activity)}>
+          Delete
+        </Button>
+      </div>
+    </div>
   );
 }

@@ -1,4 +1,3 @@
-import { Card } from 'react-bootstrap';
 import { Button } from '../common/Button';
 import type { Family } from '../../types/domain';
 import { formatDate } from '../../utils/dateUtils';
@@ -17,25 +16,18 @@ export interface FamilyCardProps {
  */
 export function FamilyCard({ family, onEdit, onDelete, onView }: FamilyCardProps) {
   return (
-    <Card className="mb-3">
-      <Card.Body>
-        <Card.Title>{family.name}</Card.Title>
-        <Card.Text className="text-muted small">
-          Created: {formatDate(family.created_at)}
-          <br />
-          Updated: {formatDate(family.updated_at)}
-        </Card.Text>
-        <div className="d-flex gap-2">
-          <Button variant="primary" size="sm" icon="eye" onClick={() => onView(family)}></Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            icon="pencil"
-            onClick={() => onEdit(family)}
-          ></Button>
-          <Button variant="danger" size="sm" icon="trash" onClick={() => onDelete(family)}></Button>
-        </div>
-      </Card.Body>
-    </Card>
+    <div className="mb-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+      <h3 className="text-base font-semibold mb-2">{family.name}</h3>
+      <div className="text-sm text-muted">
+        Created: {formatDate(family.created_at)}
+        <br />
+        Updated: {formatDate(family.updated_at)}
+      </div>
+      <div className="flex gap-2 mt-3">
+        <Button variant="primary" size="sm" icon="eye" onClick={() => onView(family)}></Button>
+        <Button variant="secondary" size="sm" icon="pencil" onClick={() => onEdit(family)}></Button>
+        <Button variant="danger" size="sm" icon="trash" onClick={() => onDelete(family)}></Button>
+      </div>
+    </div>
   );
 }

@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Modal } from 'react-bootstrap';
 import { ErrorMessage } from '../components/common/ErrorMessage';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { SuccessMessage } from '../components/common/SuccessMessage';
@@ -228,79 +227,98 @@ export function DependentDetailPage() {
   );
   const activitiesNextToken = lastActivitiesNextToken ?? activitiesData?.next_token ?? null;
 
+  const renderModal = (title: string, body: React.ReactNode, onClose: () => void) => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-2xl bg-white rounded-2xl shadow-xl max-h-[90vh] flex flex-col">
+        <div className="flex justify-between items-center p-4 border-b border-gray-100 flex-shrink-0">
+          <h3 className="text-base font-semibold">{title}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <div className="p-4 overflow-y-auto">{body}</div>
+      </div>
+    </div>
+  );
+
   if (dependentLoading) {
     return (
-      <Container className="py-4">
+      <div className="py-4 max-w-5xl mx-auto px-4">
         <LoadingSpinner />
-      </Container>
+      </div>
     );
   }
 
   if (dependentError) {
     return (
-      <Container className="py-4">
+      <div className="py-4 max-w-5xl mx-auto px-4">
         <ErrorMessage message={dependentError} />
         <Button onClick={handleBackClick} className="mt-3">
           ← Back to Family
         </Button>
-      </Container>
+      </div>
     );
   }
 
   if (!dependent) {
     return (
-      <Container className="py-4">
+      <div className="py-4 max-w-5xl mx-auto px-4">
         <ErrorMessage message="Dependent not found" />
         <Button onClick={handleBackClick} className="mt-3">
           ← Back to Family
         </Button>
-      </Container>
+      </div>
     );
   }
 
   return (
-    <Container className="py-4">
+    <div className="py-4 max-w-5xl mx-auto px-4">
       {successMessage && (
         <SuccessMessage message={successMessage} onClose={() => setSuccessMessage(null)} />
       )}
 
-      <Row className="mb-4">
-        <Col>
-          <h2 className="heading">
-            {dependent.name}
-            <Button variant="secondary" onClick={handleBackClick} className="heading-right">
+      <div className="mb-4">
+        <h2 className="heading">
+          {dependent.name}
+          <div className="ml-auto flex items-center gap-2">
+            <Button variant="secondary" onClick={handleBackClick}>
               ← Back to Family
             </Button>
             <Button
               variant="secondary"
               onClick={() => navigate(`/families/${familyId}/dependents/${dependentId}/reports`)}
-              className="heading-right me-2"
             >
               Reports
             </Button>
-          </h2>
-        </Col>
-      </Row>
+          </div>
+        </h2>
+      </div>
 
       {/* Dependent Information Card */}
       <DependentCard dependent={dependent} overrideTitle="Dependent Information" />
 
       {/* Activities Section */}
-      <Row className="mb-3">
-        <Col>
-          <h2 className="heading">
-            Activities
-            <Button
-              className="heading-right"
-              variant="primary"
-              icon="plus"
-              onClick={handleAddActivity}
-            >
-              Add Activity
-            </Button>
-          </h2>
-        </Col>
-      </Row>
+      <div className="mb-3">
+        <h2 className="heading">
+          Activities
+          <Button
+            className="heading-right"
+            variant="primary"
+            icon="plus"
+            onClick={handleAddActivity}
+          >
+            Add Activity
+          </Button>
+        </h2>
+      </div>
 
       {/* Activity Filters */}
       <ActivityFilters
@@ -327,11 +345,9 @@ export function DependentDetailPage() {
       />
 
       {/* Activity Form Modal */}
-      <Modal show={showActivityForm} onHide={handleActivityFormCancel} size="lg">
-        <Modal.Header closeButton>
-          <Modal.Title>{editingActivity ? 'Edit Activity' : 'Add Activity'}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
+      {showActivityForm &&
+        renderModal(
+          editingActivity ? 'Edit Activity' : 'Add Activity',
           <ActivityForm
             activity={editingActivity}
             familyId={familyId!}
@@ -339,9 +355,9 @@ export function DependentDetailPage() {
             onSubmit={handleActivityFormSubmit}
             onCancel={handleActivityFormCancel}
             loading={createLoading || updateLoading}
-          />
-        </Modal.Body>
-      </Modal>
+          />,
+          handleActivityFormCancel
+        )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
@@ -354,6 +370,6 @@ export function DependentDetailPage() {
         onCancel={handleCancelDelete}
         loading={deleteLoading}
       />
-    </Container>
+    </div>
   );
 }

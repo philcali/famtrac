@@ -1,5 +1,3 @@
-import { Card } from 'react-bootstrap';
-
 export interface SkeletonCardProps {
   count?: number;
 }
@@ -12,18 +10,16 @@ export function SkeletonCard({ count = 1 }: SkeletonCardProps) {
   return (
     <>
       {Array.from({ length: count }).map((_, index) => (
-        <Card key={index} className="mb-3">
-          <Card.Body>
-            <div className="skeleton skeleton-title mb-3"></div>
-            <div className="skeleton skeleton-text mb-2"></div>
-            <div className="skeleton skeleton-text mb-3" style={{ width: '80%' }}></div>
-            <div className="d-flex gap-2">
-              <div className="skeleton" style={{ width: '60px', height: '32px' }}></div>
-              <div className="skeleton" style={{ width: '60px', height: '32px' }}></div>
-              <div className="skeleton" style={{ width: '60px', height: '32px' }}></div>
-            </div>
-          </Card.Body>
-        </Card>
+        <div key={index} className="mb-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+          <div className="skeleton skeleton-title mb-3 h-4 w-3/4"></div>
+          <div className="skeleton skeleton-text mb-2 h-3 w-full"></div>
+          <div className="skeleton skeleton-text mb-3 h-3 w-4/5"></div>
+          <div className="flex gap-2">
+            <div className="skeleton w-[60px] h-8"></div>
+            <div className="skeleton w-[60px] h-8"></div>
+            <div className="skeleton w-[60px] h-8"></div>
+          </div>
+        </div>
       ))}
     </>
   );

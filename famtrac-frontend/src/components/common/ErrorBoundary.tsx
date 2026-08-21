@@ -1,5 +1,4 @@
 import React, { Component, type ReactNode } from 'react';
-import { Container, Alert } from 'react-bootstrap';
 import { Button } from './Button';
 
 interface ErrorBoundaryProps {
@@ -44,24 +43,24 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <Container className="mt-5">
-          <Alert variant="danger">
-            <Alert.Heading>Something went wrong</Alert.Heading>
-            <p>The application encountered an unexpected error.</p>
+        <div className="mt-5 max-w-5xl mx-auto px-4">
+          <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm">
+            <h2 className="text-base font-semibold mb-2">Something went wrong</h2>
+            <p className="mb-3">The application encountered an unexpected error.</p>
             {this.state.error && (
               <details className="mt-3">
-                <summary>Error details</summary>
-                <pre className="mt-2 p-2 bg-light border rounded">
+                <summary className="cursor-pointer font-medium">Error details</summary>
+                <pre className="mt-2 p-2 bg-gray-50 border rounded text-xs overflow-auto">
                   {this.state.error.toString()}
                 </pre>
               </details>
             )}
-            <hr />
-            <div className="d-flex justify-content-end">
+            <hr className="my-3 border-gray-200" />
+            <div className="flex justify-end">
               <Button onClick={this.handleReload}>Reload Page</Button>
             </div>
-          </Alert>
-        </Container>
+          </div>
+        </div>
       );
     }
 

@@ -29,10 +29,13 @@
 .heading {
   border-bottom: 1px solid rgb(221, 221, 221);
   padding-bottom: 1.0rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .heading-right {
-  float: right;
+  margin-left: auto;
 }
 
 .card {

@@ -1,4 +1,3 @@
-import { Card } from 'react-bootstrap';
 import {
   ResponsiveContainer,
   LineChart,
@@ -19,7 +18,7 @@ const CustomCompositeTooltip = ({ active, payload }: TooltipContentProps<ValueTy
   const data = payload[0].payload;
   return (
     <div className="bg-white border rounded p-2 shadow-sm" style={{ fontSize: '13px' }}>
-      <div className="fw-bold mb-1">{data.label}</div>
+      <div className="font-bold mb-1">{data.label}</div>
       <div>
         Total: {data.total} ml / {data.totalOz} oz
       </div>
@@ -95,74 +94,66 @@ export function ActivityChart(props: ActivityChartProps) {
   const isEmpty = data.length === 0;
 
   return (
-    <Card className="mb-3">
-      <Card.Header>{title}</Card.Header>
-      <Card.Body>
-        {isEmpty ? (
-          <p className="text-muted text-center my-4">{emptyMessage}</p>
-        ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            {chartType === 'line' ? (
-              <LineChart data={data}>
-                <XAxis
-                  dataKey="label"
-                  label={{ value: xAxisLabel, position: 'insideBottom', offset: -5 }}
-                />
-                <YAxis label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }} />
-                <Tooltip />
-                <Line type="monotone" dataKey="value" stroke={props.color} dot />
-              </LineChart>
-            ) : chartType === 'composite' ? (
-              <ComposedChart data={data}>
-                <XAxis
-                  dataKey="label"
-                  label={{ value: xAxisLabel, position: 'insideBottom', offset: -5 }}
-                />
-                <YAxis label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }} />
-                <Tooltip content={CustomCompositeTooltip} />
-                <Legend />
-                <Bar dataKey="total" fill={props.compositeBarColor} name="Total" />
-                <Line
-                  type="monotone"
-                  dataKey="average"
-                  stroke={props.compositeLineColor}
-                  name="Average"
-                  dot
-                />
-              </ComposedChart>
-            ) : chartType === 'stacked-bar' ? (
-              <BarChart data={data}>
-                <XAxis
-                  dataKey="label"
-                  label={{ value: xAxisLabel, position: 'insideBottom', offset: -5 }}
-                />
-                <YAxis label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }} />
-                <Tooltip />
-                <Legend />
-                {props.stackedBars.map((s) => (
-                  <Bar
-                    key={s.dataKey}
-                    dataKey={s.dataKey}
-                    stackId="a"
-                    fill={s.color}
-                    name={s.name}
-                  />
-                ))}
-              </BarChart>
-            ) : (
-              <BarChart data={data}>
-                <XAxis
-                  dataKey="label"
-                  label={{ value: xAxisLabel, position: 'insideBottom', offset: -5 }}
-                />
-                <YAxis label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }} />
-                <Tooltip />
-                <Bar dataKey="value" fill={props.color} />
-              </BarChart>
-            )}
-          </ResponsiveContainer>
-        )}
-      </Card.Body>
-    </Card>
+    <div className="mb-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+      <h3 className="text-base font-semibold mb-3">{title}</h3>
+      {isEmpty ? (
+        <p className="text-muted text-center my-4">{emptyMessage}</p>
+      ) : (
+        <ResponsiveContainer width="100%" height={300}>
+          {chartType === 'line' ? (
+            <LineChart data={data}>
+              <XAxis
+                dataKey="label"
+                label={{ value: xAxisLabel, position: 'insideBottom', offset: -5 }}
+              />
+              <YAxis label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }} />
+              <Tooltip />
+              <Line type="monotone" dataKey="value" stroke={props.color} dot />
+            </LineChart>
+          ) : chartType === 'composite' ? (
+            <ComposedChart data={data}>
+              <XAxis
+                dataKey="label"
+                label={{ value: xAxisLabel, position: 'insideBottom', offset: -5 }}
+              />
+              <YAxis label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }} />
+              <Tooltip content={CustomCompositeTooltip} />
+              <Legend />
+              <Bar dataKey="total" fill={props.compositeBarColor} name="Total" />
+              <Line
+                type="monotone"
+                dataKey="average"
+                stroke={props.compositeLineColor}
+                name="Average"
+                dot
+              />
+            </ComposedChart>
+          ) : chartType === 'stacked-bar' ? (
+            <BarChart data={data}>
+              <XAxis
+                dataKey="label"
+                label={{ value: xAxisLabel, position: 'insideBottom', offset: -5 }}
+              />
+              <YAxis label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }} />
+              <Tooltip />
+              <Legend />
+              {props.stackedBars.map((s) => (
+                <Bar key={s.dataKey} dataKey={s.dataKey} stackId="a" fill={s.color} name={s.name} />
+              ))}
+            </BarChart>
+          ) : (
+            <BarChart data={data}>
+              <XAxis
+                dataKey="label"
+                label={{ value: xAxisLabel, position: 'insideBottom', offset: -5 }}
+              />
+              <YAxis label={{ value: yAxisLabel, angle: -90, position: 'insideLeft' }} />
+              <Tooltip />
+              <Bar dataKey="value" fill={props.color} />
+            </BarChart>
+          )}
+        </ResponsiveContainer>
+      )}
+    </div>
   );
 }

@@ -48,15 +48,15 @@ describe('Input', () => {
 
     const input = screen.getByLabelText(/name/i);
     expect(input).toHaveAttribute('aria-invalid', 'true');
-    expect(input).toHaveClass('is-invalid');
+    expect(input).toHaveClass('border-red-300');
   });
 
   it('has minimum touch target height', () => {
     render(<Input label="Name" value="" onChange={() => {}} />);
     const input = screen.getByLabelText(/name/i);
 
-    // Check that minHeight is set to 44px
-    expect(input.style.minHeight).toBe('44px');
+    // Check that min-h-[44px] class is present
+    expect(input.classList.contains('min-h-[44px]')).toBe(true);
   });
 
   it('disables input when disabled prop is true', () => {

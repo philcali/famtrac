@@ -1,4 +1,4 @@
-import { Badge } from 'react-bootstrap';
+import { Badge } from '../common/Badge';
 import type { PermissionAction, Share } from '../../types/domain';
 import { PERMISSION_LABELS } from '../../utils/permissions';
 
@@ -14,10 +14,8 @@ export function SharePermissionBadges({ share }: SharePermissionBadgesProps) {
     <>
       {permissionLabels.map((permissionLabel) => (
         <Badge
-          bg={permissionLabel.match(/Edit/) ? 'warning' : 'primary'}
-          className="me-1"
+          variant={permissionLabel.match(/Edit/) ? 'warning' : 'primary'}
           key={permissionLabel.replace(' ', '-')}
-          pill
         >
           {permissionLabel}
         </Badge>
