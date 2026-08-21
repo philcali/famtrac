@@ -25,12 +25,7 @@ export function FamilyCard({ family, onEdit, onDelete, onView }: FamilyCardProps
       </div>
       <div className="flex gap-2 mt-3">
         <Button variant="primary" size="sm" icon="eye" onClick={() => onView(family)}></Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          icon="pencil"
-          onClick={() => onEdit(family)}
-        ></Button>
+        <Button variant="secondary" size="sm" icon="pencil" onClick={() => onEdit(family)}></Button>
         <Button variant="danger" size="sm" icon="trash" onClick={() => onDelete(family)}></Button>
       </div>
     </div>

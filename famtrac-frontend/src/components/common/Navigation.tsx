@@ -36,20 +36,32 @@ export function Navigation() {
           {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-6">
             <div className="flex items-center gap-6">
-              <Link to="/" className="text-white/80 hover:text-white text-sm font-medium transition-colors">
+              <Link
+                to="/"
+                className="text-white/80 hover:text-white text-sm font-medium transition-colors"
+              >
                 Families
               </Link>
-              <Link to="/shares" className="text-white/80 hover:text-white text-sm font-medium transition-colors">
+              <Link
+                to="/shares"
+                className="text-white/80 hover:text-white text-sm font-medium transition-colors"
+              >
                 Shared With Me
               </Link>
             </div>
             <div className="flex items-center gap-3 ml-4 pl-4 border-l border-white/20">
               {user && (
                 <span className="text-white/80 text-sm">
-                  Signed in as: <strong className="text-white">{String(user.username || user.sub)}</strong>
+                  Signed in as:{' '}
+                  <strong className="text-white">{String(user.username || user.sub)}</strong>
                 </span>
               )}
-              <Button variant="link" size="sm" onClick={handleLogout} className="text-white/80 hover:text-white">
+              <Button
+                variant="link"
+                size="sm"
+                onClick={handleLogout}
+                className="text-white/80 hover:text-white"
+              >
                 Logout
               </Button>
             </div>
@@ -64,9 +76,19 @@ export function Navigation() {
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {menuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               )}
             </svg>
           </button>
@@ -84,7 +106,11 @@ export function Navigation() {
             {/* Menu panel */}
             <div className="fixed top-0 right-0 h-full w-64 bg-blue-700 z-50 md:hidden shadow-lg">
               <div className="flex items-center justify-between h-14 px-4 border-b border-white/10">
-                <Link to="/" className="text-white text-lg font-semibold" onClick={() => setMenuOpen(false)}>
+                <Link
+                  to="/"
+                  className="text-white text-lg font-semibold"
+                  onClick={() => setMenuOpen(false)}
+                >
                   FamTrac
                 </Link>
                 <button
@@ -93,7 +119,12 @@ export function Navigation() {
                   aria-label="Close menu"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
                   </svg>
                 </button>
               </div>
@@ -114,11 +145,17 @@ export function Navigation() {
                 </Link>
                 {user && (
                   <span className="text-white/60 text-xs px-3 pt-2">
-                    Signed in as: <strong className="text-white/80">{String(user.username || user.sub)}</strong>
+                    Signed in as:{' '}
+                    <strong className="text-white/80">{String(user.username || user.sub)}</strong>
                   </span>
                 )}
                 <div className="px-3 pt-2">
-                  <Button variant="link" size="sm" onClick={handleLogout} className="text-white/80 hover:text-white">
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={handleLogout}
+                    className="text-white/80 hover:text-white"
+                  >
                     Logout
                   </Button>
                 </div>

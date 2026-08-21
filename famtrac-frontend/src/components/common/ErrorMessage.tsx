@@ -21,7 +21,11 @@ export function ErrorMessage({
       role="alert"
     >
       {dismissible && onClose && (
-        <button onClick={onClose} className="absolute top-2 right-2 text-red-400 hover:text-red-600" aria-label="Dismiss">
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 text-red-400 hover:text-red-600"
+          aria-label="Dismiss"
+        >
           ×
         </button>
       )}

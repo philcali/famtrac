@@ -46,7 +46,10 @@ export function TimeRangeSelector({
       </div>
       <div className="flex flex-col sm:flex-row gap-2">
         <div>
-          <label htmlFor="report-start-date" className="block text-xs font-medium text-gray-500 mb-1">
+          <label
+            htmlFor="report-start-date"
+            className="block text-xs font-medium text-gray-500 mb-1"
+          >
             Start Date
           </label>
           <input

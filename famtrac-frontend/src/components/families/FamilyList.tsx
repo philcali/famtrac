@@ -49,7 +49,13 @@ export function FamilyList({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {families.map((family) => (
-        <FamilyCard key={family.id} family={family} onEdit={onEdit} onDelete={onDelete} onView={onView} />
+        <FamilyCard
+          key={family.id}
+          family={family}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onView={onView}
+        />
       ))}
     </div>
   );

@@ -72,7 +72,9 @@ export function ShareList({
           <tbody className="divide-y divide-gray-100">
             {shares.map((share) => (
               <tr key={share.id} className="align-top">
-                <td className="py-3 pr-4 align-top text-sm font-medium">{share.accepter_username}</td>
+                <td className="py-3 pr-4 align-top text-sm font-medium">
+                  {share.accepter_username}
+                </td>
                 <td className="py-3 pr-4 align-top">
                   <ShareStatusBadge status={share.status} />
                 </td>

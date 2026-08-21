@@ -138,13 +138,7 @@ export function ActivityChart(props: ActivityChartProps) {
               <Tooltip />
               <Legend />
               {props.stackedBars.map((s) => (
-                <Bar
-                  key={s.dataKey}
-                  dataKey={s.dataKey}
-                  stackId="a"
-                  fill={s.color}
-                  name={s.name}
-                />
+                <Bar key={s.dataKey} dataKey={s.dataKey} stackId="a" fill={s.color} name={s.name} />
               ))}
             </BarChart>
           ) : (
