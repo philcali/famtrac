@@ -1,4 +1,3 @@
-import { Card } from 'react-bootstrap';
 import { Button } from '../common/Button';
 import { formatAge, formatDate } from '../../utils/dateUtils';
 import type { Dependent } from '../../types/domain';
@@ -30,48 +29,46 @@ export function DependentCard({
     year: 'numeric',
   };
   return (
-    <Card className="mb-3">
-      <Card.Body>
-        <Card.Title>{overrideTitle ?? dependent.name}</Card.Title>
-        <Card.Text>
-          <strong>Age:</strong> {formatAge(dependent.date_of_birth)}
-          <br />
-          <strong>Date of Birth:</strong> {formatDate(dependent.date_of_birth, options)}
-        </Card.Text>
-        <Card.Text className="text-muted small">
-          Created: {formatDate(dependent.created_at, options)}
-          <br />
-          Updated: {formatDate(dependent.updated_at, options)}
-        </Card.Text>
-        {(onEdit || onDelete || onView) && (
-          <div className="d-flex gap-2">
-            {onView && (
-              <Button
-                variant="primary"
-                size="sm"
-                icon="eye"
-                onClick={() => onView(dependent)}
-              ></Button>
-            )}
-            {onEdit && (
-              <Button
-                variant="secondary"
-                size="sm"
-                icon="pencil"
-                onClick={() => onEdit(dependent)}
-              ></Button>
-            )}
-            {onDelete && (
-              <Button
-                variant="danger"
-                size="sm"
-                icon="trash"
-                onClick={() => onDelete(dependent)}
-              ></Button>
-            )}
-          </div>
-        )}
-      </Card.Body>
-    </Card>
+    <div className="mb-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+      <h3 className="text-base font-semibold mb-2">{overrideTitle ?? dependent.name}</h3>
+      <div className="text-sm mb-2">
+        <strong>Age:</strong> {formatAge(dependent.date_of_birth)}
+        <br />
+        <strong>Date of Birth:</strong> {formatDate(dependent.date_of_birth, options)}
+      </div>
+      <div className="text-sm text-muted">
+        Created: {formatDate(dependent.created_at, options)}
+        <br />
+        Updated: {formatDate(dependent.updated_at, options)}
+      </div>
+      {(onEdit || onDelete || onView) && (
+        <div className="flex gap-2 mt-3">
+          {onView && (
+            <Button
+              variant="primary"
+              size="sm"
+              icon="eye"
+              onClick={() => onView(dependent)}
+            ></Button>
+          )}
+          {onEdit && (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="pencil"
+              onClick={() => onEdit(dependent)}
+            ></Button>
+          )}
+          {onDelete && (
+            <Button
+              variant="danger"
+              size="sm"
+              icon="trash"
+              onClick={() => onDelete(dependent)}
+            ></Button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

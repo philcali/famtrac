@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Container, Spinner } from 'react-bootstrap';
+import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { exchangeCodeForTokens, storeRefreshToken, clearTokens } from '../auth/tokenService';
 
 /**
@@ -59,12 +59,9 @@ export function CallbackPage() {
   }, []);
 
   return (
-    <Container
-      className="d-flex flex-column align-items-center justify-content-center"
-      style={{ minHeight: '100vh' }}
-    >
-      <Spinner animation="border" variant="primary" />
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <LoadingSpinner />
       <p className="mt-3 text-muted">Completing sign in...</p>
-    </Container>
+    </div>
   );
 }

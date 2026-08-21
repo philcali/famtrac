@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Alert, ButtonGroup, Button as BsButton } from 'react-bootstrap';
 import { ErrorMessage } from '../components/common/ErrorMessage';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { Button } from '../components/common/Button';
@@ -119,48 +118,46 @@ export function ReportPage() {
   // Loading state
   if (dependentLoading) {
     return (
-      <Container className="py-4">
+      <div className="py-4 max-w-5xl mx-auto px-4">
         <LoadingSpinner />
-      </Container>
+      </div>
     );
   }
 
   // Error state for dependent fetch
   if (dependentError) {
     return (
-      <Container className="py-4">
+      <div className="py-4 max-w-5xl mx-auto px-4">
         <ErrorMessage message={dependentError} />
         <Button onClick={handleBackClick} className="mt-3">
           ← Back to Dependent
         </Button>
-      </Container>
+      </div>
     );
   }
 
   if (!dependent) {
     return (
-      <Container className="py-4">
+      <div className="py-4 max-w-5xl mx-auto px-4">
         <ErrorMessage message="Dependent not found" />
         <Button onClick={handleBackClick} className="mt-3">
           ← Back to Dependent
         </Button>
-      </Container>
+      </div>
     );
   }
 
   return (
-    <Container className="py-4">
+    <div className="py-4 max-w-5xl mx-auto px-4">
       {/* Page heading with dependent name and back navigation */}
-      <Row className="mb-4">
-        <Col>
-          <h2 className="heading">
-            Reports
-            <Button variant="secondary" onClick={handleBackClick} className="heading-right">
-              ← Back to {dependent.name}
-            </Button>
-          </h2>
-        </Col>
-      </Row>
+      <div className="mb-4">
+        <h2 className="heading">
+          Reports
+          <Button variant="secondary" onClick={handleBackClick} className="heading-right">
+            ← Back to {dependent.name}
+          </Button>
+        </h2>
+      </div>
 
       {/* Time range selector */}
       <TimeRangeSelector
@@ -179,195 +176,172 @@ export function ReportPage() {
 
       {/* Global empty state */}
       {!activitiesLoading && !activitiesError && activities.length === 0 && (
-        <Alert variant="info">No activities found for the selected time period.</Alert>
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-xl text-blue-700 text-sm">
+          No activities found for the selected time period.
+        </div>
       )}
 
       {/* Summary cards */}
       {!activitiesLoading && !activitiesError && activities.length > 0 && (
-        <Row>
-          <Col md={6} lg={3}>
-            <ActivitySummaryCard
-              title="Feeding"
-              variant="success"
-              metrics={[
-                { label: 'Total Feedings', value: String(feedingSummary.totalCount) },
-                { label: 'Total Volume', value: `${Math.round(feedingSummary.totalVolumeMl)} ml` },
-                { label: 'Avg Volume', value: `${Math.round(feedingSummary.averageVolumeMl)} ml` },
-                { label: 'With Medicine', value: String(feedingSummary.medicineCount) },
-              ]}
-            />
-          </Col>
-          <Col md={6} lg={3}>
-            <ActivitySummaryCard
-              title="Sleep"
-              variant="info"
-              metrics={[
-                { label: 'Total Sessions', value: String(sleepSummary.totalCount) },
-                {
-                  label: 'Total Duration',
-                  value: formatDuration(sleepSummary.totalDurationMinutes),
-                },
-                {
-                  label: 'Avg Duration',
-                  value: formatDuration(sleepSummary.averageDurationMinutes),
-                },
-              ]}
-            />
-          </Col>
-          <Col md={6} lg={3}>
-            <ActivitySummaryCard
-              title="Diaper Changes"
-              variant="warning"
-              metrics={[
-                { label: 'Total Changes', value: String(diaperSummary.totalCount) },
-                { label: 'Wet', value: String(diaperSummary.wetCount) },
-                { label: 'Dirty', value: String(diaperSummary.dirtyCount) },
-                { label: 'Both', value: String(diaperSummary.bothCount) },
-              ]}
-            />
-          </Col>
-          <Col md={6} lg={3}>
-            <ActivitySummaryCard
-              title="Pumping"
-              variant="primary"
-              metrics={[
-                { label: 'Total Sessions', value: String(pumpingSummary.totalCount) },
-                { label: 'Total Volume', value: `${Math.round(pumpingSummary.totalVolumeMl)} ml` },
-                { label: 'Avg Volume', value: `${Math.round(pumpingSummary.averageVolumeMl)} ml` },
-              ]}
-            />
-          </Col>
-          <Col md={6} lg={3}>
-            <ActivitySummaryCard
-              title="Wake Windows"
-              variant="secondary"
-              metrics={[
-                { label: 'Total Sessions', value: String(wakeWindowSummary.totalCount) },
-                {
-                  label: 'Total Duration',
-                  value: formatDuration(wakeWindowSummary.totalDurationMinutes),
-                },
-                {
-                  label: 'Avg Duration',
-                  value: formatDuration(wakeWindowSummary.averageDurationMinutes),
-                },
-              ]}
-            />
-          </Col>
-          <Col md={6} lg={3}>
-            <ActivitySummaryCard
-              title="Baths"
-              variant="info"
-              metrics={[
-                { label: 'Total Baths', value: String(bathSummary.totalCount) },
-                {
-                  label: 'Total Duration',
-                  value: formatDuration(bathSummary.totalDurationMinutes),
-                },
-                {
-                  label: 'Avg Duration',
-                  value: formatDuration(bathSummary.averageDurationMinutes),
-                },
-              ]}
-            />
-          </Col>
-        </Row>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <ActivitySummaryCard
+            title="Feeding"
+            variant="success"
+            metrics={[
+              { label: 'Total Feedings', value: String(feedingSummary.totalCount) },
+              { label: 'Total Volume', value: `${Math.round(feedingSummary.totalVolumeMl)} ml` },
+              { label: 'Avg Volume', value: `${Math.round(feedingSummary.averageVolumeMl)} ml` },
+              { label: 'With Medicine', value: String(feedingSummary.medicineCount) },
+            ]}
+          />
+          <ActivitySummaryCard
+            title="Sleep"
+            variant="info"
+            metrics={[
+              { label: 'Total Sessions', value: String(sleepSummary.totalCount) },
+              {
+                label: 'Total Duration',
+                value: formatDuration(sleepSummary.totalDurationMinutes),
+              },
+              {
+                label: 'Avg Duration',
+                value: formatDuration(sleepSummary.averageDurationMinutes),
+              },
+            ]}
+          />
+          <ActivitySummaryCard
+            title="Diaper Changes"
+            variant="warning"
+            metrics={[
+              { label: 'Total Changes', value: String(diaperSummary.totalCount) },
+              { label: 'Wet', value: String(diaperSummary.wetCount) },
+              { label: 'Dirty', value: String(diaperSummary.dirtyCount) },
+              { label: 'Both', value: String(diaperSummary.bothCount) },
+            ]}
+          />
+          <ActivitySummaryCard
+            title="Pumping"
+            variant="primary"
+            metrics={[
+              { label: 'Total Sessions', value: String(pumpingSummary.totalCount) },
+              { label: 'Total Volume', value: `${Math.round(pumpingSummary.totalVolumeMl)} ml` },
+              { label: 'Avg Volume', value: `${Math.round(pumpingSummary.averageVolumeMl)} ml` },
+            ]}
+          />
+          <ActivitySummaryCard
+            title="Wake Windows"
+            variant="secondary"
+            metrics={[
+              { label: 'Total Sessions', value: String(wakeWindowSummary.totalCount) },
+              {
+                label: 'Total Duration',
+                value: formatDuration(wakeWindowSummary.totalDurationMinutes),
+              },
+              {
+                label: 'Avg Duration',
+                value: formatDuration(wakeWindowSummary.averageDurationMinutes),
+              },
+            ]}
+          />
+          <ActivitySummaryCard
+            title="Baths"
+            variant="info"
+            metrics={[
+              { label: 'Total Baths', value: String(bathSummary.totalCount) },
+              {
+                label: 'Total Duration',
+                value: formatDuration(bathSummary.totalDurationMinutes),
+              },
+              {
+                label: 'Avg Duration',
+                value: formatDuration(bathSummary.averageDurationMinutes),
+              },
+            ]}
+          />
+        </div>
       )}
 
       {/* Charts */}
       {!activitiesLoading && !activitiesError && activities.length > 0 && (
         <>
-          <Row className="mt-4 mb-3">
-            <Col className="d-flex align-items-center gap-2">
-              <span className="text-muted">Trend window:</span>
-              <ButtonGroup size="sm">
-                {(['1h', '6h', '1d'] as TrendWindow[]).map((w) => (
-                  <BsButton
-                    key={w}
-                    variant={trendWindow === w ? 'primary' : 'outline-primary'}
-                    onClick={() => setTrendWindow(w)}
-                  >
-                    {w === '1h' ? '1 Hour' : w === '6h' ? '6 Hours' : '1 Day'}
-                  </BsButton>
-                ))}
-              </ButtonGroup>
-            </Col>
-          </Row>
-          <Row>
-            <Col md={6}>
-              <ActivityChart
-                title="Feeding Volume Trend"
-                data={feedingCompositeData}
-                chartType="composite"
-                yAxisLabel="Volume (ml)"
-                xAxisLabel="Time"
-                compositeBarColor="#28a745"
-                compositeLineColor="#155724"
-                emptyMessage="No feeding data with volume for the selected period."
-              />
-            </Col>
-            <Col md={6}>
-              <ActivityChart
-                title="Sleep Duration Per Day"
-                data={sleepChartData}
-                chartType="bar"
-                yAxisLabel="Duration (hours)"
-                xAxisLabel="Day"
-                color="#17a2b8"
-                emptyMessage="No sleep data for the selected period."
-              />
-            </Col>
-            <Col md={6}>
-              <ActivityChart
-                title="Wake Window Duration Per Day"
-                data={wakeWindowChartData}
-                chartType="bar"
-                yAxisLabel="Duration (hours)"
-                xAxisLabel="Day"
-                color="#fd7e14"
-                emptyMessage="No wake window data for the selected period."
-              />
-            </Col>
-            <Col md={6}>
-              <ActivityChart
-                title="Diaper Changes Per Day"
-                data={diaperChartData}
-                chartType="stacked-bar"
-                yAxisLabel="Count"
-                xAxisLabel="Day"
-                stackedBars={[
-                  { dataKey: 'wet', color: '#17a2b8', name: 'Wet' },
-                  { dataKey: 'dirty', color: '#6f4e37', name: 'Dirty' },
-                  { dataKey: 'both', color: '#ffc107', name: 'Both' },
-                ]}
-                emptyMessage="No diaper change data for the selected period."
-              />
-            </Col>
-            <Col md={6}>
-              <ActivityChart
-                title="Pumping Volume Trend (avg)"
-                data={pumpingChartData}
-                chartType="line"
-                yAxisLabel="Avg Volume (ml)"
-                xAxisLabel="Time"
-                color="#007bff"
-                emptyMessage="No pumping data with volume for the selected period."
-              />
-            </Col>
-            <Col md={6}>
-              <ActivityChart
-                title="Baths Per Day"
-                data={bathChartData}
-                chartType="bar"
-                yAxisLabel="Count"
-                xAxisLabel="Day"
-                color="#0dcaf0"
-                emptyMessage="No bath data for the selected period."
-              />
-            </Col>
-          </Row>
+          <div className="mt-4 mb-3 flex items-center gap-2">
+            <span className="text-muted">Trend window:</span>
+            <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+              {(['1h', '6h', '1d'] as TrendWindow[]).map((w) => (
+                <Button
+                  key={w}
+                  variant={trendWindow === w ? 'primary' : 'outline-primary'}
+                  onClick={() => setTrendWindow(w)}
+                  className="rounded-none px-3 py-1.5 text-sm"
+                >
+                  {w === '1h' ? '1 Hour' : w === '6h' ? '6 Hours' : '1 Day'}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <ActivityChart
+              title="Feeding Volume Trend"
+              data={feedingCompositeData}
+              chartType="composite"
+              yAxisLabel="Volume (ml)"
+              xAxisLabel="Time"
+              compositeBarColor="#28a745"
+              compositeLineColor="#155724"
+              emptyMessage="No feeding data with volume for the selected period."
+            />
+            <ActivityChart
+              title="Sleep Duration Per Day"
+              data={sleepChartData}
+              chartType="bar"
+              yAxisLabel="Duration (hours)"
+              xAxisLabel="Day"
+              color="#17a2b8"
+              emptyMessage="No sleep data for the selected period."
+            />
+            <ActivityChart
+              title="Wake Window Duration Per Day"
+              data={wakeWindowChartData}
+              chartType="bar"
+              yAxisLabel="Duration (hours)"
+              xAxisLabel="Day"
+              color="#fd7e14"
+              emptyMessage="No wake window data for the selected period."
+            />
+            <ActivityChart
+              title="Diaper Changes Per Day"
+              data={diaperChartData}
+              chartType="stacked-bar"
+              yAxisLabel="Count"
+              xAxisLabel="Day"
+              stackedBars={[
+                { dataKey: 'wet', color: '#17a2b8', name: 'Wet' },
+                { dataKey: 'dirty', color: '#6f4e37', name: 'Dirty' },
+                { dataKey: 'both', color: '#ffc107', name: 'Both' },
+              ]}
+              emptyMessage="No diaper change data for the selected period."
+            />
+            <ActivityChart
+              title="Pumping Volume Trend (avg)"
+              data={pumpingChartData}
+              chartType="line"
+              yAxisLabel="Avg Volume (ml)"
+              xAxisLabel="Time"
+              color="#007bff"
+              emptyMessage="No pumping data with volume for the selected period."
+            />
+            <ActivityChart
+              title="Baths Per Day"
+              data={bathChartData}
+              chartType="bar"
+              yAxisLabel="Count"
+              xAxisLabel="Day"
+              color="#0dcaf0"
+              emptyMessage="No bath data for the selected period."
+            />
+          </div>
         </>
       )}
-    </Container>
+    </div>
   );
 }

@@ -1,4 +1,3 @@
-import { Row, Col } from 'react-bootstrap';
 import { FamilyCard } from './FamilyCard';
 import { SkeletonCard } from '../common/SkeletonCard';
 import { ErrorMessage } from '../common/ErrorMessage';
@@ -29,11 +28,9 @@ export function FamilyList({
 }: FamilyListProps) {
   if (loading) {
     return (
-      <Row>
-        <Col xs={12} md={6} lg={4}>
-          <SkeletonCard count={3} />
-        </Col>
-      </Row>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <SkeletonCard count={3} />
+      </div>
     );
   }
 
@@ -50,12 +47,10 @@ export function FamilyList({
   }
 
   return (
-    <Row>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {families.map((family) => (
-        <Col key={family.id} xs={12} md={6} lg={4}>
-          <FamilyCard family={family} onEdit={onEdit} onDelete={onDelete} onView={onView} />
-        </Col>
+        <FamilyCard key={family.id} family={family} onEdit={onEdit} onDelete={onDelete} onView={onView} />
       ))}
-    </Row>
+    </div>
   );
 }

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Form, Alert } from 'react-bootstrap';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { PermissionScopeSelector } from './PermissionScopeSelector';
@@ -76,33 +75,33 @@ export function ShareForm({ onSubmit, onCancel, loading = false }: ShareFormProp
   const isFormValid = accepterUsername.trim() !== '' && !hasErrors;
 
   return (
-    <Form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit}>
       <Input
         label="Username"
         value={accepterUsername}
         onChange={handleUsernameChange}
-        error={errors.email}
+        error={errors.username}
         onBlur={handleUsernameBlur}
         required
         placeholder="Enter accepter's username"
         disabled={loading}
       />
 
-      <Form.Group className="mb-3">
-        <Form.Label>Permissions</Form.Label>
+      <div className="mb-3 mt-3">
+        <label className="block text-sm font-medium text-gray-700 mb-1">Permissions</label>
         <PermissionScopeSelector
           value={selectedActions}
           onChange={handleActionsChange}
           disabled={loading}
         />
         {scopeError && (
-          <Alert variant="danger" className="mt-2">
+          <p className="mt-2 p-3 bg-red-50 border border-red-100 rounded-xl text-red-700 text-sm">
             {scopeError}
-          </Alert>
+          </p>
         )}
-      </Form.Group>
+      </div>
 
-      <div className="d-flex gap-2">
+      <div className="flex gap-2">
         <Button
           type="submit"
           variant="primary"
@@ -115,6 +114,6 @@ export function ShareForm({ onSubmit, onCancel, loading = false }: ShareFormProp
           Cancel
         </Button>
       </div>
-    </Form>
+    </form>
   );
 }

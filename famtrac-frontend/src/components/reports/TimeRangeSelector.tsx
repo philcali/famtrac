@@ -1,4 +1,4 @@
-import { ButtonGroup, Button, Form, Row, Col } from 'react-bootstrap';
+import { Button } from '../common/Button';
 
 type TimeRangePreset = 'today' | 'week' | 'month';
 
@@ -31,44 +31,45 @@ export function TimeRangeSelector({
   onCustomRangeChange,
 }: TimeRangeSelectorProps) {
   return (
-    <Row className="mb-3 align-items-end g-3">
-      <Col xs="auto">
-        <ButtonGroup aria-label="Time range presets">
-          {presets.map((preset) => (
-            <Button
-              key={preset.value}
-              variant={activePreset === preset.value ? 'primary' : 'outline-primary'}
-              onClick={() => onPresetSelect(preset.value)}
-            >
-              {preset.label}
-            </Button>
-          ))}
-        </ButtonGroup>
-      </Col>
-      <Col xs="auto">
-        <Form.Label htmlFor="report-start-date" className="visually-hidden">
-          Start Date
-        </Form.Label>
-        <Form.Control
-          id="report-start-date"
-          type="date"
-          value={startDate}
-          onChange={(e) => onCustomRangeChange(e.target.value, endDate)}
-          aria-label="Start date"
-        />
-      </Col>
-      <Col xs="auto">
-        <Form.Label htmlFor="report-end-date" className="visually-hidden">
-          End Date
-        </Form.Label>
-        <Form.Control
-          id="report-end-date"
-          type="date"
-          value={endDate}
-          onChange={(e) => onCustomRangeChange(startDate, e.target.value)}
-          aria-label="End date"
-        />
-      </Col>
-    </Row>
+    <div className="mb-3 flex flex-col sm:flex-row items-start sm:items-end gap-3">
+      <div className="flex gap-1" aria-label="Time range presets">
+        {presets.map((preset) => (
+          <Button
+            key={preset.value}
+            variant={activePreset === preset.value ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={() => onPresetSelect(preset.value)}
+          >
+            {preset.label}
+          </Button>
+        ))}
+      </div>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div>
+          <label htmlFor="report-start-date" className="block text-xs font-medium text-gray-500 mb-1">
+            Start Date
+          </label>
+          <input
+            id="report-start-date"
+            type="date"
+            value={startDate}
+            onChange={(e) => onCustomRangeChange(e.target.value, endDate)}
+            className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+          />
+        </div>
+        <div>
+          <label htmlFor="report-end-date" className="block text-xs font-medium text-gray-500 mb-1">
+            End Date
+          </label>
+          <input
+            id="report-end-date"
+            type="date"
+            value={endDate}
+            onChange={(e) => onCustomRangeChange(startDate, e.target.value)}
+            className="px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+          />
+        </div>
+      </div>
+    </div>
   );
 }

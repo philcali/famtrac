@@ -3,7 +3,7 @@ import { SkeletonCard } from '../common/SkeletonCard';
 import { ErrorMessage } from '../common/ErrorMessage';
 import { Button } from '../common/Button';
 import type { ActivityResponse } from '../../api/types';
-import { Badge, Table } from 'react-bootstrap';
+import { Badge } from '../common/Badge';
 import {
   formatActivityTimestamp,
   getActivityTypeBadgeVariant,
@@ -78,54 +78,57 @@ export function ActivityList({
 
   return (
     <>
-      <Table responsive>
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Start Time</th>
-            <th>Description</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sortedActivities.map((activity) => (
-            <tr key={activity.id}>
-              <td>
-                <Badge bg={getActivityTypeBadgeVariant(activity.type)}>
-                  {getActivityTypeLabel(activity.type)}
-                </Badge>
-              </td>
-              <td>{formatActivityTimestamp(activity)}</td>
-              <td>{renderActivityDetails(activity)}</td>
-              <td>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon="pencil"
-                  className="me-1 mb-1"
-                  onClick={() => onEdit(activity)}
-                ></Button>
-                {isProgressing(activity) && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="me-1 mb-1"
-                    icon="stop"
-                    onClick={() => onStop(activity)}
-                  ></Button>
-                )}
-                <Button
-                  variant="danger"
-                  size="sm"
-                  icon="trash"
-                  className="mb-1"
-                  onClick={() => onDelete(activity)}
-                ></Button>
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th className="py-2 pr-4 font-medium text-gray-500">Type</th>
+              <th className="py-2 pr-4 font-medium text-gray-500">Start Time</th>
+              <th className="py-2 pr-4 font-medium text-gray-500">Description</th>
+              <th className="py-2 font-medium text-gray-500">Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </Table>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {sortedActivities.map((activity) => (
+              <tr key={activity.id} className="align-top">
+                <td className="py-3 pr-4 align-top">
+                  <Badge variant={getActivityTypeBadgeVariant(activity.type)}>
+                    {getActivityTypeLabel(activity.type)}
+                  </Badge>
+                </td>
+                <td className="py-3 pr-4 align-top text-sm text-gray-500">
+                  {formatActivityTimestamp(activity)}
+                </td>
+                <td className="py-3 pr-4 align-top text-sm">{renderActivityDetails(activity)}</td>
+                <td className="py-3 align-top">
+                  <div className="flex gap-1">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      icon="pencil"
+                      onClick={() => onEdit(activity)}
+                    ></Button>
+                    {isProgressing(activity) && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon="stop"
+                        onClick={() => onStop(activity)}
+                      ></Button>
+                    )}
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      icon="trash"
+                      onClick={() => onDelete(activity)}
+                    ></Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {hasMore && (
         <div className="text-center mt-3">
           <Button

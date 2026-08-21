@@ -1,4 +1,3 @@
-import { Form } from 'react-bootstrap';
 import type { PermissionAction } from '../../types/domain';
 import {
   ALWAYS_REQUIRED,
@@ -47,7 +46,7 @@ export function PermissionScopeSelector({
   };
 
   return (
-    <div>
+    <div className="space-y-2">
       {ALL_ACTIONS.map((action) => {
         const isAlwaysRequired = ALWAYS_REQUIRED.includes(action);
         const isLocked = locked.has(action);
@@ -55,15 +54,19 @@ export function PermissionScopeSelector({
         const isDisabled = disabled || isAlwaysRequired || isLocked;
 
         return (
-          <Form.Check
+          <label
             key={action}
-            type="switch"
-            id={`permission-${action}`}
-            label={PERMISSION_LABELS[action]}
-            checked={isChecked}
-            disabled={isDisabled}
-            onChange={() => handleToggle(action)}
-          />
+            className={`flex items-center gap-2 cursor-pointer ${isDisabled ? 'opacity-60' : ''}`}
+          >
+            <input
+              type="checkbox"
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              checked={isChecked}
+              disabled={isDisabled}
+              onChange={() => handleToggle(action)}
+            />
+            <span className="text-sm font-medium text-gray-700">{PERMISSION_LABELS[action]}</span>
+          </label>
         );
       })}
     </div>

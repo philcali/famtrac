@@ -1,4 +1,3 @@
-import { Card } from 'react-bootstrap';
 import { Button } from '../common/Button';
 import { ShareStatusBadge } from './ShareStatusBadge';
 import { PERMISSION_LABELS } from '../../utils/permissions';
@@ -28,39 +27,37 @@ export function ShareCard({ share, onEdit, onRevoke, onAccept }: ShareCardProps)
     .filter(Boolean);
 
   return (
-    <Card className="mb-3">
-      <Card.Body>
-        <Card.Title className="d-flex justify-content-between align-items-center">
-          <span>{share.accepter_username}</span>
-          <ShareStatusBadge status={share.status} />
-        </Card.Title>
-        <Card.Text>
-          <strong>Permissions:</strong> {permissionLabels.join(', ')}
-        </Card.Text>
-        <div className="d-flex gap-2">
-          {onEdit && (
-            <Button
-              variant="secondary"
-              size="sm"
-              icon="pencil"
-              onClick={() => onEdit(share)}
-              disabled={share.status === 'expired'}
-            >
-              Edit
-            </Button>
-          )}
-          {onRevoke && (
-            <Button variant="danger" size="sm" icon="trash" onClick={() => onRevoke(share)}>
-              Revoke
-            </Button>
-          )}
-          {onAccept && (
-            <Button variant="success" size="sm" icon="plus" onClick={() => onAccept(share)}>
-              Accept
-            </Button>
-          )}
-        </div>
-      </Card.Body>
-    </Card>
+    <div className="mb-3 p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-base font-semibold">{share.accepter_username}</span>
+        <ShareStatusBadge status={share.status} />
+      </div>
+      <div className="text-sm mb-2">
+        <strong>Permissions:</strong> {permissionLabels.join(', ')}
+      </div>
+      <div className="flex gap-2">
+        {onEdit && (
+          <Button
+            variant="secondary"
+            size="sm"
+            icon="pencil"
+            onClick={() => onEdit(share)}
+            disabled={share.status === 'expired'}
+          >
+            Edit
+          </Button>
+        )}
+        {onRevoke && (
+          <Button variant="danger" size="sm" icon="trash" onClick={() => onRevoke(share)}>
+            Revoke
+          </Button>
+        )}
+        {onAccept && (
+          <Button variant="success" size="sm" icon="plus" onClick={() => onAccept(share)}>
+            Accept
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }

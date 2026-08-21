@@ -1,4 +1,3 @@
-import { Alert } from 'react-bootstrap';
 import { useEffect, useState } from 'react';
 
 export interface SuccessMessageProps {
@@ -41,18 +40,21 @@ export function SuccessMessage({
   }
 
   return (
-    <Alert
-      variant="success"
-      onClose={() => {
-        setVisible(false);
-        if (onClose) {
-          onClose();
-        }
-      }}
-      dismissible
-      className={className}
+    <div
+      className={`mb-4 p-4 bg-green-50 border border-green-100 rounded-xl text-green-700 text-sm relative ${className ?? ''}`}
+      role="alert"
     >
+      <button
+        onClick={() => {
+          setVisible(false);
+          if (onClose) onClose();
+        }}
+        className="absolute top-2 right-2 text-green-400 hover:text-green-600"
+        aria-label="Dismiss"
+      >
+        ×
+      </button>
       {message}
-    </Alert>
+    </div>
   );
 }

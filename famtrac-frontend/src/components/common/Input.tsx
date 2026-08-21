@@ -1,5 +1,3 @@
-import { Form } from 'react-bootstrap';
-
 export interface InputProps {
   label: string;
   value: string;
@@ -35,34 +33,35 @@ export function Input({
   const inputId = id || `input-${label.toLowerCase().replace(/\s+/g, '-')}`;
 
   return (
-    <Form.Group className="mb-3">
-      <Form.Label htmlFor={inputId}>
+    <div className="mb-3">
+      <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">
         {label}
         {required && (
-          <span className="text-danger ms-1" aria-label="required">
+          <span className="text-red-500 ml-0.5" aria-label="required">
             *
           </span>
         )}
-      </Form.Label>
-      <Form.Control
+      </label>
+      <input
         id={inputId}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}
-        isInvalid={!!error}
         placeholder={placeholder}
         disabled={disabled}
         aria-invalid={!!error}
         aria-describedby={error ? `${inputId}-error` : undefined}
         aria-required={required}
-        style={{ minHeight: '44px' }} // Ensure 44px minimum height for touch targets
+        className={`w-full px-3 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-colors min-h-[44px] ${
+          error ? 'border-red-300 bg-red-50' : ''
+        } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       />
       {error && (
-        <Form.Control.Feedback type="invalid" id={`${inputId}-error`}>
+        <p id={`${inputId}-error`} className="mt-1 text-xs text-red-500" role="alert">
           {error}
-        </Form.Control.Feedback>
+        </p>
       )}
-    </Form.Group>
+    </div>
   );
 }

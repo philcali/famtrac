@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Form } from 'react-bootstrap';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { useValidation } from '../../hooks/useValidation';
@@ -85,7 +84,7 @@ export function DependentForm({
   const isFormValid = name.trim() !== '' && dateOfBirth !== '' && !hasErrors;
 
   return (
-    <Form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit}>
       <Input
         label="Name"
         value={name}
@@ -121,6 +120,6 @@ export function DependentForm({
           Cancel
         </Button>
       </div>
-    </Form>
+    </form>
   );
 }

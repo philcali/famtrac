@@ -30,7 +30,7 @@ describe('CallbackPage', () => {
     render(<CallbackPage />);
 
     expect(screen.getByText('Completing sign in...')).toBeInTheDocument();
-    expect(document.querySelector('.spinner-border')).toBeInTheDocument();
+    expect(document.querySelector('.animate-spin')).toBeInTheDocument();
   });
 
   it('should exchange authorization code for tokens and store refresh token (Req 1.3, 1.4)', async () => {
