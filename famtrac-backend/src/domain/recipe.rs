@@ -22,6 +22,7 @@ pub struct Recipe {
     pub permission_scope: Option<PermissionScope>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreateRecipeRequest {
     pub name: String,
@@ -41,8 +42,9 @@ pub struct CreateRecipeRequest {
     pub safe: Option<bool>,
 }
 
+#[allow(dead_code)]
 fn default_vec(v: &Option<Vec<String>>) -> bool {
-    v.as_ref().map_or(true, |vec| vec.is_empty())
+    v.as_ref().is_none_or(|vec| vec.is_empty())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -79,7 +81,7 @@ impl Recipe {
             allergens: Vec::new(),
             prep_notes: None,
             safe: None,
-            created_at: now.clone(),
+            created_at: now,
             updated_at: now,
             share_id: None,
             permission_scope: None,

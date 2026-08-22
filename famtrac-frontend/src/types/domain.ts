@@ -205,3 +205,39 @@ export interface UpdateMealSlotRequest {
   recipe_id?: string;
   notes?: string;
 }
+
+// FeedingLog domain types
+
+export interface FeedingLog {
+  id: string;
+  family_id: string;
+  dependent_id: string;
+  date: string;
+  time: string;
+  recipe_id?: string;
+  amount: number;
+  reaction?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateFeedingLogRequest {
+  family_id: string;
+  dependent_id: string;
+  date: string;
+  time: string;
+  recipe_id?: string;
+  amount: number;
+  reaction?: string;
+  notes?: string;
+}
+
+export interface UpdateFeedingLogRequest {
+  date?: string;
+  time?: string;
+  recipe_id?: string;
+  amount?: number;
+  reaction?: string;
+  notes?: string;
+}

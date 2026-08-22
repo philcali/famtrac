@@ -1,6 +1,6 @@
 use crate::domain::{
-    Activity, ActivityType, Dependent, DependentId, Family, FamilyId, IdentityId, MealSlot,
-    MealSlotId, Recipe, RecipeId, Share, ShareId, Timestamp,
+    Activity, ActivityType, Dependent, DependentId, Family, FamilyId, FeedingLog, FeedingLogId,
+    IdentityId, MealSlot, MealSlotId, Recipe, RecipeId, Share, ShareId, Timestamp,
 };
 use crate::errors::StoreError;
 use crate::handlers::{PaginatedResponse, PaginationParams};
@@ -159,11 +159,7 @@ pub trait RecipeRepository: Send + Sync {
     async fn create(&self, recipe: Recipe) -> Result<Recipe, StoreError>;
 
     /// Get a recipe by family ID and recipe ID
-    async fn get(
-        &self,
-        family_id: FamilyId,
-        id: RecipeId,
-    ) -> Result<Option<Recipe>, StoreError>;
+    async fn get(&self, family_id: FamilyId, id: RecipeId) -> Result<Option<Recipe>, StoreError>;
 
     /// Update an existing recipe
     async fn update(&self, recipe: Recipe) -> Result<Recipe, StoreError>;
@@ -220,4 +216,47 @@ pub trait MealSlotRepository: Send + Sync {
         day: Option<String>,
         pagination: PaginationParams,
     ) -> Result<PaginatedResponse<MealSlot>, StoreError>;
+}
+
+/// Query parameters for feeding log queries
+#[derive(Debug, Clone)]
+pub struct FeedingLogQueryParams {
+    pub family_id: FamilyId,
+    pub dependent_id: DependentId,
+    pub date: Option<String>,
+}
+
+/// Repository trait for FeedingLog operations
+#[async_trait]
+pub trait FeedingLogRepository: Send + Sync {
+    /// Create a new feeding log
+    async fn create(&self, feeding_log: FeedingLog) -> Result<FeedingLog, StoreError>;
+
+    /// Get a feeding log by family ID, dependent ID, and feeding log ID
+    async fn get(
+        &self,
+        family_id: FamilyId,
+        dependent_id: DependentId,
+        id: FeedingLogId,
+    ) -> Result<Option<FeedingLog>, StoreError>;
+
+    /// Update an existing feeding log
+    async fn update(&self, feeding_log: FeedingLog) -> Result<FeedingLog, StoreError>;
+
+    /// Delete a feeding log by family ID, dependent ID, and feeding log ID
+    async fn delete(
+        &self,
+        family_id: FamilyId,
+        dependent_id: DependentId,
+        id: FeedingLogId,
+    ) -> Result<(), StoreError>;
+
+    /// List feeding logs for a dependent, optionally filtered by date
+    async fn list_by_dependent(
+        &self,
+        family_id: FamilyId,
+        dependent_id: DependentId,
+        date: Option<String>,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<FeedingLog>, StoreError>;
 }

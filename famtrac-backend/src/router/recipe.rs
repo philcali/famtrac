@@ -38,14 +38,9 @@ pub async fn route_recipe(
                 limit: query_params.first("limit").and_then(|s| s.parse().ok()),
                 next_token: query_params.first("next_token").map(|s| s.to_string()),
             };
-            let (_status, response_json) = handlers::list_recipes(
-                family_id,
-                context,
-                family_repo,
-                recipe_repo,
-                pagination,
-            )
-            .await?;
+            let (_status, response_json) =
+                handlers::list_recipes(family_id, context, family_repo, recipe_repo, pagination)
+                    .await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -55,14 +50,8 @@ pub async fn route_recipe(
 
         // POST /families/{family_id}/recipes - Create a new recipe
         ("POST", "") | ("POST", "/") => {
-            let (_status, response_json) = handlers::create_recipe(
-                family_id,
-                body,
-                context,
-                family_repo,
-                recipe_repo,
-            )
-            .await?;
+            let (_status, response_json) =
+                handlers::create_recipe(family_id, body, context, family_repo, recipe_repo).await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -72,11 +61,8 @@ pub async fn route_recipe(
 
         // GET /families/{family_id}/recipes/{id} - Get a recipe by ID
         ("GET", p) if !p.is_empty() && p != "/" => {
-            let recipe_id = extract_uuid_param(
-                &format!("/recipes{}", sub_path),
-                "/recipes/",
-                "recipe_id",
-            )?;
+            let recipe_id =
+                extract_uuid_param(&format!("/recipes{}", sub_path), "/recipes/", "recipe_id")?;
             let (_status, response_json) = handlers::get_recipe(
                 family_id,
                 RecipeId(recipe_id),
@@ -94,11 +80,8 @@ pub async fn route_recipe(
 
         // PUT /families/{family_id}/recipes/{id} - Update a recipe
         ("PUT", p) if !p.is_empty() && p != "/" => {
-            let recipe_id = extract_uuid_param(
-                &format!("/recipes{}", sub_path),
-                "/recipes/",
-                "recipe_id",
-            )?;
+            let recipe_id =
+                extract_uuid_param(&format!("/recipes{}", sub_path), "/recipes/", "recipe_id")?;
             let (_status, response_json) = handlers::update_recipe(
                 family_id,
                 RecipeId(recipe_id),
@@ -117,11 +100,8 @@ pub async fn route_recipe(
 
         // DELETE /families/{family_id}/recipes/{id} - Delete a recipe
         ("DELETE", p) if !p.is_empty() && p != "/" => {
-            let recipe_id = extract_uuid_param(
-                &format!("/recipes{}", sub_path),
-                "/recipes/",
-                "recipe_id",
-            )?;
+            let recipe_id =
+                extract_uuid_param(&format!("/recipes{}", sub_path), "/recipes/", "recipe_id")?;
             handlers::delete_recipe(
                 family_id,
                 RecipeId(recipe_id),

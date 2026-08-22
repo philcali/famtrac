@@ -153,7 +153,7 @@ pub async fn create_recipe<F: FamilyRepository, R: RecipeRepository>(
         allergens: request.allergens.unwrap_or_default(),
         prep_notes: request.prep_notes,
         safe: request.safe,
-        created_at: now.clone(),
+        created_at: now,
         updated_at: now,
         share_id: None,
         permission_scope: None,
@@ -541,14 +541,7 @@ mod tests {
             .unwrap()
             .insert(recipe_id, recipe);
 
-        let result = get_recipe(
-            family_id,
-            recipe_id,
-            &context,
-            &family_repo,
-            &recipe_repo,
-        )
-        .await;
+        let result = get_recipe(family_id, recipe_id, &context, &family_repo, &recipe_repo).await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -573,14 +566,7 @@ mod tests {
             .unwrap()
             .insert(family_id, family);
 
-        let result = get_recipe(
-            family_id,
-            recipe_id,
-            &context,
-            &family_repo,
-            &recipe_repo,
-        )
-        .await;
+        let result = get_recipe(family_id, recipe_id, &context, &family_repo, &recipe_repo).await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -652,14 +638,8 @@ mod tests {
             limit: None,
             next_token: None,
         };
-        let result = list_recipes(
-            family_id,
-            &context,
-            &family_repo,
-            &recipe_repo,
-            pagination,
-        )
-        .await;
+        let result =
+            list_recipes(family_id, &context, &family_repo, &recipe_repo, pagination).await;
 
         assert!(result.is_ok());
         let (status, response_json) = result.unwrap();
@@ -707,14 +687,8 @@ mod tests {
             .unwrap()
             .insert(recipe_id, recipe);
 
-        let result = delete_recipe(
-            family_id,
-            recipe_id,
-            &context,
-            &family_repo,
-            &recipe_repo,
-        )
-        .await;
+        let result =
+            delete_recipe(family_id, recipe_id, &context, &family_repo, &recipe_repo).await;
 
         assert!(result.is_ok());
         let (status, _) = result.unwrap();

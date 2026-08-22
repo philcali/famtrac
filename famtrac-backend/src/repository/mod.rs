@@ -3,9 +3,11 @@ mod traits;
 
 pub use dynamodb::{
     DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
-    DynamoDbMealSlotRepository, DynamoDbRecipeRepository, DynamoDbShareRepository,
+    DynamoDbFeedingLogRepository, DynamoDbMealSlotRepository, DynamoDbRecipeRepository,
+    DynamoDbShareRepository,
 };
 pub use traits::{
     ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository,
-    MealSlotQueryParams, MealSlotRepository, RecipeRepository, ShareRepository,
+    FeedingLogQueryParams, FeedingLogRepository, MealSlotQueryParams, MealSlotRepository,
+    RecipeRepository, ShareRepository,
 };

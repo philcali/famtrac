@@ -8,7 +8,8 @@ use famtrac_backend::context::RequestContext;
 use famtrac_backend::errors::{AuthError, HandlerError};
 use famtrac_backend::repository::{
     DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
-    DynamoDbMealSlotRepository, DynamoDbRecipeRepository, DynamoDbShareRepository,
+    DynamoDbFeedingLogRepository, DynamoDbMealSlotRepository, DynamoDbRecipeRepository,
+    DynamoDbShareRepository,
 };
 use famtrac_backend::router;
 use famtrac_backend::utils::cors::CorsConfig;
@@ -35,6 +36,8 @@ async fn main() -> Result<(), Error> {
         DynamoDbActivityRepository::new(dynamodb_client.clone(), table_name.clone());
     let recipe_repo = DynamoDbRecipeRepository::new(dynamodb_client.clone(), table_name.clone());
     let meal_repo = DynamoDbMealSlotRepository::new(dynamodb_client.clone(), table_name.clone());
+    let feeding_log_repo =
+        DynamoDbFeedingLogRepository::new(dynamodb_client.clone(), table_name.clone());
     let share_repo = DynamoDbShareRepository::new(dynamodb_client, table_name);
 
     // Initialize CORS config
@@ -47,6 +50,7 @@ async fn main() -> Result<(), Error> {
         let activity_repo = activity_repo.clone();
         let recipe_repo = recipe_repo.clone();
         let meal_repo = meal_repo.clone();
+        let feeding_log_repo = feeding_log_repo.clone();
         let share_repo = share_repo.clone();
         let cors_config = cors_config.clone();
 
@@ -58,6 +62,7 @@ async fn main() -> Result<(), Error> {
                 &activity_repo,
                 &recipe_repo,
                 &meal_repo,
+                &feeding_log_repo,
                 &share_repo,
                 &cors_config,
             )
@@ -70,6 +75,7 @@ async fn main() -> Result<(), Error> {
 }
 
 /// Route and handle incoming API Gateway requests
+#[allow(clippy::too_many_arguments)]
 async fn handle_request(
     request: ApiGatewayV2httpRequest,
     family_repo: &DynamoDbFamilyRepository,
@@ -77,6 +83,7 @@ async fn handle_request(
     activity_repo: &DynamoDbActivityRepository,
     recipe_repo: &DynamoDbRecipeRepository,
     meal_repo: &DynamoDbMealSlotRepository,
+    feeding_log_repo: &DynamoDbFeedingLogRepository,
     share_repo: &DynamoDbShareRepository,
     cors_config: &CorsConfig,
 ) -> Result<ApiGatewayV2httpResponse, Error> {
@@ -117,6 +124,7 @@ async fn handle_request(
         activity_repo,
         recipe_repo,
         meal_repo,
+        feeding_log_repo,
         share_repo,
         cors_config,
     )

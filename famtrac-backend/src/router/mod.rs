@@ -7,7 +7,8 @@ use crate::context::RequestContext;
 use crate::errors::HandlerError;
 use crate::repository::{
     DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
-    DynamoDbMealSlotRepository, DynamoDbRecipeRepository, DynamoDbShareRepository,
+    DynamoDbFeedingLogRepository, DynamoDbMealSlotRepository, DynamoDbRecipeRepository,
+    DynamoDbShareRepository,
 };
 use crate::utils::cors::CorsConfig;
 use crate::utils::response::HttpResponse;
@@ -17,6 +18,7 @@ pub mod activity;
 pub mod dependent;
 pub mod extractors;
 pub mod family;
+pub mod feeding_log;
 pub mod meal_slot;
 pub mod recipe;
 pub mod share;
@@ -49,6 +51,7 @@ pub mod share;
 /// - Requirement 2.5: Return HandlerError::NotFound for unknown routes
 /// - Requirement 7.4: Preserve logging statement "Routing: {method} {path}"
 /// - Requirement 7.5: Preserve CORS header handling through HttpResponse::from_handler_result()
+#[allow(clippy::too_many_arguments)]
 pub async fn route_request(
     request: &ApiGatewayV2httpRequest,
     context: &RequestContext,
@@ -57,6 +60,7 @@ pub async fn route_request(
     activity_repo: &DynamoDbActivityRepository,
     recipe_repo: &DynamoDbRecipeRepository,
     meal_repo: &DynamoDbMealSlotRepository,
+    feeding_log_repo: &DynamoDbFeedingLogRepository,
     share_repo: &DynamoDbShareRepository,
     cors_config: &CorsConfig,
 ) -> HttpResponse {
@@ -114,7 +118,8 @@ pub async fn route_request(
 
         // Delegate to family route handler
         // Handles /families/*, /families/{id}/dependents/*,
-        // /families/{id}/dependents/{id}/activities/*, and /families/{id}/recipes/*
+        // /families/{id}/dependents/{id}/activities/*, /families/{id}/recipes/*,
+        // and /families/{id}/dependents/{id}/feeding-logs/*
         family::route_family(
             method,
             path,
@@ -126,6 +131,7 @@ pub async fn route_request(
             activity_repo,
             recipe_repo,
             meal_repo,
+            feeding_log_repo,
         )
         .await
     } else {

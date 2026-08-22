@@ -26,8 +26,11 @@ pub async fn route_meal_slot(
     if let Some(meal_slot_id_idx) = sub_path.find("/") {
         // Extract meal_slot_id from the sub_path
         let meal_slot_id_str = &sub_path[1..meal_slot_id_idx]; // skip leading /
-        let meal_slot_id =
-            extract_uuid_param(&format!("/meal-slots/{}", meal_slot_id_str), "/meal-slots/", "meal_slot_id")?;
+        let meal_slot_id = extract_uuid_param(
+            &format!("/meal-slots/{}", meal_slot_id_str),
+            "/meal-slots/",
+            "meal_slot_id",
+        )?;
         let meal_slot_sub_path = &sub_path[meal_slot_id_idx..];
 
         match (method, meal_slot_sub_path) {

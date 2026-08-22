@@ -4,15 +4,16 @@ use aws_sdk_dynamodb::Client;
 use std::collections::HashMap;
 
 use crate::domain::{
-    Activity, ActivityId, ActivityType, Date, Dependent, DependentId, Family, FamilyId, IdentityId,
-    MealSlot, MealSlotId, PermissionScope, Recipe, RecipeId, Share, ShareId, ShareStatus, Timestamp,
+    Activity, ActivityId, ActivityType, Date, Dependent, DependentId, Family, FamilyId, FeedingLog,
+    FeedingLogId, IdentityId, MealSlot, MealSlotId, PermissionScope, Recipe, RecipeId, Share,
+    ShareId, ShareStatus, Timestamp,
 };
 use crate::errors::StoreError;
 use crate::handlers::{PaginatedResponse, PaginationParams};
 
 use super::traits::{
-    ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository, MealSlotRepository,
-    RecipeRepository, ShareRepository,
+    ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository,
+    FeedingLogRepository, MealSlotRepository, RecipeRepository, ShareRepository,
 };
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
@@ -1355,33 +1356,25 @@ impl DynamoDbRecipeRepository {
             "SK".to_string(),
             AttributeValue::S(format!("RECIPE#{}", recipe.id.0)),
         );
-        item.insert(
-            "Type".to_string(),
-            AttributeValue::S("Recipe".to_string()),
-        );
-        item.insert(
-            "id".to_string(),
-            AttributeValue::S(recipe.id.0.to_string()),
-        );
+        item.insert("Type".to_string(), AttributeValue::S("Recipe".to_string()));
+        item.insert("id".to_string(), AttributeValue::S(recipe.id.0.to_string()));
         item.insert(
             "family_id".to_string(),
             AttributeValue::S(recipe.family_id.0.to_string()),
         );
-        item.insert(
-            "name".to_string(),
-            AttributeValue::S(recipe.name.clone()),
-        );
+        item.insert("name".to_string(), AttributeValue::S(recipe.name.clone()));
         if let Some(ref emoji) = recipe.emoji {
-            item.insert(
-                "emoji".to_string(),
-                AttributeValue::S(emoji.clone()),
-            );
+            item.insert("emoji".to_string(), AttributeValue::S(emoji.clone()));
         }
         if !recipe.ingredients.is_empty() {
             item.insert(
                 "ingredients".to_string(),
                 AttributeValue::L(
-                    recipe.ingredients.iter().map(|s| AttributeValue::S(s.clone())).collect(),
+                    recipe
+                        .ingredients
+                        .iter()
+                        .map(|s| AttributeValue::S(s.clone()))
+                        .collect(),
                 ),
             );
         }
@@ -1392,16 +1385,17 @@ impl DynamoDbRecipeRepository {
             );
         }
         if let Some(ref texture) = recipe.texture {
-            item.insert(
-                "texture".to_string(),
-                AttributeValue::S(texture.clone()),
-            );
+            item.insert("texture".to_string(), AttributeValue::S(texture.clone()));
         }
         if !recipe.allergens.is_empty() {
             item.insert(
                 "allergens".to_string(),
                 AttributeValue::L(
-                    recipe.allergens.iter().map(|s| AttributeValue::S(s.clone())).collect(),
+                    recipe
+                        .allergens
+                        .iter()
+                        .map(|s| AttributeValue::S(s.clone()))
+                        .collect(),
                 ),
             );
         }
@@ -1412,10 +1406,7 @@ impl DynamoDbRecipeRepository {
             );
         }
         if let Some(ref safe) = recipe.safe {
-            item.insert(
-                "safe".to_string(),
-                AttributeValue::Bool(*safe),
-            );
+            item.insert("safe".to_string(), AttributeValue::Bool(*safe));
         }
         item.insert(
             "created_at".to_string(),
@@ -1462,19 +1453,12 @@ impl DynamoDbRecipeRepository {
             .ok_or_else(|| StoreError::QueryError("Missing name".to_string()))?
             .clone();
 
-        let emoji = item
-            .get("emoji")
-            .and_then(|v| v.as_s().ok())
-            .map(|s| s.clone());
+        let emoji = item.get("emoji").and_then(|v| v.as_s().ok()).cloned();
 
         let ingredients = item
             .get("ingredients")
             .and_then(|v| v.as_l().ok())
-            .map(|list| {
-                list.iter()
-                    .filter_map(|v| v.as_s().ok().map(|s| s.clone()))
-                    .collect()
-            })
+            .map(|list| list.iter().filter_map(|v| v.as_s().ok().cloned()).collect())
             .unwrap_or_default();
 
         let age_min = item
@@ -1482,30 +1466,17 @@ impl DynamoDbRecipeRepository {
             .and_then(|v| v.as_n().ok())
             .and_then(|s| s.parse().ok());
 
-        let texture = item
-            .get("texture")
-            .and_then(|v| v.as_s().ok())
-            .map(|s| s.clone());
+        let texture = item.get("texture").and_then(|v| v.as_s().ok()).cloned();
 
         let allergens = item
             .get("allergens")
             .and_then(|v| v.as_l().ok())
-            .map(|list| {
-                list.iter()
-                    .filter_map(|v| v.as_s().ok().map(|s| s.clone()))
-                    .collect()
-            })
+            .map(|list| list.iter().filter_map(|v| v.as_s().ok().cloned()).collect())
             .unwrap_or_default();
 
-        let prep_notes = item
-            .get("prep_notes")
-            .and_then(|v| v.as_s().ok())
-            .map(|s| s.clone());
+        let prep_notes = item.get("prep_notes").and_then(|v| v.as_s().ok()).cloned();
 
-        let safe = item
-            .get("safe")
-            .and_then(|v| v.as_bool().ok())
-            .copied();
+        let safe = item.get("safe").and_then(|v| v.as_bool().ok()).copied();
 
         let created_at = item
             .get("created_at")
@@ -1694,10 +1665,7 @@ impl DynamoDbMealSlotRepository {
             "family_id".to_string(),
             AttributeValue::S(meal_slot.family_id.0.to_string()),
         );
-        item.insert(
-            "day".to_string(),
-            AttributeValue::S(meal_slot.day.clone()),
-        );
+        item.insert("day".to_string(), AttributeValue::S(meal_slot.day.clone()));
         item.insert(
             "time".to_string(),
             AttributeValue::S(meal_slot.time.clone()),
@@ -1709,10 +1677,7 @@ impl DynamoDbMealSlotRepository {
             );
         }
         if let Some(ref notes) = meal_slot.notes {
-            item.insert(
-                "notes".to_string(),
-                AttributeValue::S(notes.clone()),
-            );
+            item.insert("notes".to_string(), AttributeValue::S(notes.clone()));
         }
         item.insert(
             "created_at".to_string(),
@@ -1751,9 +1716,7 @@ impl DynamoDbMealSlotRepository {
             .get("dependent_id")
             .and_then(|v| v.as_s().ok())
             .and_then(|s| s.parse().ok())
-            .ok_or_else(|| {
-                StoreError::QueryError("Missing or invalid dependent_id".to_string())
-            })?;
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid dependent_id".to_string()))?;
 
         let family_id = item
             .get("family_id")
@@ -1779,10 +1742,7 @@ impl DynamoDbMealSlotRepository {
             .and_then(|s| s.parse().ok())
             .map(RecipeId);
 
-        let notes = item
-            .get("notes")
-            .and_then(|v| v.as_s().ok())
-            .map(|s| s.clone());
+        let notes = item.get("notes").and_then(|v| v.as_s().ok()).cloned();
 
         let created_at = item
             .get("created_at")
@@ -1906,10 +1866,7 @@ impl MealSlotRepository for DynamoDbMealSlotRepository {
         day: Option<String>,
         pagination: PaginationParams,
     ) -> Result<PaginatedResponse<MealSlot>, StoreError> {
-        let pk = format!(
-            "FAMILY#{}#DEPENDENT#{}",
-            family_id.0, dependent_id.0
-        );
+        let pk = format!("FAMILY#{}#DEPENDENT#{}", family_id.0, dependent_id.0);
 
         let mut filter_expressions = Vec::new();
 
@@ -1924,14 +1881,8 @@ impl MealSlotRepository for DynamoDbMealSlotRepository {
             .query()
             .table_name(&self.table_name)
             .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
-            .expression_attribute_values(
-                ":pk",
-                AttributeValue::S(pk),
-            )
-            .expression_attribute_values(
-                ":sk_prefix",
-                AttributeValue::S("MEAL_SLOT#".to_string()),
-            )
+            .expression_attribute_values(":pk", AttributeValue::S(pk))
+            .expression_attribute_values(":sk_prefix", AttributeValue::S("MEAL_SLOT#".to_string()))
             .scan_index_forward(true) // Sort ascending by SK (MEAL_SLOT#<uuid>)
             .limit(pagination.effective_limit() as i32);
 
@@ -1951,9 +1902,7 @@ impl MealSlotRepository for DynamoDbMealSlotRepository {
         let result = query_builder
             .send()
             .await
-            .map_err(|e| {
-                StoreError::QueryError(format!("Failed to list meal slots: {}", e))
-            })?;
+            .map_err(|e| StoreError::QueryError(format!("Failed to list meal slots: {}", e)))?;
 
         let meal_slots = result
             .items
@@ -1965,5 +1914,322 @@ impl MealSlotRepository for DynamoDbMealSlotRepository {
         let next_token = encode_last_evaluated_key(&result.last_evaluated_key)?;
 
         Ok(PaginatedResponse::with_next_token(meal_slots, next_token))
+    }
+}
+
+/// DynamoDB implementation of FeedingLogRepository
+#[derive(Clone)]
+pub struct DynamoDbFeedingLogRepository {
+    client: Client,
+    table_name: String,
+}
+
+impl DynamoDbFeedingLogRepository {
+    pub fn new(client: Client, table_name: String) -> Self {
+        Self { client, table_name }
+    }
+
+    /// Convert FeedingLog to DynamoDB item
+    fn to_item(&self, feeding_log: &FeedingLog) -> HashMap<String, AttributeValue> {
+        let mut item = HashMap::new();
+        item.insert(
+            "PK".to_string(),
+            AttributeValue::S(format!(
+                "FAMILY#{}#DEPENDENT#{}",
+                feeding_log.family_id.0, feeding_log.dependent_id.0
+            )),
+        );
+        item.insert(
+            "SK".to_string(),
+            AttributeValue::S(format!("FEEDING_LOG#{}", feeding_log.id.0)),
+        );
+        item.insert(
+            "Type".to_string(),
+            AttributeValue::S("FeedingLog".to_string()),
+        );
+        item.insert(
+            "id".to_string(),
+            AttributeValue::S(feeding_log.id.0.to_string()),
+        );
+        item.insert(
+            "dependent_id".to_string(),
+            AttributeValue::S(feeding_log.dependent_id.0.to_string()),
+        );
+        item.insert(
+            "family_id".to_string(),
+            AttributeValue::S(feeding_log.family_id.0.to_string()),
+        );
+        item.insert(
+            "date".to_string(),
+            AttributeValue::S(feeding_log.date.clone()),
+        );
+        item.insert(
+            "time".to_string(),
+            AttributeValue::S(feeding_log.time.clone()),
+        );
+        if let Some(ref recipe_id) = feeding_log.recipe_id {
+            item.insert(
+                "recipe_id".to_string(),
+                AttributeValue::S(recipe_id.0.to_string()),
+            );
+        }
+        item.insert(
+            "amount".to_string(),
+            AttributeValue::N(feeding_log.amount.to_string()),
+        );
+        if let Some(ref reaction) = feeding_log.reaction {
+            item.insert("reaction".to_string(), AttributeValue::S(reaction.clone()));
+        }
+        if let Some(ref notes) = feeding_log.notes {
+            item.insert("notes".to_string(), AttributeValue::S(notes.clone()));
+        }
+        item.insert(
+            "created_at".to_string(),
+            AttributeValue::S(feeding_log.created_at.0.to_rfc3339()),
+        );
+        item.insert(
+            "updated_at".to_string(),
+            AttributeValue::S(feeding_log.updated_at.0.to_rfc3339()),
+        );
+        if let Some(ref share_id) = feeding_log.share_id {
+            item.insert(
+                "share_id".to_string(),
+                AttributeValue::S(share_id.0.to_string()),
+            );
+        }
+        if let Some(ref permission_scope) = feeding_log.permission_scope {
+            let scope_json =
+                serde_json::to_string(permission_scope).unwrap_or_else(|_| "{}".to_string());
+            item.insert(
+                "permission_scope".to_string(),
+                AttributeValue::S(scope_json),
+            );
+        }
+        item
+    }
+
+    /// Convert DynamoDB item to FeedingLog
+    fn parse_item(&self, item: &HashMap<String, AttributeValue>) -> Result<FeedingLog, StoreError> {
+        let id = item
+            .get("id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid id".to_string()))?;
+
+        let dependent_id = item
+            .get("dependent_id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid dependent_id".to_string()))?;
+
+        let family_id = item
+            .get("family_id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid family_id".to_string()))?;
+
+        let date = item
+            .get("date")
+            .and_then(|v| v.as_s().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing date".to_string()))?
+            .clone();
+
+        let time = item
+            .get("time")
+            .and_then(|v| v.as_s().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing time".to_string()))?
+            .clone();
+
+        let recipe_id = item
+            .get("recipe_id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .map(RecipeId);
+
+        let amount = item
+            .get("amount")
+            .and_then(|v| v.as_n().ok())
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0.0);
+
+        let reaction = item.get("reaction").and_then(|v| v.as_s().ok()).cloned();
+
+        let notes = item.get("notes").and_then(|v| v.as_s().ok()).cloned();
+
+        let created_at = item
+            .get("created_at")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid created_at".to_string()))?;
+
+        let updated_at = item
+            .get("updated_at")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid updated_at".to_string()))?;
+
+        let share_id = item
+            .get("share_id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .map(ShareId);
+
+        let permission_scope = item
+            .get("permission_scope")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| serde_json::from_str::<PermissionScope>(s).ok());
+
+        Ok(FeedingLog {
+            id: FeedingLogId(id),
+            dependent_id: DependentId(dependent_id),
+            family_id: FamilyId(family_id),
+            date,
+            time,
+            recipe_id,
+            amount,
+            reaction,
+            notes,
+            created_at: Timestamp::from_datetime(created_at),
+            updated_at: Timestamp::from_datetime(updated_at),
+            share_id,
+            permission_scope,
+        })
+    }
+}
+
+#[async_trait]
+impl FeedingLogRepository for DynamoDbFeedingLogRepository {
+    async fn create(&self, feeding_log: FeedingLog) -> Result<FeedingLog, StoreError> {
+        let item = self.to_item(&feeding_log);
+
+        self.client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to create feeding log: {}", e)))?;
+
+        Ok(feeding_log)
+    }
+
+    async fn get(
+        &self,
+        family_id: FamilyId,
+        dependent_id: DependentId,
+        id: FeedingLogId,
+    ) -> Result<Option<FeedingLog>, StoreError> {
+        let pk = format!("FAMILY#{}#DEPENDENT#{}", family_id.0, dependent_id.0);
+        let sk = format!("FEEDING_LOG#{}", id.0);
+
+        let result = self
+            .client
+            .get_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(pk))
+            .key("SK", AttributeValue::S(sk))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to get feeding log: {}", e)))?;
+
+        match result.item {
+            Some(item) => Ok(Some(self.parse_item(&item)?)),
+            None => Ok(None),
+        }
+    }
+
+    async fn update(&self, feeding_log: FeedingLog) -> Result<FeedingLog, StoreError> {
+        let item = self.to_item(&feeding_log);
+
+        self.client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to update feeding log: {}", e)))?;
+
+        Ok(feeding_log)
+    }
+
+    async fn delete(
+        &self,
+        family_id: FamilyId,
+        dependent_id: DependentId,
+        id: FeedingLogId,
+    ) -> Result<(), StoreError> {
+        let pk = format!("FAMILY#{}#DEPENDENT#{}", family_id.0, dependent_id.0);
+        let sk = format!("FEEDING_LOG#{}", id.0);
+
+        self.client
+            .delete_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(pk))
+            .key("SK", AttributeValue::S(sk))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to delete feeding log: {}", e)))?;
+
+        Ok(())
+    }
+
+    async fn list_by_dependent(
+        &self,
+        family_id: FamilyId,
+        dependent_id: DependentId,
+        date: Option<String>,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<FeedingLog>, StoreError> {
+        let pk = format!("FAMILY#{}#DEPENDENT#{}", family_id.0, dependent_id.0);
+
+        let mut filter_expressions = Vec::new();
+
+        if date.is_some() {
+            filter_expressions.push("date = :date".to_string());
+        }
+
+        let exclusive_start_key = decode_next_token(&pagination.next_token)?;
+
+        let mut query_builder = self
+            .client
+            .query()
+            .table_name(&self.table_name)
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+            .expression_attribute_values(":pk", AttributeValue::S(pk))
+            .expression_attribute_values(
+                ":sk_prefix",
+                AttributeValue::S("FEEDING_LOG#".to_string()),
+            )
+            .scan_index_forward(true)
+            .limit(pagination.effective_limit() as i32);
+
+        if let Some(start_key) = exclusive_start_key {
+            query_builder = query_builder.set_exclusive_start_key(Some(start_key));
+        }
+
+        if let Some(ref date_val) = date {
+            query_builder = query_builder
+                .expression_attribute_values(":date", AttributeValue::S(date_val.clone()));
+        }
+
+        if !filter_expressions.is_empty() {
+            query_builder = query_builder.filter_expression(filter_expressions.join(" AND "));
+        }
+
+        let result = query_builder
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to list feeding logs: {}", e)))?;
+
+        let feeding_logs = result
+            .items
+            .unwrap_or_default()
+            .iter()
+            .map(|item| self.parse_item(item))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let next_token = encode_last_evaluated_key(&result.last_evaluated_key)?;
+
+        Ok(PaginatedResponse::with_next_token(feeding_logs, next_token))
     }
 }

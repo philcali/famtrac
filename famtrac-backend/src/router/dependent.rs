@@ -9,7 +9,7 @@ use crate::errors::HandlerError;
 use crate::handlers;
 use crate::repository::{
     DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
-    DynamoDbMealSlotRepository,
+    DynamoDbFeedingLogRepository, DynamoDbMealSlotRepository,
 };
 use crate::router::extractors::extract_uuid_param;
 use aws_lambda_events::apigw::ApiGatewayV2httpRequest;
@@ -35,6 +35,7 @@ pub async fn route_dependent(
     dependent_repo: &DynamoDbDependentRepository,
     activity_repo: &DynamoDbActivityRepository,
     meal_repo: &DynamoDbMealSlotRepository,
+    feeding_log_repo: &DynamoDbFeedingLogRepository,
 ) -> Result<serde_json::Value, HandlerError> {
     // Check if this is an activity sub-route: /{dependent_id}/activities[/...]
     if let Some(activities_idx) = sub_path.find("/activities") {
@@ -81,6 +82,30 @@ pub async fn route_dependent(
             context,
             family_repo,
             meal_repo,
+        )
+        .await;
+    }
+
+    // Check if this is a feeding-logs sub-route: /{dependent_id}/feeding-logs[/...]
+    if let Some(feeding_logs_idx) = sub_path.find("/feeding-logs") {
+        // Extract dependent_id from the sub_path before /feeding-logs
+        let before_feeding_logs = &sub_path[..feeding_logs_idx];
+        let dependent_id = extract_uuid_param(
+            &format!("/dependents{}", before_feeding_logs),
+            "/dependents/",
+            "dependent_id",
+        )?;
+        let feeding_logs_sub_path = &sub_path[feeding_logs_idx + "/feeding-logs".len()..];
+        return super::feeding_log::route_feeding_log(
+            method,
+            family_id,
+            DependentId(dependent_id),
+            feeding_logs_sub_path,
+            body,
+            request,
+            context,
+            family_repo,
+            feeding_log_repo,
         )
         .await;
     }

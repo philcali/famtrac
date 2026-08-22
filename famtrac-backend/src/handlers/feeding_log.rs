@@ -1,90 +1,102 @@
 use super::permission::check_permission;
 use crate::context::RequestContext;
 use crate::domain::{
-    DependentId, FamilyId, MealSlot, MealSlotId, PermissionAction, RecipeId, Timestamp,
+    DependentId, FamilyId, FeedingLog, FeedingLogId, PermissionAction, RecipeId, Timestamp,
 };
 use crate::errors::HandlerError;
 use crate::handlers::pagination::PaginationParams;
-use crate::repository::{FamilyRepository, MealSlotRepository};
+use crate::repository::{FamilyRepository, FeedingLogRepository};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// Request body for creating a new meal slot
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CreateMealSlotRequest {
+/// Request body for creating a new feeding log
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CreateFeedingLogRequest {
     pub family_id: FamilyId,
     pub dependent_id: DependentId,
-    pub day: String,
+    pub date: String,
     pub time: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub recipe_id: Option<String>,
+    pub amount: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reaction: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
 }
 
-/// Request body for updating a meal slot
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UpdateMealSlotRequest {
+/// Request body for updating a feeding log
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UpdateFeedingLogRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub day: Option<String>,
+    pub date: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub time: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub recipe_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub amount: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reaction: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
 }
 
-/// Response body for meal slot operations
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MealSlotResponse {
-    pub id: MealSlotId,
+/// Response body for feeding log operations
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FeedingLogResponse {
+    pub id: FeedingLogId,
     pub family_id: FamilyId,
     pub dependent_id: DependentId,
-    pub day: String,
+    pub date: String,
     pub time: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub recipe_id: Option<String>,
+    pub amount: f64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reaction: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notes: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
 
-/// Response body for listing meal slots
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MealSlotListResponse {
-    pub meal_slots: Vec<MealSlotResponse>,
+/// Response body for listing feeding logs
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FeedingLogListResponse {
+    pub feeding_logs: Vec<FeedingLogResponse>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_token: Option<String>,
 }
 
-impl From<MealSlot> for MealSlotResponse {
-    fn from(meal_slot: MealSlot) -> Self {
-        MealSlotResponse {
-            id: meal_slot.id,
-            family_id: meal_slot.family_id,
-            dependent_id: meal_slot.dependent_id,
-            day: meal_slot.day,
-            time: meal_slot.time,
-            recipe_id: meal_slot.recipe_id.map(|r| r.0.to_string()),
-            notes: meal_slot.notes,
-            created_at: meal_slot.created_at.to_iso8601(),
-            updated_at: meal_slot.updated_at.to_iso8601(),
+impl From<FeedingLog> for FeedingLogResponse {
+    fn from(feeding_log: FeedingLog) -> Self {
+        FeedingLogResponse {
+            id: feeding_log.id,
+            family_id: feeding_log.family_id,
+            dependent_id: feeding_log.dependent_id,
+            date: feeding_log.date,
+            time: feeding_log.time,
+            recipe_id: feeding_log.recipe_id.map(|r| r.0.to_string()),
+            amount: feeding_log.amount,
+            reaction: feeding_log.reaction,
+            notes: feeding_log.notes,
+            created_at: feeding_log.created_at.to_iso8601(),
+            updated_at: feeding_log.updated_at.to_iso8601(),
         }
     }
 }
 
-/// Handler for POST /families/{family_id}/dependents/{dependent_id}/meal-slots
-pub async fn create_meal_slot<F: FamilyRepository, M: MealSlotRepository>(
+/// Handler for POST /families/{family_id}/dependents/{dependent_id}/feeding-logs
+pub async fn create_feeding_log<F: FamilyRepository, FL: FeedingLogRepository>(
     family_id: FamilyId,
     dependent_id: DependentId,
     request_body: &str,
     context: &RequestContext,
     family_repository: &F,
-    meal_slot_repository: &M,
+    feeding_log_repository: &FL,
 ) -> Result<(u16, String), HandlerError> {
-    let request: CreateMealSlotRequest = serde_json::from_str(request_body).map_err(|e| {
+    let request: CreateFeedingLogRequest = serde_json::from_str(request_body).map_err(|e| {
         HandlerError::Validation(crate::errors::ValidationError {
             field: "body".to_string(),
             message: format!("Invalid JSON: {}", e),
@@ -92,17 +104,17 @@ pub async fn create_meal_slot<F: FamilyRepository, M: MealSlotRepository>(
         })
     })?;
 
-    // Validate day format (YYYY-MM-DD)
-    if request.day.len() != 10
-        || request.day.chars().nth(4) != Some('-')
-        || request.day.chars().nth(7) != Some('-')
-        || !request.day[..4].chars().all(|c| c.is_ascii_digit())
-        || !request.day[5..7].chars().all(|c| c.is_ascii_digit())
-        || !request.day[8..].chars().all(|c| c.is_ascii_digit())
+    // Validate date format (YYYY-MM-DD)
+    if request.date.len() != 10
+        || request.date.chars().nth(4) != Some('-')
+        || request.date.chars().nth(7) != Some('-')
+        || !request.date[..4].chars().all(|c| c.is_ascii_digit())
+        || !request.date[5..7].chars().all(|c| c.is_ascii_digit())
+        || !request.date[8..].chars().all(|c| c.is_ascii_digit())
     {
         return Err(HandlerError::Validation(crate::errors::ValidationError {
-            field: "day".to_string(),
-            message: "Day must be in YYYY-MM-DD format".to_string(),
+            field: "date".to_string(),
+            message: "Date must be in YYYY-MM-DD format".to_string(),
             constraint: Some("must be a valid date string".to_string()),
         }));
     }
@@ -132,18 +144,20 @@ pub async fn create_meal_slot<F: FamilyRepository, M: MealSlotRepository>(
         PermissionAction::DependentWrite,
     )?;
 
-    // Create meal slot
+    // Create feeding log
     let now = Timestamp::now();
     let recipe_id = request
         .recipe_id
         .and_then(|s| Uuid::parse_str(&s).ok().map(RecipeId));
-    let meal_slot = MealSlot {
-        id: MealSlotId::new(),
+    let feeding_log = FeedingLog {
+        id: FeedingLogId::new(),
         family_id,
         dependent_id,
-        day: request.day,
+        date: request.date,
         time: request.time,
         recipe_id,
+        amount: request.amount,
+        reaction: request.reaction,
         notes: request.notes,
         created_at: now,
         updated_at: now,
@@ -151,22 +165,22 @@ pub async fn create_meal_slot<F: FamilyRepository, M: MealSlotRepository>(
         permission_scope: None,
     };
 
-    let created_meal_slot = meal_slot_repository.create(meal_slot).await?;
-    let response = MealSlotResponse::from(created_meal_slot);
+    let created_feeding_log = feeding_log_repository.create(feeding_log).await?;
+    let response = FeedingLogResponse::from(created_feeding_log);
     let response_json = serde_json::to_string(&response)
         .map_err(|e| HandlerError::InternalError(format!("Failed to serialize response: {}", e)))?;
 
     Ok((201, response_json))
 }
 
-/// Handler for GET /families/{family_id}/dependents/{dependent_id}/meal-slots/{meal_slot_id}
-pub async fn get_meal_slot<F: FamilyRepository, M: MealSlotRepository>(
+/// Handler for GET /families/{family_id}/dependents/{dependent_id}/feeding-logs/{feeding_log_id}
+pub async fn get_feeding_log<F: FamilyRepository, FL: FeedingLogRepository>(
     family_id: FamilyId,
     dependent_id: DependentId,
-    meal_slot_id: MealSlotId,
+    feeding_log_id: FeedingLogId,
     context: &RequestContext,
     family_repository: &F,
-    meal_slot_repository: &M,
+    feeding_log_repository: &FL,
 ) -> Result<(u16, String), HandlerError> {
     let family = family_repository
         .get(context.identity_id.clone(), family_id)
@@ -182,32 +196,32 @@ pub async fn get_meal_slot<F: FamilyRepository, M: MealSlotRepository>(
         PermissionAction::DependentRead,
     )?;
 
-    let meal_slot = meal_slot_repository
-        .get(family_id, dependent_id, meal_slot_id)
+    let feeding_log = feeding_log_repository
+        .get(family_id, dependent_id, feeding_log_id)
         .await?;
-    let meal_slot = meal_slot.ok_or(HandlerError::NotFound(format!(
-        "Meal slot with id {:?} not found",
-        meal_slot_id
+    let feeding_log = feeding_log.ok_or(HandlerError::NotFound(format!(
+        "Feeding log with id {:?} not found",
+        feeding_log_id
     )))?;
 
-    let response = MealSlotResponse::from(meal_slot);
+    let response = FeedingLogResponse::from(feeding_log);
     let response_json = serde_json::to_string(&response)
         .map_err(|e| HandlerError::InternalError(format!("Failed to serialize response: {}", e)))?;
 
     Ok((200, response_json))
 }
 
-/// Handler for PUT /families/{family_id}/dependents/{dependent_id}/meal-slots/{meal_slot_id}
-pub async fn update_meal_slot<F: FamilyRepository, M: MealSlotRepository>(
+/// Handler for PUT /families/{family_id}/dependents/{dependent_id}/feeding-logs/{feeding_log_id}
+pub async fn update_feeding_log<F: FamilyRepository, FL: FeedingLogRepository>(
     family_id: FamilyId,
     dependent_id: DependentId,
-    meal_slot_id: MealSlotId,
+    feeding_log_id: FeedingLogId,
     request_body: &str,
     context: &RequestContext,
     family_repository: &F,
-    meal_slot_repository: &M,
+    feeding_log_repository: &FL,
 ) -> Result<(u16, String), HandlerError> {
-    let request: UpdateMealSlotRequest = serde_json::from_str(request_body).map_err(|e| {
+    let request: UpdateFeedingLogRequest = serde_json::from_str(request_body).map_err(|e| {
         HandlerError::Validation(crate::errors::ValidationError {
             field: "body".to_string(),
             message: format!("Invalid JSON: {}", e),
@@ -229,29 +243,29 @@ pub async fn update_meal_slot<F: FamilyRepository, M: MealSlotRepository>(
         PermissionAction::DependentWrite,
     )?;
 
-    let meal_slot = meal_slot_repository
-        .get(family_id, dependent_id, meal_slot_id)
+    let feeding_log = feeding_log_repository
+        .get(family_id, dependent_id, feeding_log_id)
         .await?;
-    let mut meal_slot = meal_slot.ok_or(HandlerError::NotFound(format!(
-        "Meal slot with id {:?} not found",
-        meal_slot_id
+    let mut feeding_log = feeding_log.ok_or(HandlerError::NotFound(format!(
+        "Feeding log with id {:?} not found",
+        feeding_log_id
     )))?;
 
-    if let Some(day) = &request.day {
-        if day.len() != 10
-            || day.chars().nth(4) != Some('-')
-            || day.chars().nth(7) != Some('-')
-            || !day[..4].chars().all(|c| c.is_ascii_digit())
-            || !day[5..7].chars().all(|c| c.is_ascii_digit())
-            || !day[8..].chars().all(|c| c.is_ascii_digit())
+    if let Some(date) = &request.date {
+        if date.len() != 10
+            || date.chars().nth(4) != Some('-')
+            || date.chars().nth(7) != Some('-')
+            || !date[..4].chars().all(|c| c.is_ascii_digit())
+            || !date[5..7].chars().all(|c| c.is_ascii_digit())
+            || !date[8..].chars().all(|c| c.is_ascii_digit())
         {
             return Err(HandlerError::Validation(crate::errors::ValidationError {
-                field: "day".to_string(),
-                message: "Day must be in YYYY-MM-DD format".to_string(),
+                field: "date".to_string(),
+                message: "Date must be in YYYY-MM-DD format".to_string(),
                 constraint: Some("must be a valid date string".to_string()),
             }));
         }
-        meal_slot.day = day.clone();
+        feeding_log.date = date.clone();
     }
     if let Some(time) = &request.time {
         if time.len() != 5 || time.chars().filter(|c| *c == ':').count() != 1 {
@@ -261,32 +275,38 @@ pub async fn update_meal_slot<F: FamilyRepository, M: MealSlotRepository>(
                 constraint: Some("must be a valid time string".to_string()),
             }));
         }
-        meal_slot.time = time.clone();
+        feeding_log.time = time.clone();
     }
     if let Some(recipe_id_str) = &request.recipe_id {
-        meal_slot.recipe_id = Uuid::parse_str(recipe_id_str).ok().map(RecipeId);
+        feeding_log.recipe_id = Uuid::parse_str(recipe_id_str).ok().map(RecipeId);
+    }
+    if let Some(amount) = &request.amount {
+        feeding_log.amount = *amount;
+    }
+    if let Some(reaction) = &request.reaction {
+        feeding_log.reaction = Some(reaction.clone());
     }
     if let Some(notes) = &request.notes {
-        meal_slot.notes = Some(notes.clone());
+        feeding_log.notes = Some(notes.clone());
     }
-    meal_slot.updated_at = Timestamp::now();
+    feeding_log.updated_at = Timestamp::now();
 
-    let updated_meal_slot = meal_slot_repository.update(meal_slot).await?;
-    let response = MealSlotResponse::from(updated_meal_slot);
+    let updated_feeding_log = feeding_log_repository.update(feeding_log).await?;
+    let response = FeedingLogResponse::from(updated_feeding_log);
     let response_json = serde_json::to_string(&response)
         .map_err(|e| HandlerError::InternalError(format!("Failed to serialize response: {}", e)))?;
 
     Ok((200, response_json))
 }
 
-/// Handler for DELETE /families/{family_id}/dependents/{dependent_id}/meal-slots/{meal_slot_id}
-pub async fn delete_meal_slot<F: FamilyRepository, M: MealSlotRepository>(
+/// Handler for DELETE /families/{family_id}/dependents/{dependent_id}/feeding-logs/{feeding_log_id}
+pub async fn delete_feeding_log<F: FamilyRepository, FL: FeedingLogRepository>(
     family_id: FamilyId,
     dependent_id: DependentId,
-    meal_slot_id: MealSlotId,
+    feeding_log_id: FeedingLogId,
     context: &RequestContext,
     family_repository: &F,
-    meal_slot_repository: &M,
+    feeding_log_repository: &FL,
 ) -> Result<(u16, String), HandlerError> {
     let family = family_repository
         .get(context.identity_id.clone(), family_id)
@@ -302,21 +322,21 @@ pub async fn delete_meal_slot<F: FamilyRepository, M: MealSlotRepository>(
         PermissionAction::DependentWrite,
     )?;
 
-    meal_slot_repository
-        .delete(family_id, dependent_id, meal_slot_id)
+    feeding_log_repository
+        .delete(family_id, dependent_id, feeding_log_id)
         .await?;
 
     Ok((204, String::new()))
 }
 
-/// Handler for GET /families/{family_id}/dependents/{dependent_id}/meal-slots
-pub async fn list_meal_slots<F: FamilyRepository, M: MealSlotRepository>(
+/// Handler for GET /families/{family_id}/dependents/{dependent_id}/feeding-logs
+pub async fn list_feeding_logs<F: FamilyRepository, FL: FeedingLogRepository>(
     family_id: FamilyId,
     dependent_id: DependentId,
     context: &RequestContext,
     family_repository: &F,
-    meal_slot_repository: &M,
-    day: Option<String>,
+    feeding_log_repository: &FL,
+    date: Option<String>,
     pagination: PaginationParams,
 ) -> Result<(u16, String), HandlerError> {
     let family = family_repository
@@ -333,18 +353,18 @@ pub async fn list_meal_slots<F: FamilyRepository, M: MealSlotRepository>(
         PermissionAction::DependentRead,
     )?;
 
-    let paginated_result = meal_slot_repository
-        .list_by_dependent(family_id, dependent_id, day, pagination)
+    let paginated_result = feeding_log_repository
+        .list_by_dependent(family_id, dependent_id, date, pagination)
         .await?;
 
-    let meal_slots_response: Vec<MealSlotResponse> = paginated_result
+    let feeding_logs_response: Vec<FeedingLogResponse> = paginated_result
         .items
         .into_iter()
-        .map(MealSlotResponse::from)
+        .map(FeedingLogResponse::from)
         .collect();
 
-    let response = MealSlotListResponse {
-        meal_slots: meal_slots_response,
+    let response = FeedingLogListResponse {
+        feeding_logs: feeding_logs_response,
         next_token: paginated_result.next_token,
     };
 
@@ -358,7 +378,7 @@ pub async fn list_meal_slots<F: FamilyRepository, M: MealSlotRepository>(
 mod tests {
     use super::*;
     use crate::domain::{Family, IdentityId};
-    use crate::test_utils::mocks::{MockFamilyRepository, MockMealSlotRepository};
+    use crate::test_utils::mocks::{MockFamilyRepository, MockFeedingLogRepository};
 
     fn create_test_context(identity_id: &str) -> RequestContext {
         RequestContext {
@@ -380,12 +400,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_meal_slot_success() {
+    async fn test_create_feeding_log_success() {
         let family_id = FamilyId::new();
         let dependent_id = DependentId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
-        let meal_slot_repo = MockMealSlotRepository::new();
+        let feeding_log_repo = MockFeedingLogRepository::new();
 
         let family = create_test_family(family_id, "user-123");
         family_repo
@@ -395,17 +415,17 @@ mod tests {
             .insert(family_id, family);
 
         let request_body = format!(
-            r#"{{"family_id": "{}", "dependent_id": "{}", "day": "2025-01-15", "time": "12:00", "notes": "Lunch slot"}}"#,
+            r#"{{"family_id": "{}", "dependent_id": "{}", "date": "2025-01-15", "time": "12:00", "amount": 150.5}}"#,
             family_id.0, dependent_id.0
         );
 
-        let result = create_meal_slot(
+        let result = create_feeding_log(
             family_id,
             dependent_id,
             &request_body,
             &context,
             &family_repo,
-            &meal_slot_repo,
+            &feeding_log_repo,
         )
         .await;
 
@@ -413,28 +433,28 @@ mod tests {
         let (status, response_json) = result.unwrap();
         assert_eq!(status, 201);
 
-        let response: MealSlotResponse = serde_json::from_str(&response_json).unwrap();
-        assert_eq!(response.day, "2025-01-15");
+        let response: FeedingLogResponse = serde_json::from_str(&response_json).unwrap();
+        assert_eq!(response.date, "2025-01-15");
         assert_eq!(response.time, "12:00");
-        assert_eq!(response.notes, Some("Lunch slot".to_string()));
+        assert!((response.amount - 150.5).abs() < f64::EPSILON);
     }
 
     #[tokio::test]
-    async fn test_create_meal_slot_invalid_json() {
+    async fn test_create_feeding_log_invalid_json() {
         let family_id = FamilyId::new();
         let dependent_id = DependentId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
-        let meal_slot_repo = MockMealSlotRepository::new();
+        let feeding_log_repo = MockFeedingLogRepository::new();
 
-        let request_body = r#"{"day": invalid}"#;
-        let result = create_meal_slot(
+        let request_body = r#"{"date": invalid}"#;
+        let result = create_feeding_log(
             family_id,
             dependent_id,
             request_body,
             &context,
             &family_repo,
-            &meal_slot_repo,
+            &feeding_log_repo,
         )
         .await;
 
@@ -449,12 +469,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_meal_slot_invalid_day_format() {
+    async fn test_create_feeding_log_invalid_date_format() {
         let family_id = FamilyId::new();
         let dependent_id = DependentId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
-        let meal_slot_repo = MockMealSlotRepository::new();
+        let feeding_log_repo = MockFeedingLogRepository::new();
 
         let family = create_test_family(family_id, "user-123");
         family_repo
@@ -464,24 +484,24 @@ mod tests {
             .insert(family_id, family);
 
         let request_body = format!(
-            r#"{{"family_id": "{}", "dependent_id": "{}", "day": "01-15-2025", "time": "12:00"}}"#,
+            r#"{{"family_id": "{}", "dependent_id": "{}", "date": "01-15-2025", "time": "12:00", "amount": 100}}"#,
             family_id.0, dependent_id.0
         );
 
-        let result = create_meal_slot(
+        let result = create_feeding_log(
             family_id,
             dependent_id,
             &request_body,
             &context,
             &family_repo,
-            &meal_slot_repo,
+            &feeding_log_repo,
         )
         .await;
 
         assert!(result.is_err());
         match result.unwrap_err() {
             HandlerError::Validation(err) => {
-                assert_eq!(err.field, "day");
+                assert_eq!(err.field, "date");
                 assert!(err.message.contains("YYYY-MM-DD"));
             }
             _ => panic!("Expected validation error"),
@@ -489,12 +509,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_meal_slot_invalid_time_format() {
+    async fn test_create_feeding_log_invalid_time_format() {
         let family_id = FamilyId::new();
         let dependent_id = DependentId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
-        let meal_slot_repo = MockMealSlotRepository::new();
+        let feeding_log_repo = MockFeedingLogRepository::new();
 
         let family = create_test_family(family_id, "user-123");
         family_repo
@@ -504,17 +524,17 @@ mod tests {
             .insert(family_id, family);
 
         let request_body = format!(
-            r#"{{"family_id": "{}", "dependent_id": "{}", "day": "2025-01-15", "time": "1200"}}"#,
+            r#"{{"family_id": "{}", "dependent_id": "{}", "date": "2025-01-15", "time": "1200", "amount": 100}}"#,
             family_id.0, dependent_id.0
         );
 
-        let result = create_meal_slot(
+        let result = create_feeding_log(
             family_id,
             dependent_id,
             &request_body,
             &context,
             &family_repo,
-            &meal_slot_repo,
+            &feeding_log_repo,
         )
         .await;
 
@@ -529,25 +549,25 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_meal_slot_family_not_found() {
+    async fn test_create_feeding_log_family_not_found() {
         let family_id = FamilyId::new();
         let dependent_id = DependentId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
-        let meal_slot_repo = MockMealSlotRepository::new();
+        let feeding_log_repo = MockFeedingLogRepository::new();
 
         let request_body = format!(
-            r#"{{"family_id": "{}", "dependent_id": "{}", "day": "2025-01-15", "time": "12:00"}}"#,
+            r#"{{"family_id": "{}", "dependent_id": "{}", "date": "2025-01-15", "time": "12:00", "amount": 100}}"#,
             family_id.0, dependent_id.0
         );
 
-        let result = create_meal_slot(
+        let result = create_feeding_log(
             family_id,
             dependent_id,
             &request_body,
             &context,
             &family_repo,
-            &meal_slot_repo,
+            &feeding_log_repo,
         )
         .await;
 
@@ -561,13 +581,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_meal_slot_success() {
+    async fn test_get_feeding_log_success() {
         let family_id = FamilyId::new();
         let dependent_id = DependentId::new();
-        let meal_slot_id = MealSlotId::new();
+        let feeding_log_id = FeedingLogId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
-        let meal_slot_repo = MockMealSlotRepository::new();
+        let feeding_log_repo = MockFeedingLogRepository::new();
 
         let family = create_test_family(family_id, "user-123");
         family_repo
@@ -576,32 +596,34 @@ mod tests {
             .unwrap()
             .insert(family_id, family);
 
-        let meal_slot = MealSlot {
-            id: meal_slot_id,
+        let feeding_log = FeedingLog {
+            id: feeding_log_id,
             family_id,
             dependent_id,
-            day: "2025-01-15".to_string(),
+            date: "2025-01-15".to_string(),
             time: "12:00".to_string(),
             recipe_id: None,
+            amount: 150.5,
+            reaction: Some("Good".to_string()),
             notes: Some("Lunch".to_string()),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
             share_id: None,
             permission_scope: None,
         };
-        meal_slot_repo
-            .meal_slots
+        feeding_log_repo
+            .feeding_logs
             .lock()
             .unwrap()
-            .insert(meal_slot_id, meal_slot);
+            .insert((family_id, dependent_id, feeding_log_id), feeding_log);
 
-        let result = get_meal_slot(
+        let result = get_feeding_log(
             family_id,
             dependent_id,
-            meal_slot_id,
+            feeding_log_id,
             &context,
             &family_repo,
-            &meal_slot_repo,
+            &feeding_log_repo,
         )
         .await;
 
@@ -609,18 +631,19 @@ mod tests {
         let (status, response_json) = result.unwrap();
         assert_eq!(status, 200);
 
-        let response: MealSlotResponse = serde_json::from_str(&response_json).unwrap();
-        assert_eq!(response.day, "2025-01-15");
+        let response: FeedingLogResponse = serde_json::from_str(&response_json).unwrap();
+        assert_eq!(response.date, "2025-01-15");
+        assert_eq!(response.reaction, Some("Good".to_string()));
     }
 
     #[tokio::test]
-    async fn test_get_meal_slot_not_found() {
+    async fn test_get_feeding_log_not_found() {
         let family_id = FamilyId::new();
         let dependent_id = DependentId::new();
-        let meal_slot_id = MealSlotId::new();
+        let feeding_log_id = FeedingLogId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
-        let meal_slot_repo = MockMealSlotRepository::new();
+        let feeding_log_repo = MockFeedingLogRepository::new();
 
         let family = create_test_family(family_id, "user-123");
         family_repo
@@ -629,13 +652,13 @@ mod tests {
             .unwrap()
             .insert(family_id, family);
 
-        let result = get_meal_slot(
+        let result = get_feeding_log(
             family_id,
             dependent_id,
-            meal_slot_id,
+            feeding_log_id,
             &context,
             &family_repo,
-            &meal_slot_repo,
+            &feeding_log_repo,
         )
         .await;
 
@@ -649,12 +672,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_list_meal_slots_success() {
+    async fn test_list_feeding_logs_success() {
         let family_id = FamilyId::new();
         let dependent_id = DependentId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
-        let meal_slot_repo = MockMealSlotRepository::new();
+        let feeding_log_repo = MockFeedingLogRepository::new();
 
         let family = create_test_family(family_id, "user-123");
         family_repo
@@ -663,53 +686,57 @@ mod tests {
             .unwrap()
             .insert(family_id, family);
 
-        let meal_slot1 = MealSlot {
-            id: MealSlotId::new(),
+        let feeding_log1 = FeedingLog {
+            id: FeedingLogId::new(),
             family_id,
             dependent_id,
-            day: "2025-01-15".to_string(),
+            date: "2025-01-15".to_string(),
             time: "08:00".to_string(),
             recipe_id: None,
+            amount: 120.0,
+            reaction: Some("Good".to_string()),
             notes: Some("Breakfast".to_string()),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
             share_id: None,
             permission_scope: None,
         };
-        let meal_slot2 = MealSlot {
-            id: MealSlotId::new(),
+        let feeding_log2 = FeedingLog {
+            id: FeedingLogId::new(),
             family_id,
             dependent_id,
-            day: "2025-01-15".to_string(),
+            date: "2025-01-15".to_string(),
             time: "12:00".to_string(),
             recipe_id: None,
+            amount: 150.5,
+            reaction: Some("Fine".to_string()),
             notes: Some("Lunch".to_string()),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
             share_id: None,
             permission_scope: None,
         };
-        meal_slot_repo
-            .meal_slots
+        feeding_log_repo
+            .feeding_logs
             .lock()
             .unwrap()
-            .insert(meal_slot1.id, meal_slot1);
-        meal_slot_repo
-            .meal_slots
+            .insert((family_id, dependent_id, feeding_log1.id), feeding_log1);
+        feeding_log_repo
+            .feeding_logs
             .lock()
             .unwrap()
-            .insert(meal_slot2.id, meal_slot2);
+            .insert((family_id, dependent_id, feeding_log2.id), feeding_log2);
 
         let pagination = PaginationParams {
             limit: None,
             next_token: None,
         };
-        let result = list_meal_slots(
+        let result = list_feeding_logs(
             family_id,
             dependent_id,
             &context,
             &family_repo,
-            &meal_slot_repo,
+            &feeding_log_repo,
             None,
             pagination,
         )
@@ -719,19 +746,19 @@ mod tests {
         let (status, response_json) = result.unwrap();
         assert_eq!(status, 200);
 
-        let response: MealSlotListResponse = serde_json::from_str(&response_json).unwrap();
-        assert_eq!(response.meal_slots.len(), 2);
+        let response: FeedingLogListResponse = serde_json::from_str(&response_json).unwrap();
+        assert_eq!(response.feeding_logs.len(), 2);
         assert!(response.next_token.is_none());
     }
 
     #[tokio::test]
-    async fn test_delete_meal_slot_success() {
+    async fn test_delete_feeding_log_success() {
         let family_id = FamilyId::new();
         let dependent_id = DependentId::new();
-        let meal_slot_id = MealSlotId::new();
+        let feeding_log_id = FeedingLogId::new();
         let context = create_test_context("user-123");
         let family_repo = MockFamilyRepository::new();
-        let meal_slot_repo = MockMealSlotRepository::new();
+        let feeding_log_repo = MockFeedingLogRepository::new();
 
         let family = create_test_family(family_id, "user-123");
         family_repo
@@ -740,32 +767,34 @@ mod tests {
             .unwrap()
             .insert(family_id, family);
 
-        let meal_slot = MealSlot {
-            id: meal_slot_id,
+        let feeding_log = FeedingLog {
+            id: feeding_log_id,
             family_id,
             dependent_id,
-            day: "2025-01-15".to_string(),
+            date: "2025-01-15".to_string(),
             time: "12:00".to_string(),
             recipe_id: None,
+            amount: 150.5,
+            reaction: Some("Good".to_string()),
             notes: Some("Lunch".to_string()),
             created_at: Timestamp::now(),
             updated_at: Timestamp::now(),
             share_id: None,
             permission_scope: None,
         };
-        meal_slot_repo
-            .meal_slots
+        feeding_log_repo
+            .feeding_logs
             .lock()
             .unwrap()
-            .insert(meal_slot_id, meal_slot);
+            .insert((family_id, dependent_id, feeding_log_id), feeding_log);
 
-        let result = delete_meal_slot(
+        let result = delete_feeding_log(
             family_id,
             dependent_id,
-            meal_slot_id,
+            feeding_log_id,
             &context,
             &family_repo,
-            &meal_slot_repo,
+            &feeding_log_repo,
         )
         .await;
 

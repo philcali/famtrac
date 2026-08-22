@@ -77,6 +77,22 @@ impl Default for MealSlotId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
+pub struct FeedingLogId(pub Uuid);
+
+impl FeedingLogId {
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
+
+impl Default for FeedingLogId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct RecipeId(pub Uuid);
 
 impl RecipeId {
