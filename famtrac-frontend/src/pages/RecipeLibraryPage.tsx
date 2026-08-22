@@ -4,7 +4,6 @@ import { Button } from '../components/common/Button';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import { SuccessMessage } from '../components/common/SuccessMessage';
 import { ErrorMessage } from '../components/common/ErrorMessage';
-import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { SkeletonCard } from '../components/common/SkeletonCard';
 import { RecipeCard } from '../components/recipes/RecipeCard';
 import { RecipeForm } from '../components/recipes/RecipeForm';
@@ -257,8 +256,8 @@ export function RecipeLibraryPage() {
             <RecipeCard
               key={recipe.id}
               recipe={recipe}
-              onEdit={handleEditClick}
-              onDelete={handleDeleteClick}
+              onEdit={(r) => handleEditClick(r as Recipe)}
+              onDelete={(r) => handleDeleteClick(r as Recipe)}
             />
           ))}
         </div>

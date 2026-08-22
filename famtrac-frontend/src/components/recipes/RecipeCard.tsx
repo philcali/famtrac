@@ -1,11 +1,11 @@
 import { Badge } from '../common/Badge';
 import { Button } from '../common/Button';
-import type { Recipe } from '../../types/domain';
+import type { RecipeResponse } from '../../api/types';
 
 interface RecipeCardProps {
-  recipe: Recipe;
-  onEdit: (recipe: Recipe) => void;
-  onDelete: (recipe: Recipe) => void;
+  recipe: RecipeResponse;
+  onEdit: (recipe: RecipeResponse) => void;
+  onDelete: (recipe: RecipeResponse) => void;
 }
 
 /**
