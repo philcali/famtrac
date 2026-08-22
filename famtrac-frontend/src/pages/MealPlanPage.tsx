@@ -14,9 +14,11 @@ import { createApiClient } from '../api/client';
 import { getRecipes } from '../api/recipes';
 import { getMealSlots, createMealSlot, updateMealSlot, deleteMealSlot } from '../api/mealSlots';
 import { createFeedingLog } from '../api/feedingLogs';
+import { createActivity } from '../api/activities';
 import type { RecipeResponse } from '../api/types';
 import type { MealSlot, CreateMealSlotRequest, UpdateMealSlotRequest } from '../types/domain';
 import type { CreateFeedingLogRequest } from '../types/domain';
+import type { CreateActivityRequest } from '../api/activities';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -83,6 +85,14 @@ export function MealPlanPage() {
   } = useApiMutation(
     (data: CreateFeedingLogRequest) =>
       createFeedingLog(apiClient, familyId ?? 'NA', dependentId ?? 'NA', data)
+  );
+
+  const {
+    mutate: createActivityMutation,
+    loading: activityLoading,
+  } = useApiMutation(
+    (data: CreateActivityRequest) =>
+      createActivity(apiClient, familyId ?? 'NA', dependentId ?? 'NA', data)
   );
 
   // ---- Derived data ----
@@ -198,7 +208,9 @@ export function MealPlanPage() {
     notes: string;
   }) => {
     if (!feedingSlot) return;
-    const response = await createFeedingLogMutation({
+
+    // Create FeedingLog record
+    const feedingLogResponse = await createFeedingLogMutation({
       family_id: familyId ?? 'NA',
       dependent_id: dependentId ?? 'NA',
       date: data.date,
@@ -208,11 +220,46 @@ export function MealPlanPage() {
       reaction: data.reaction,
       notes: data.notes,
     });
-    if (!response.error) {
-      setSuccessMessage('Feeding logged');
+    if (feedingLogResponse.error) {
+      setSuccessMessage('Failed to log feeding');
       setFeedingSlot(undefined);
-      refetchSlots();
+      return;
     }
+
+    // Map reaction → volume_ml for the activity (per Story 6 spec)
+    const reactionToVolume: Record<string, number> = {
+      tasted: 10,
+      some: 30,
+      most: 60,
+      all: 90,
+      refused: 0,
+    };
+
+    // Build ISO timestamp from logged date + time
+    const [y, m, d] = data.date.split('-').map(Number);
+    const [h, min] = data.time.split(':').map(Number);
+    const local = new Date(y, m - 1, d, h, min, 0);
+    const timestamp = toISOWithOffset(local);
+
+    // Create feeding activity so data flows into reports/analytics
+    const activityResponse = await createActivityMutation({
+      family_id: familyId ?? 'NA',
+      dependent_id: dependentId ?? 'NA',
+      type: 'feeding',
+      timestamp,
+      feeding_type: 'solid',
+      volume_ml: reactionToVolume[data.reaction] ?? data.amount,
+      notes: data.notes || undefined,
+    });
+    if (activityResponse.error) {
+      setSuccessMessage('Feeding logged but activity creation failed — please retry');
+      setFeedingSlot(undefined);
+      return;
+    }
+
+    setSuccessMessage('Feeding logged & activity created');
+    setFeedingSlot(undefined);
+    refetchSlots();
   };
 
   const handleDeleteSlot = () => {
@@ -405,7 +452,7 @@ export function MealPlanPage() {
           recipes={recipes}
           onClose={() => setFeedingSlot(undefined)}
           onSubmit={handleFeedingSubmit}
-          loading={feedingLogLoading}
+          loading={feedingLogLoading || activityLoading}
         />
       )}
 
@@ -457,4 +504,22 @@ function formatWeekRange(monday: Date): string {
 function getDayOfMonth(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
   return String(d.getDate()).padStart(2, '0');
+}
+
+/**
+ * Formats a Date as an ISO 8601 string with the local timezone offset.
+ * e.g. "2024-01-15T08:30:00-05:00"
+ */
+function toISOWithOffset(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const off = -date.getTimezoneOffset();
+  const sign = off >= 0 ? '+' : '-';
+  const absOff = Math.abs(off);
+  const hh = String(Math.floor(absOff / 60)).padStart(2, '0');
+  const mm = String(absOff % 60).padStart(2, '0');
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}` +
+    `${sign}${hh}:${mm}`
+  );
 }

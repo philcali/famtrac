@@ -213,24 +213,31 @@ Key principle: **Don't embed food-plan as an iframe.** Build meal planning nativ
 
 ---
 
-## Story 6: Data Bridge — Meal Plan → Feeding Activity
+## Story 6: Data Bridge — Meal Plan → Feeding Activity ✅ COMPLETE
 
 **Goal:** When a user logs a feeding from the meal plan, create a famtrac `feeding` activity so the data flows into reports/analytics.
 
 ### Acceptance Criteria
 
-- [ ] "Log Feeding" from meal plan creates a `feeding` activity via the existing famtrac Activity API
-- [ ] `feeding_type` set to `'solid'`
-- [ ] `volume_ml` derived from amount (Tasted=10, Ate some=30, Ate most=60, Ate all=90, Refused=0)
-- [ ] `notes` from the feeding log carried over to the activity
-- [ ] `timestamp` set to the logged date/time
-- [ ] After logging, show success message and refresh activity list
-- [ ] Feeding log data is also persisted via the new FeedingLog API for historical reference
-- [ ] Both the activity and the feeding log are created atomically (or with clear error handling if one fails)
+- [x] "Log Feeding" from meal plan creates a `feeding` activity via the existing famtrac Activity API
+- [x] `feeding_type` set to `'solid'`
+- [x] `volume_ml` derived from amount (Tasted=10, Ate some=30, Ate most=60, Ate all=90, Refused=0)
+- [x] `notes` from the feeding log carried over to the activity
+- [x] `timestamp` set to the logged date/time
+- [x] After logging, show success message and refresh activity list
+- [x] Feeding log data is also persisted via the new FeedingLog API for historical reference
+- [x] Both the activity and the feeding log are created atomically (or with clear error handling if one fails)
 
 ### Dependencies
 
 - Story 3, Story 5
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `famtrac-frontend/src/pages/MealPlanPage.tsx` | Added `createActivity` import + `createActivityMutation` hook; modified `handleFeedingSubmit` to also create a `feeding` activity with `feeding_type='solid'`, `volume_ml` mapped from reaction, `notes` carried over, `timestamp` from logged date/time; added `toISOWithOffset` helper |
+| `famtrac-frontend/src/api/activities.ts` | No changes (existing `createActivity` used as-is) |
 
 ---
 
@@ -389,7 +396,7 @@ Story 1 (Recipes) ✅
             └── Story 3 (FeedingLogs) ✅
                     └── Story 4 (Recipe Library Page) ✅
                     └── Story 5 (Meal Plan Page)
-                            └── Story 6 (Data Bridge)
+                            └── Story 6 (Data Bridge) ✅
                             └── Story 7 (Navigation)
                                     └── Story 8 (Import)
 
