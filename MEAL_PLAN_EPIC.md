@@ -63,24 +63,45 @@ Key principle: **Don't embed food-plan as an iframe.** Build meal planning nativ
 
 ---
 
-## Story 2: Backend — MealSlot Domain Model & CRUD
+## Story 2: Backend — MealSlot Domain Model & CRUD ✅ COMPLETE
 
 **Goal:** Add `MealSlot` as a new domain entity in famtrac-backend with full CRUD API.
 
 ### Acceptance Criteria
 
-- [ ] Add `MealSlot` struct in `famtrac-backend/src/domain/` with fields: `id`, `family_id`, `dependent_id`, `day` (YYYY-MM-DD), `time` (HH:MM), `recipe_id`, `notes`
-- [ ] Add `MealSlotId` type to `famtrac-backend/src/domain/ids.rs`
-- [ ] Add `MealSlotRepository` trait in `famtrac-backend/src/repository/traits.rs`
-- [ ] Add `DynamoDbMealSlotRepository` impl in `famtrac-backend/src/repository/dynamodb.rs`
-- [ ] Add DynamoDB table for meal slots (infra update)
-- [ ] Add routes: `GET/POST /families/{fid}/dependents/{did}/meal-slots`, `GET/PUT/DELETE /families/{fid}/dependents/{did}/meal-slots/{id}`
-- [ ] Add request/response types in `famtrac-backend/src/router/extractors.rs`
-- [ ] Add routes to `famtrac-backend/src/router/mod.rs` dispatch logic
-- [ ] Add `MealSlot` to frontend `famtrac-frontend/src/types/domain.ts`
-- [ ] Add `famtrac-frontend/src/api/mealSlots.ts` with `list`, `get`, `create`, `update`, `delete` functions
-- [ ] All new code follows existing patterns
-- [ ] Backend compiles without warnings
+- [x] Add `MealSlot` struct in `famtrac-backend/src/domain/` with fields: `id`, `family_id`, `dependent_id`, `day` (YYYY-MM-DD), `time` (HH:MM), `recipe_id`, `notes`
+- [x] Add `MealSlotId` type to `famtrac-backend/src/domain/ids.rs`
+- [x] Add `MealSlotRepository` trait in `famtrac-backend/src/repository/traits.rs`
+- [x] Add `DynamoDbMealSlotRepository` impl in `famtrac-backend/src/repository/dynamodb.rs`
+- [ ] Add DynamoDB table for meal slots (infra update) — deferred to Story 9 (Infra)
+- [x] Add routes: `GET/POST /families/{fid}/dependents/{did}/meal-slots`, `GET/PUT/DELETE /families/{fid}/dependents/{did}/meal-slots/{id}`
+- [x] Add request/response types in `famtrac-backend/src/router/extractors.rs`
+- [x] Add routes to `famtrac-backend/src/router/mod.rs` dispatch logic
+- [x] Add `MealSlot` to frontend `famtrac-frontend/src/types/domain.ts`
+- [x] Add `famtrac-frontend/src/api/mealSlots.ts` with `list`, `get`, `create`, `update`, `delete` functions
+- [x] All new code follows existing patterns
+- [x] Backend compiles without warnings
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `src/domain/meal_slot.rs` | New file — `MealSlot`, `CreateMealSlotRequest`, `UpdateMealSlotRequest` |
+| `src/domain/ids.rs` | Added `MealSlotId(pub Uuid)` |
+| `src/domain/mod.rs` | Exported `meal_slot` module |
+| `src/repository/traits.rs` | Added `MealSlotRepository` trait |
+| `src/repository/dynamodb.rs` | Added `DynamoDbMealSlotRepository` (~300 lines) |
+| `src/repository/mod.rs` | Exported meal_slot types |
+| `src/handlers/meal_slot.rs` | New file — CRUD handlers (~800 lines) |
+| `src/handlers/mod.rs` | Exported meal_slot handlers |
+| `src/router/meal_slot.rs` | New file — route dispatch + tests |
+| `src/router/dependent.rs` | Added meal_slot_repo param + route dispatch |
+| `src/router/mod.rs` | Added meal_slot module + repo param |
+| `src/main.rs` | Wired `DynamoDbMealSlotRepository` |
+| `src/test_utils.rs` | Added `MockMealSlotRepository` |
+| `frontend/src/types/domain.ts` | Added `MealSlot`, `CreateMealSlotRequest`, `UpdateMealSlotRequest` |
+| `frontend/src/api/types.ts` | Added API response types |
+| `frontend/src/api/mealSlots.ts` | New file — API client functions |
 
 ### Dependencies
 
@@ -88,24 +109,45 @@ Key principle: **Don't embed food-plan as an iframe.** Build meal planning nativ
 
 ---
 
-## Story 3: Backend — FeedingLog Domain Model & CRUD
+## Story 3: Backend — FeedingLog Domain Model & CRUD ✅ COMPLETE
 
 **Goal:** Add `FeedingLog` as a new domain entity in famtrac-backend with full CRUD API.
 
 ### Acceptance Criteria
 
-- [ ] Add `FeedingLog` struct in `famtrac-backend/src/domain/` with fields: `id`, `family_id`, `dependent_id`, `date` (YYYY-MM-DD), `time` (HH:MM), `recipe_id`, `amount`, `reaction`, `notes`, `created_at`
-- [ ] Add `FeedingLogId` type to `famtrac-backend/src/domain/ids.rs`
-- [ ] Add `FeedingLogRepository` trait in `famtrac-backend/src/repository/traits.rs`
-- [ ] Add `DynamoDbFeedingLogRepository` impl in `famtrac-backend/src/repository/dynamodb.rs`
-- [ ] Add DynamoDB table for feeding logs (infra update)
-- [ ] Add routes: `GET/POST /families/{fid}/dependents/{did}/feeding-logs`, `GET/PUT/DELETE /families/{fid}/dependents/{did}/feeding-logs/{id}`
-- [ ] Add request/response types in `famtrac-backend/src/router/extractors.rs`
-- [ ] Add routes to `famtrac-backend/src/router/mod.rs` dispatch logic
-- [ ] Add `FeedingLog` to frontend `famtrac-frontend/src/types/domain.ts`
-- [ ] Add `famtrac-frontend/src/api/feedingLogs.ts` with `list`, `get`, `create`, `update`, `delete` functions
-- [ ] All new code follows existing patterns
-- [ ] Backend compiles without warnings
+- [x] Add `FeedingLog` struct in `famtrac-backend/src/domain/` with fields: `id`, `family_id`, `dependent_id`, `date` (YYYY-MM-DD), `time` (HH:MM), `recipe_id`, `amount`, `reaction`, `notes`, `created_at`
+- [x] Add `FeedingLogId` type to `famtrac-backend/src/domain/ids.rs`
+- [x] Add `FeedingLogRepository` trait in `famtrac-backend/src/repository/traits.rs`
+- [x] Add `DynamoDbFeedingLogRepository` impl in `famtrac-backend/src/repository/dynamodb.rs`
+- [ ] Add DynamoDB table for feeding logs (infra update) — deferred to Story 9 (Infra)
+- [x] Add routes: `GET/POST /families/{fid}/dependents/{did}/feeding-logs`, `GET/PUT/DELETE /families/{fid}/dependents/{did}/feeding-logs/{id}`
+- [x] Add request/response types in `famtrac-backend/src/router/extractors.rs`
+- [x] Add routes to `famtrac-backend/src/router/mod.rs` dispatch logic
+- [x] Add `FeedingLog` to frontend `famtrac-frontend/src/types/domain.ts`
+- [x] Add `famtrac-frontend/src/api/feedingLogs.ts` with `list`, `get`, `create`, `update`, `delete` functions
+- [x] All new code follows existing patterns
+- [x] Backend compiles without warnings
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `src/domain/feeding_log.rs` | New file — `FeedingLog`, `CreateFeedingLogRequest`, `UpdateFeedingLogRequest` |
+| `src/domain/ids.rs` | Added `FeedingLogId(pub Uuid)` |
+| `src/domain/mod.rs` | Exported `feeding_log` module |
+| `src/repository/traits.rs` | Added `FeedingLogRepository` trait |
+| `src/repository/dynamodb.rs` | Added `DynamoDbFeedingLogRepository` (~400 lines) |
+| `src/repository/mod.rs` | Exported feeding_log types |
+| `src/handlers/feeding_log.rs` | New file — CRUD handlers (~800 lines) |
+| `src/handlers/mod.rs` | Exported feeding_log handlers |
+| `src/router/feeding_log.rs` | New file — route dispatch + tests |
+| `src/router/dependent.rs` | Added feeding_log_repo param + route dispatch |
+| `src/router/mod.rs` | Added feeding_log module + repo param |
+| `src/main.rs` | Wired `DynamoDbFeedingLogRepository` |
+| `src/test_utils.rs` | Added `MockFeedingLogRepository` |
+| `frontend/src/types/domain.ts` | Added `FeedingLog`, `CreateFeedingLogRequest`, `UpdateFeedingLogRequest` |
+| `frontend/src/api/types.ts` | Added API response types |
+| `frontend/src/api/feedingLogs.ts` | New file — API client functions |
 
 ### Dependencies
 
@@ -257,8 +299,8 @@ Key principle: **Don't embed food-plan as an iframe.** Build meal planning nativ
 
 ```
 Story 1 (Recipes) ✅
-    └── Story 2 (MealSlots)
-            └── Story 3 (FeedingLogs)
+    └── Story 2 (MealSlots) ✅
+            └── Story 3 (FeedingLogs) ✅
                     └── Story 4 (Recipe Library Page)
                     └── Story 5 (Meal Plan Page)
                             └── Story 6 (Data Bridge)
