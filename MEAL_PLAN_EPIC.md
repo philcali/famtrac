@@ -264,6 +264,83 @@ Key principle: **Don't embed food-plan as an iframe.** Build meal planning nativ
 
 ---
 
+## Story 10: Backend — Share Recipes, MealSlots, and FeedingLogs via Stream Handler
+
+**Goal:** Extend the famtrac-stream-handler to mirror and propagate Recipe, MealSlot, and FeedingLog records so that shared families include meal planning data.
+
+### Background
+
+The stream handler currently mirrors only Family, Dependent, and Activity records. Stories 1–3 added Recipe, MealSlot, and FeedingLog domain models with `family_id`, `share_id`, and `permission_scope` fields. Without stream handler support, a shared family's recipes, meal plans, and feeding logs remain invisible to the accepter.
+
+**Current mirror scope:** Family (rekeyed), Dependent (annotated), Activity (annotated).
+
+**Missing mirror scope:** Recipe, MealSlot, FeedingLog — all have `family_id` (indexed by `GSI-family_id`) and already carry `share_id`/`permission_scope` fields on the domain structs.
+
+### Acceptance Criteria
+
+#### Share Activation (mirror on accept)
+
+- [ ] WHEN a share transitions to `active`, the stream handler mirrors all Recipe records for the family into the accepter's partition with a rekeyed PK of `OWNER#{accepter_id}` and SK `RECIPE#{recipe_id}`
+- [ ] WHEN a share transitions to `active`, the stream handler mirrors all MealSlot records for the family's dependents, annotated with `share_id` and `permission_scope` (same PK/SK as originals)
+- [ ] WHEN a share transitions to `active`, the stream handler mirrors all FeedingLog records for the family's dependents, annotated with `share_id` and `permission_scope` (same PK/SK as originals)
+- [ ] Every mirrored item is stamped with `sync_token` to identify it as handler-originated
+
+#### Resource Change Propagation (propagate on CRUD)
+
+- [ ] WHEN a Recipe is created/updated/deleted on the owner, the change propagates to all mirrored Recipe copies in accepter partitions
+- [ ] WHEN a MealSlot is created/updated/deleted on the owner, the change propagates to all mirrored MealSlot copies in accepter partitions
+- [ ] WHEN a FeedingLog is created/updated/deleted on the owner, the change propagates to all mirrored FeedingLog copies in accepter partitions
+- [ ] The classifier recognizes `RECIPE#`, `MEAL_SLOT#`, and `FEEDING_LOG#` SK prefixes and classifies them as `ResourceChanged`
+- [ ] `extract_family_id` handles Recipe PKs (`FAMILY#{fid}`) and MealSlot/FeedingLog PKs (`FAMILY#{fid}#DEPENDENT#{did}`) via fallback parsing
+
+#### Write-back from Mirrors (accepter writes)
+
+- [ ] WHEN an accepter writes to a mirrored Recipe, the change propagates back to the owner's partition
+- [ ] WHEN an accepter writes to a mirrored MealSlot or FeedingLog, the share metadata is preserved on the item
+- [ ] Semantic diff prevents no-op write-backs (identical items are not re-written)
+
+#### Share Revocation (cleanup on revoke)
+
+- [ ] WHEN a share is revoked, the stream handler deletes the mirrored Recipe records from the accepter's partition
+- [ ] WHEN a share is revoked, the stream handler deletes all mirrored MealSlot records annotated with the revoked `share_id`
+- [ ] WHEN a share is revoked, the stream handler deletes all mirrored FeedingLog records annotated with the revoked `share_id`
+
+#### Permission Scope Updates
+
+- [ ] WHEN a share's permission scope is updated, the `permission_scope` is updated on the mirrored Family record in the accepter's partition
+- [ ] WHEN a share's permission scope is updated, the `permission_scope` is updated on all mirrored Recipe records with the matching `share_id`
+- [ ] WHEN a share's permission scope is updated, the `permission_scope` is updated on all mirrored MealSlot records with the matching `share_id`
+- [ ] WHEN a share's permission scope is updated, the `permission_scope` is updated on all mirrored FeedingLog records with the matching `share_id`
+- [ ] Each update uses a condition expression `share_id = :sid` so that only mirrored copies (not originals) are affected
+- [ ] ConditionalCheckFailedExceptions are silently ignored (the record may not exist or may not be mirrored)
+
+### Technical Notes
+
+- **Recipe PK pattern:** `FAMILY#{family_id}` / `RECIPE#{recipe_id}` — requires rekeying into accepter's OWNER partition (like Family)
+- **MealSlot PK pattern:** `FAMILY#{family_id}#DEPENDENT#{dependent_id}` / `MEAL_SLOT#{meal_slot_id}` — same PK/SK, annotated (like Activity)
+- **FeedingLog PK pattern:** `FAMILY#{family_id}#DEPENDENT#{dependent_id}` / `FEEDING_LOG#{feeding_log_id}` — same PK/SK, annotated (like Activity)
+- No new GSI is needed — all three types already have `family_id` and are indexed by `GSI-family_id`
+- The domain structs (`Recipe`, `MealSlot`, `FeedingLog`) already have `share_id: Option<ShareId>` and `permission_scope: Option<PermissionScope>` fields
+
+### Files to modify
+
+| File | Change |
+|------|--------|
+| `famtrac-stream-handler/src/classify.rs` | Add `RECIPE#`, `MEAL_SLOT#`, `FEEDING_LOG#` to `record_type_from_sk()` |
+| `famtrac-stream-handler/src/dynamo_util.rs` | Extend `extract_family_id()` to handle Recipe and MealSlot/FeedingLog PK patterns |
+| `famtrac-stream-handler/src/handlers/mirror.rs` | Mirror Recipe records (rekeyed), MealSlot records (annotated), FeedingLog records (annotated) on share activation |
+| `famtrac-stream-handler/src/handlers/revoke.rs` | Delete mirrored Recipe, MealSlot, FeedingLog records on share revocation |
+| `famtrac-stream-handler/src/handlers/propagate.rs` | Handle write-back for Recipe (rekeyed back) and MealSlot/FeedingLog (preserve share metadata) |
+| `famtrac-stream-handler/src/handlers/permission.rs` | Update permission_scope on Recipe, MealSlot, FeedingLog mirrored records |
+
+### Dependencies
+
+- Story 1 (Recipe domain model)
+- Story 2 (MealSlot domain model)
+- Story 3 (FeedingLog domain model)
+
+---
+
 ## Story 9: Infrastructure — DynamoDB Table Schema
 
 **Goal:** Update famtrac's single-table DynamoDB schema to support Recipe, MealSlot, and FeedingLog item types.
@@ -307,7 +384,9 @@ Story 1 (Recipes) ✅
                             └── Story 7 (Navigation)
                                     └── Story 8 (Import)
 
-Story 9 (Infra) — can run in parallel with Stories 2–9
+Story 10 (Stream: share recipes/meal-slots/feeding-logs) — can run in parallel with Stories 4–9
+
+Story 9 (Infra) — can run in parallel with Stories 2–10
 ```
 
 Stories 4 and 5 can be developed in parallel once Story 3 is complete. Story 9 (Infra) can be done anytime but should precede production deployment.
