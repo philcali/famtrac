@@ -1,0 +1,218 @@
+import { useState, useEffect } from 'react';
+import { Button } from '../common/Button';
+import type { Recipe, CreateRecipeRequest, UpdateRecipeRequest } from '../../types/domain';
+
+interface RecipeFormProps {
+  recipe?: Recipe;
+  onSubmit: (data: CreateRecipeRequest | UpdateRecipeRequest) => void;
+  onCancel: () => void;
+  loading?: boolean;
+}
+
+const inputBase =
+  'w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent';
+
+/**
+ * RecipeForm - Modal form for creating or editing a recipe
+ * Fields: name, emoji, ingredients, age_min, texture, allergens, prep_notes, safe
+ */
+export function RecipeForm({ recipe, onSubmit, onCancel, loading = false }: RecipeFormProps) {
+  const [name, setName] = useState(recipe?.name ?? '');
+  const [emoji, setEmoji] = useState(recipe?.emoji ?? '');
+  const [ingredientsText, setIngredientsText] = useState(
+    recipe?.ingredients?.join('\n') ?? ''
+  );
+  const [ageMin, setAgeMin] = useState(recipe?.age_min?.toString() ?? '');
+  const [texture, setTexture] = useState(recipe?.texture ?? '');
+  const [allergensText, setAllergensText] = useState(
+    recipe?.allergens?.join('\n') ?? ''
+  );
+  const [prepNotes, setPrepNotes] = useState(recipe?.prep_notes ?? '');
+  const [safe, setSafe] = useState(recipe?.safe ?? false);
+
+  useEffect(() => {
+    if (recipe) {
+      setName(recipe.name);
+      setEmoji(recipe.emoji ?? '');
+      setIngredientsText(recipe.ingredients.join('\n'));
+      setAgeMin(recipe.age_min?.toString() ?? '');
+      setTexture(recipe.texture ?? '');
+      setAllergensText(recipe.allergens.join('\n'));
+      setPrepNotes(recipe.prep_notes ?? '');
+      setSafe(recipe.safe ?? false);
+    }
+  }, [recipe]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const ingredients = ingredientsText
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const allergens = allergensText
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (!name.trim()) return;
+
+    const base = {
+      name: name.trim(),
+      emoji: emoji.trim() || undefined,
+      ingredients,
+      age_min: ageMin ? Number(ageMin) : undefined,
+      texture: texture.trim() || undefined,
+      allergens,
+      prep_notes: prepNotes.trim() || undefined,
+      safe: safe,
+    };
+
+    if (recipe) {
+      onSubmit(base as UpdateRecipeRequest);
+    } else {
+      onSubmit(base as CreateRecipeRequest);
+    }
+  };
+
+  const textureOptions = [
+    'smooth',
+    'lumpy',
+    'chunky',
+    'soft',
+    'crunchy',
+    'mashed',
+    'diced',
+    'whole',
+  ];
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Name */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g., Banana Oat Pancakes"
+          required
+          className={inputBase}
+        />
+      </div>
+
+      {/* Emoji */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Emoji</label>
+        <input
+          type="text"
+          value={emoji}
+          onChange={(e) => setEmoji(e.target.value)}
+          placeholder="🍌"
+          maxLength={4}
+          className={inputBase}
+        />
+        {emoji && (
+          <span className="text-2xl mt-1 block">{emoji}</span>
+        )}
+      </div>
+
+      {/* Ingredients */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Ingredients (one per line)
+        </label>
+        <textarea
+          value={ingredientsText}
+          onChange={(e) => setIngredientsText(e.target.value)}
+          rows={3}
+          className={`${inputBase} resize-none`}
+          placeholder={"banana\noats\nmilk"}
+        />
+      </div>
+
+      {/* Age Min */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Minimum Age (months)
+        </label>
+        <input
+          type="number"
+          value={ageMin}
+          onChange={(e) => setAgeMin(e.target.value)}
+          placeholder="6"
+          min="0"
+          max="96"
+          className={inputBase}
+        />
+      </div>
+
+      {/* Texture */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Texture</label>
+        <select
+          value={texture}
+          onChange={(e) => setTexture(e.target.value)}
+          className={inputBase}
+        >
+          <option value="">Select texture...</option>
+          {textureOptions.map((t) => (
+            <option key={t} value={t}>
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Allergens */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Allergens (one per line)
+        </label>
+        <textarea
+          value={allergensText}
+          onChange={(e) => setAllergensText(e.target.value)}
+          rows={2}
+          className={`${inputBase} resize-none`}
+          placeholder={"milk\ngluten\neggs"}
+        />
+      </div>
+
+      {/* Prep Notes */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Prep Notes</label>
+        <textarea
+          value={prepNotes}
+          onChange={(e) => setPrepNotes(e.target.value)}
+          rows={2}
+          className={`${inputBase} resize-none`}
+          placeholder="Cooking tips, storage instructions, etc."
+        />
+      </div>
+
+      {/* Safe Toggle */}
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="safe-toggle"
+          checked={safe}
+          onChange={(e) => setSafe(e.target.checked)}
+          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+        />
+        <label htmlFor="safe-toggle" className="text-sm font-medium text-gray-700">
+          Mark as safe (no allergens)
+        </label>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2 pt-2">
+        <Button variant="primary" type="submit" loading={loading} disabled={loading}>
+          {recipe ? 'Save Changes' : 'Add Recipe'}
+        </Button>
+        <Button variant="secondary" onClick={onCancel} disabled={loading}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}

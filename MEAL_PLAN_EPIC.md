@@ -155,25 +155,34 @@ Key principle: **Don't embed food-plan as an iframe.** Build meal planning nativ
 
 ---
 
-## Story 4: Frontend — Recipe Library Page
+## Story 4: Frontend — Recipe Library Page ✅ COMPLETE
 
 **Goal:** Add a "Recipes" page to famtrac-frontend for browsing and managing the family's recipe collection.
 
 ### Acceptance Criteria
 
-- [ ] New route: `/families/:familyId/recipes`
-- [ ] Page lists all recipes with emoji, name, age, texture, allergen badges
-- [ ] Search bar filters recipes by name and ingredients
-- [ ] "Add Recipe" button opens a modal form (name, emoji, ingredients, age, texture, allergens, prep notes, safe toggle)
-- [ ] Edit and delete actions on each recipe card
-- [ ] Uses existing famtrac component patterns (Button, Card, Modal/ConfirmDialog)
-- [ ] Tailwind CSS styling matches famtrac design system
-- [ ] Loading and empty states handled
-- [ ] Error state display
+- [x] New route: `/families/:familyId/recipes`
+- [x] Page lists all recipes with emoji, name, age, texture, allergen badges
+- [x] Search bar filters recipes by name and ingredients
+- [x] "Add Recipe" button opens a modal form (name, emoji, ingredients, age, texture, allergens, prep notes, safe toggle)
+- [x] Edit and delete actions on each recipe card
+- [x] Uses existing famtrac component patterns (Button, Card, Modal/ConfirmDialog)
+- [x] Tailwind CSS styling matches famtrac design system
+- [x] Loading and empty states handled
+- [x] Error state display
 
 ### Dependencies
 
 - Story 1
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `famtrac-frontend/src/pages/RecipeLibraryPage.tsx` | New file — Recipe library page with search, CRUD modals, loading/empty/error states |
+| `famtrac-frontend/src/components/recipes/RecipeCard.tsx` | New file — Recipe card with emoji, name, age, texture, allergen badges |
+| `famtrac-frontend/src/components/recipes/RecipeForm.tsx` | New file — Modal form for create/edit (name, emoji, ingredients, age, texture, allergens, prep notes, safe toggle) |
+| `famtrac-frontend/src/App.tsx` | Added `/families/:familyId/recipes` route |
 
 ---
 
@@ -378,7 +387,7 @@ The stream handler currently mirrors only Family, Dependent, and Activity record
 Story 1 (Recipes) ✅
     └── Story 2 (MealSlots) ✅
             └── Story 3 (FeedingLogs) ✅
-                    └── Story 4 (Recipe Library Page)
+                    └── Story 4 (Recipe Library Page) ✅
                     └── Story 5 (Meal Plan Page)
                             └── Story 6 (Data Bridge)
                             └── Story 7 (Navigation)
