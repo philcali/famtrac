@@ -58,3 +58,19 @@ impl IdentityId {
         Self(id)
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct RecipeId(pub Uuid);
+
+impl RecipeId {
+    pub fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
+}
+
+impl Default for RecipeId {
+    fn default() -> Self {
+        Self::new()
+    }
+}

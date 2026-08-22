@@ -7,7 +7,7 @@ use crate::context::RequestContext;
 use crate::errors::HandlerError;
 use crate::repository::{
     DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
-    DynamoDbShareRepository,
+    DynamoDbRecipeRepository, DynamoDbShareRepository,
 };
 use crate::utils::cors::CorsConfig;
 use crate::utils::response::HttpResponse;
@@ -17,6 +17,7 @@ pub mod activity;
 pub mod dependent;
 pub mod extractors;
 pub mod family;
+pub mod recipe;
 pub mod share;
 
 /// Main routing function that dispatches requests to appropriate route handlers
@@ -53,6 +54,7 @@ pub async fn route_request(
     family_repo: &DynamoDbFamilyRepository,
     dependent_repo: &DynamoDbDependentRepository,
     activity_repo: &DynamoDbActivityRepository,
+    recipe_repo: &DynamoDbRecipeRepository,
     share_repo: &DynamoDbShareRepository,
     cors_config: &CorsConfig,
 ) -> HttpResponse {
@@ -109,8 +111,8 @@ pub async fn route_request(
         }
 
         // Delegate to family route handler
-        // Handles /families/*, /families/{id}/dependents/*, and
-        // /families/{id}/dependents/{id}/activities/*
+        // Handles /families/*, /families/{id}/dependents/*,
+        // /families/{id}/dependents/{id}/activities/*, and /families/{id}/recipes/*
         family::route_family(
             method,
             path,
@@ -120,6 +122,7 @@ pub async fn route_request(
             family_repo,
             dependent_repo,
             activity_repo,
+            recipe_repo,
         )
         .await
     } else {

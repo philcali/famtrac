@@ -128,3 +128,50 @@ export interface Share {
   updated_at: string;
   expires_at?: string;
 }
+
+// Recipe types
+
+export interface Recipe {
+  id: string;
+  family_id: string;
+  name: string;
+  emoji?: string;
+  ingredients: string[];
+  age_min?: number;
+  texture?: string;
+  allergens: string[];
+  prep_notes?: string;
+  safe?: boolean;
+  created_at: string;
+  updated_at: string;
+  share_id?: string;
+  permission_scope?: PermissionScope;
+}
+
+export interface CreateRecipeRequest {
+  name: string;
+  emoji?: string;
+  ingredients?: string[];
+  age_min?: number;
+  texture?: string;
+  allergens?: string[];
+  prep_notes?: string;
+  safe?: boolean;
+}
+
+export interface UpdateRecipeRequest {
+  name?: string;
+  emoji?: string;
+  ingredients?: string[];
+  age_min?: number;
+  texture?: string;
+  allergens?: string[];
+  prep_notes?: string;
+  safe?: boolean;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  next_token?: string;
+  total_count?: number;
+}

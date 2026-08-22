@@ -1,6 +1,6 @@
 use crate::domain::{
-    Activity, ActivityType, Dependent, DependentId, Family, FamilyId, IdentityId, Share, ShareId,
-    Timestamp,
+    Activity, ActivityType, Dependent, DependentId, Family, FamilyId, IdentityId, Recipe,
+    RecipeId, Share, ShareId, Timestamp,
 };
 use crate::errors::StoreError;
 use crate::handlers::{PaginatedResponse, PaginationParams};
@@ -150,4 +150,31 @@ pub trait ShareRepository: Send + Sync {
         family_id: FamilyId,
         accepter_username: &str,
     ) -> Result<Option<Share>, StoreError>;
+}
+
+/// Repository trait for Recipe operations
+#[async_trait]
+pub trait RecipeRepository: Send + Sync {
+    /// Create a new recipe
+    async fn create(&self, recipe: Recipe) -> Result<Recipe, StoreError>;
+
+    /// Get a recipe by family ID and recipe ID
+    async fn get(
+        &self,
+        family_id: FamilyId,
+        id: RecipeId,
+    ) -> Result<Option<Recipe>, StoreError>;
+
+    /// Update an existing recipe
+    async fn update(&self, recipe: Recipe) -> Result<Recipe, StoreError>;
+
+    /// List all recipes for a specific family
+    async fn list_by_family(
+        &self,
+        family_id: FamilyId,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<Recipe>, StoreError>;
+
+    /// Delete a recipe by family ID and recipe ID
+    async fn delete(&self, family_id: FamilyId, id: RecipeId) -> Result<(), StoreError>;
 }

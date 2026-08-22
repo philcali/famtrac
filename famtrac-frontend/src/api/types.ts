@@ -147,3 +147,49 @@ export interface ShareListResponse {
   shares: ShareResponse[];
   next_token?: string;
 }
+
+// Recipe API types
+
+export interface CreateRecipeRequest {
+  name: string;
+  emoji?: string;
+  ingredients?: string[];
+  age_min?: number;
+  texture?: string;
+  allergens?: string[];
+  prep_notes?: string;
+  safe?: boolean;
+}
+
+export interface UpdateRecipeRequest {
+  name?: string;
+  emoji?: string;
+  ingredients?: string[];
+  age_min?: number;
+  texture?: string;
+  allergens?: string[];
+  prep_notes?: string;
+  safe?: boolean;
+}
+
+export interface RecipeResponse {
+  id: string;
+  family_id: string;
+  name: string;
+  emoji?: string;
+  ingredients: string[];
+  age_min?: number;
+  texture?: string;
+  allergens: string[];
+  prep_notes?: string;
+  safe?: boolean;
+  created_at: string;
+  updated_at: string;
+  share_id?: string;
+  permission_scope?: { actions: string[] };
+}
+
+export interface RecipeListResponse {
+  recipes: RecipeResponse[];
+  next_token?: string;
+}

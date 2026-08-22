@@ -3,6 +3,7 @@ mod dependent;
 mod family;
 mod pagination;
 mod permission;
+mod recipe;
 mod share;
 
 pub use activity::{
@@ -22,4 +23,8 @@ pub use permission::check_permission;
 pub use share::{
     accept_share, create_share, list_shares, list_shares_for_accepter, revoke_share, update_share,
     CreateShareRequest, ShareListResponse, ShareResponse, UpdateShareRequest,
+};
+pub use recipe::{
+    create_recipe, delete_recipe, get_recipe, list_recipes, update_recipe, CreateRecipeRequest,
+    RecipeListResponse, RecipeResponse, UpdateRecipeRequest,
 };

@@ -5,13 +5,14 @@ use std::collections::HashMap;
 
 use crate::domain::{
     Activity, ActivityId, ActivityType, Date, Dependent, DependentId, Family, FamilyId, IdentityId,
-    PermissionScope, Share, ShareId, ShareStatus, Timestamp,
+    PermissionScope, Recipe, RecipeId, Share, ShareId, ShareStatus, Timestamp,
 };
 use crate::errors::StoreError;
 use crate::handlers::{PaginatedResponse, PaginationParams};
 
 use super::traits::{
-    ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository, ShareRepository,
+    ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository, RecipeRepository,
+    ShareRepository,
 };
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
@@ -1328,5 +1329,325 @@ impl ShareRepository for DynamoDbShareRepository {
             Some(item) => Ok(Some(self.parse_share_item(item)?)),
             None => Ok(None),
         }
+    }
+}
+
+/// DynamoDB implementation of RecipeRepository
+#[derive(Clone)]
+pub struct DynamoDbRecipeRepository {
+    client: Client,
+    table_name: String,
+}
+
+impl DynamoDbRecipeRepository {
+    pub fn new(client: Client, table_name: String) -> Self {
+        Self { client, table_name }
+    }
+
+    /// Convert Recipe to DynamoDB item
+    fn to_item(&self, recipe: &Recipe) -> HashMap<String, AttributeValue> {
+        let mut item = HashMap::new();
+        item.insert(
+            "PK".to_string(),
+            AttributeValue::S(format!("FAMILY#{}", recipe.family_id.0)),
+        );
+        item.insert(
+            "SK".to_string(),
+            AttributeValue::S(format!("RECIPE#{}", recipe.id.0)),
+        );
+        item.insert(
+            "Type".to_string(),
+            AttributeValue::S("Recipe".to_string()),
+        );
+        item.insert(
+            "id".to_string(),
+            AttributeValue::S(recipe.id.0.to_string()),
+        );
+        item.insert(
+            "family_id".to_string(),
+            AttributeValue::S(recipe.family_id.0.to_string()),
+        );
+        item.insert(
+            "name".to_string(),
+            AttributeValue::S(recipe.name.clone()),
+        );
+        if let Some(ref emoji) = recipe.emoji {
+            item.insert(
+                "emoji".to_string(),
+                AttributeValue::S(emoji.clone()),
+            );
+        }
+        if !recipe.ingredients.is_empty() {
+            item.insert(
+                "ingredients".to_string(),
+                AttributeValue::L(
+                    recipe.ingredients.iter().map(|s| AttributeValue::S(s.clone())).collect(),
+                ),
+            );
+        }
+        if let Some(ref age_min) = recipe.age_min {
+            item.insert(
+                "age_min".to_string(),
+                AttributeValue::N(age_min.to_string()),
+            );
+        }
+        if let Some(ref texture) = recipe.texture {
+            item.insert(
+                "texture".to_string(),
+                AttributeValue::S(texture.clone()),
+            );
+        }
+        if !recipe.allergens.is_empty() {
+            item.insert(
+                "allergens".to_string(),
+                AttributeValue::L(
+                    recipe.allergens.iter().map(|s| AttributeValue::S(s.clone())).collect(),
+                ),
+            );
+        }
+        if let Some(ref prep_notes) = recipe.prep_notes {
+            item.insert(
+                "prep_notes".to_string(),
+                AttributeValue::S(prep_notes.clone()),
+            );
+        }
+        if let Some(ref safe) = recipe.safe {
+            item.insert(
+                "safe".to_string(),
+                AttributeValue::Bool(*safe),
+            );
+        }
+        item.insert(
+            "created_at".to_string(),
+            AttributeValue::S(recipe.created_at.0.to_rfc3339()),
+        );
+        item.insert(
+            "updated_at".to_string(),
+            AttributeValue::S(recipe.updated_at.0.to_rfc3339()),
+        );
+        if let Some(ref share_id) = recipe.share_id {
+            item.insert(
+                "share_id".to_string(),
+                AttributeValue::S(share_id.0.to_string()),
+            );
+        }
+        if let Some(ref permission_scope) = recipe.permission_scope {
+            let scope_json =
+                serde_json::to_string(permission_scope).unwrap_or_else(|_| "{}".to_string());
+            item.insert(
+                "permission_scope".to_string(),
+                AttributeValue::S(scope_json),
+            );
+        }
+        item
+    }
+
+    /// Convert DynamoDB item to Recipe
+    fn parse_item(&self, item: &HashMap<String, AttributeValue>) -> Result<Recipe, StoreError> {
+        let id = item
+            .get("id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid id".to_string()))?;
+
+        let family_id = item
+            .get("family_id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid family_id".to_string()))?;
+
+        let name = item
+            .get("name")
+            .and_then(|v| v.as_s().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing name".to_string()))?
+            .clone();
+
+        let emoji = item
+            .get("emoji")
+            .and_then(|v| v.as_s().ok())
+            .map(|s| s.clone());
+
+        let ingredients = item
+            .get("ingredients")
+            .and_then(|v| v.as_l().ok())
+            .map(|list| {
+                list.iter()
+                    .filter_map(|v| v.as_s().ok().map(|s| s.clone()))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let age_min = item
+            .get("age_min")
+            .and_then(|v| v.as_n().ok())
+            .and_then(|s| s.parse().ok());
+
+        let texture = item
+            .get("texture")
+            .and_then(|v| v.as_s().ok())
+            .map(|s| s.clone());
+
+        let allergens = item
+            .get("allergens")
+            .and_then(|v| v.as_l().ok())
+            .map(|list| {
+                list.iter()
+                    .filter_map(|v| v.as_s().ok().map(|s| s.clone()))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let prep_notes = item
+            .get("prep_notes")
+            .and_then(|v| v.as_s().ok())
+            .map(|s| s.clone());
+
+        let safe = item
+            .get("safe")
+            .and_then(|v| v.as_bool().ok())
+            .copied();
+
+        let created_at = item
+            .get("created_at")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid created_at".to_string()))?;
+
+        let updated_at = item
+            .get("updated_at")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid updated_at".to_string()))?;
+
+        let share_id = item
+            .get("share_id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .map(ShareId);
+
+        let permission_scope = item
+            .get("permission_scope")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| serde_json::from_str::<PermissionScope>(s).ok());
+
+        Ok(Recipe {
+            id: RecipeId(id),
+            family_id: FamilyId(family_id),
+            name,
+            emoji,
+            ingredients,
+            age_min,
+            texture,
+            allergens,
+            prep_notes,
+            safe,
+            created_at: Timestamp::from_datetime(created_at),
+            updated_at: Timestamp::from_datetime(updated_at),
+            share_id,
+            permission_scope,
+        })
+    }
+}
+
+#[async_trait]
+impl RecipeRepository for DynamoDbRecipeRepository {
+    async fn create(&self, recipe: Recipe) -> Result<Recipe, StoreError> {
+        let item = self.to_item(&recipe);
+
+        self.client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to create recipe: {}", e)))?;
+
+        Ok(recipe)
+    }
+
+    async fn get(&self, family_id: FamilyId, id: RecipeId) -> Result<Option<Recipe>, StoreError> {
+        let pk = format!("FAMILY#{}", family_id.0);
+        let sk = format!("RECIPE#{}", id.0);
+
+        let result = self
+            .client
+            .get_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(pk))
+            .key("SK", AttributeValue::S(sk))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to get recipe: {}", e)))?;
+
+        match result.item {
+            Some(item) => Ok(Some(self.parse_item(&item)?)),
+            None => Ok(None),
+        }
+    }
+
+    async fn update(&self, recipe: Recipe) -> Result<Recipe, StoreError> {
+        let item = self.to_item(&recipe);
+
+        self.client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to update recipe: {}", e)))?;
+
+        Ok(recipe)
+    }
+
+    async fn list_by_family(
+        &self,
+        family_id: FamilyId,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<Recipe>, StoreError> {
+        let exclusive_start_key = decode_next_token(&pagination.next_token)?;
+
+        let mut query = self
+            .client
+            .query()
+            .table_name(&self.table_name)
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+            .expression_attribute_values(
+                ":pk",
+                AttributeValue::S(format!("FAMILY#{}", family_id.0)),
+            )
+            .expression_attribute_values(":sk_prefix", AttributeValue::S("RECIPE#".to_string()))
+            .limit(pagination.effective_limit() as i32);
+
+        if let Some(start_key) = exclusive_start_key {
+            query = query.set_exclusive_start_key(Some(start_key));
+        }
+
+        let result = query.send().await.map_err(|e| {
+            StoreError::QueryError(format!("Failed to list recipes by family: {}", e))
+        })?;
+
+        let recipes = result
+            .items
+            .unwrap_or_default()
+            .iter()
+            .map(|item| self.parse_item(item))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let next_token = encode_last_evaluated_key(&result.last_evaluated_key)?;
+
+        Ok(PaginatedResponse::with_next_token(recipes, next_token))
+    }
+
+    async fn delete(&self, family_id: FamilyId, id: RecipeId) -> Result<(), StoreError> {
+        self.client
+            .delete_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(format!("FAMILY#{}", family_id.0)))
+            .key("SK", AttributeValue::S(format!("RECIPE#{}", id.0)))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to delete recipe: {}", e)))?;
+
+        Ok(())
     }
 }
