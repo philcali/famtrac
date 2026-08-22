@@ -270,7 +270,8 @@ export function MealPlanPage() {
     refetchSlots();
   };
 
-  const handleBackClick = () => navigate(-1);
+  const handleBackClick = () =>
+    navigate(`/families/${familyId}/dependents/${dependentId}`);
   const handleSuccessClose = useCallback(() => setSuccessMessage(null), []);
 
   // ---- Loading state ----
@@ -280,9 +281,17 @@ export function MealPlanPage() {
         <div className="mb-4">
           <h2 className="heading">
             Meal Plan
-            <Button variant="secondary" onClick={handleBackClick} className="heading-right">
-              ← Back
-            </Button>
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => navigate(`/families/${familyId}/recipes`)}
+              >
+                Recipes
+              </Button>
+              <Button variant="secondary" onClick={handleBackClick} className="heading-right">
+                ← Back to Dependent
+              </Button>
+            </div>
           </h2>
         </div>
         <SkeletonCard count={4} />
@@ -297,14 +306,22 @@ export function MealPlanPage() {
         <div className="mb-4">
           <h2 className="heading">
             Meal Plan
-            <Button variant="secondary" onClick={handleBackClick} className="heading-right">
-              ← Back
-            </Button>
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => navigate(`/families/${familyId}/recipes`)}
+              >
+                Recipes
+              </Button>
+              <Button variant="secondary" onClick={handleBackClick} className="heading-right">
+                ← Back to Dependent
+              </Button>
+            </div>
           </h2>
         </div>
         <ErrorMessage message={recipesError ?? slotsError ?? 'An error occurred'} />
         <Button onClick={handleBackClick} className="mt-3">
-          ← Back
+          ← Back to Dependent
         </Button>
       </div>
     );
@@ -317,9 +334,17 @@ export function MealPlanPage() {
       <div className="mb-4">
         <h2 className="heading">
           Meal Plan
-          <Button variant="secondary" onClick={handleBackClick} className="heading-right">
-            ← Back
-          </Button>
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => navigate(`/families/${familyId}/recipes`)}
+            >
+              Recipes
+            </Button>
+            <Button variant="secondary" onClick={handleBackClick} className="heading-right">
+              ← Back to Dependent
+            </Button>
+          </div>
         </h2>
       </div>
 

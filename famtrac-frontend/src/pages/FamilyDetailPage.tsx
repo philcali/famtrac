@@ -141,6 +141,10 @@ export function FamilyDetailPage() {
     navigate(`/families/${familyId}/dependents/${dependent.id}`);
   };
 
+  const handleMealPlanClick = (dependent: Dependent) => {
+    navigate(`/families/${familyId}/dependents/${dependent.id}/meal-plan`);
+  };
+
   const handleFormSubmit = async (data: {
     name: string;
     date_of_birth: string;
@@ -374,6 +378,7 @@ export function FamilyDetailPage() {
         onEdit={handleEditClick}
         onDelete={handleDeleteClick}
         onView={handleViewClick}
+        onMealPlan={handleMealPlanClick}
       />
 
       {/* Shares Section */}

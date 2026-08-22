@@ -8,6 +8,7 @@ export interface DependentCardProps {
   onEdit?: (dependent: Dependent) => void;
   onDelete?: (dependent: Dependent) => void;
   onView?: (dependent: Dependent) => void;
+  onMealPlan?: (dependent: Dependent) => void;
 }
 
 /**
@@ -22,6 +23,7 @@ export function DependentCard({
   onEdit,
   onDelete,
   onView,
+  onMealPlan,
 }: DependentCardProps) {
   const options: Intl.DateTimeFormatOptions = {
     day: 'numeric',
@@ -49,6 +51,15 @@ export function DependentCard({
               size="sm"
               icon="eye"
               onClick={() => onView(dependent)}
+            ></Button>
+          )}
+          {onMealPlan && (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="calendar"
+              onClick={() => onMealPlan(dependent)}
+              title="Meal Plan"
             ></Button>
           )}
           {onEdit && (

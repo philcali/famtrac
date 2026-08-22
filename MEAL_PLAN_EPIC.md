@@ -241,21 +241,32 @@ Key principle: **Don't embed food-plan as an iframe.** Build meal planning nativ
 
 ---
 
-## Story 7: Navigation — Meal Plan Entry Points
+## Story 7: Navigation — Meal Plan Entry Points ✅ COMPLETE
 
 **Goal:** Add navigation links to the meal plan from the dependent detail page and the family detail page.
 
 ### Acceptance Criteria
 
-- [ ] "Meal Plan" button/link on `DependentDetailPage` heading
-- [ ] "Meal Plan" link on `FamilyDetailPage` dependent cards
-- [ ] "Back to Dependent" link on Meal Plan page
-- [ ] "Recipes" link on Meal Plan page
-- [ ] Routes use famtrac's existing `useNavigate` pattern
+- [x] "Meal Plan" button/link on `DependentDetailPage` heading
+- [x] "Meal Plan" link on `FamilyDetailPage` dependent cards
+- [x] "Back to Dependent" link on Meal Plan page
+- [x] "Recipes" link on Meal Plan page
+- [x] Routes use famtrac's existing `useNavigate` pattern
 
 ### Dependencies
 
 - Story 4, Story 5
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `famtrac-frontend/src/pages/DependentDetailPage.tsx` | Added "Meal Plan" button in heading, navigates to `/families/:familyId/dependents/:dependentId/meal-plan` |
+| `famtrac-frontend/src/pages/FamilyDetailPage.tsx` | Added `handleMealPlanClick` handler + wired to `DependentList.onMealPlan` |
+| `famtrac-frontend/src/components/dependents/DependentCard.tsx` | Added `onMealPlan` prop + calendar icon button |
+| `famtrac-frontend/src/components/dependents/DependentList.tsx` | Added `onMealPlan` prop, passed through to `DependentCard` |
+| `famtrac-frontend/src/pages/MealPlanPage.tsx` | Changed "← Back" → "← Back to Dependent" (explicit nav), added "Recipes" link in header/loading/error states |
+| `famtrac-frontend/src/utils/iconRegistry.ts` | Added `calendar` icon SVG |
 
 ---
 
