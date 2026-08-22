@@ -7,7 +7,7 @@ use crate::handlers;
 use crate::handlers::PaginationParams;
 use crate::repository::{
     DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
-    DynamoDbRecipeRepository,
+    DynamoDbMealSlotRepository, DynamoDbRecipeRepository,
 };
 use crate::router::extractors::extract_uuid_param;
 use aws_lambda_events::apigw::ApiGatewayV2httpRequest;
@@ -56,6 +56,7 @@ pub async fn route_family(
     dependent_repo: &DynamoDbDependentRepository,
     activity_repo: &DynamoDbActivityRepository,
     recipe_repo: &DynamoDbRecipeRepository,
+    meal_repo: &DynamoDbMealSlotRepository,
 ) -> Result<serde_json::Value, HandlerError> {
     match (method, path) {
         // GET /families - List all families for authenticated identity
@@ -174,6 +175,7 @@ pub async fn route_family(
                 family_repo,
                 dependent_repo,
                 activity_repo,
+                meal_repo,
             )
             .await
         }

@@ -175,3 +175,33 @@ export interface PaginatedResponse<T> {
   next_token?: string;
   total_count?: number;
 }
+
+// MealSlot domain types
+
+export interface MealSlot {
+  id: string;
+  family_id: string;
+  dependent_id: string;
+  day: string;
+  time: string;
+  recipe_id?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateMealSlotRequest {
+  family_id: string;
+  dependent_id: string;
+  day: string;
+  time: string;
+  recipe_id?: string;
+  notes?: string;
+}
+
+export interface UpdateMealSlotRequest {
+  day?: string;
+  time?: string;
+  recipe_id?: string;
+  notes?: string;
+}

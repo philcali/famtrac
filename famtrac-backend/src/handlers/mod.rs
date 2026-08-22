@@ -1,6 +1,7 @@
 mod activity;
 mod dependent;
 mod family;
+mod meal_slot;
 mod pagination;
 mod permission;
 mod recipe;
@@ -27,4 +28,8 @@ pub use share::{
 pub use recipe::{
     create_recipe, delete_recipe, get_recipe, list_recipes, update_recipe, CreateRecipeRequest,
     RecipeListResponse, RecipeResponse, UpdateRecipeRequest,
+};
+pub use meal_slot::{
+    create_meal_slot, delete_meal_slot, get_meal_slot, list_meal_slots, update_meal_slot,
+    CreateMealSlotRequest, MealSlotListResponse, MealSlotResponse, UpdateMealSlotRequest,
 };

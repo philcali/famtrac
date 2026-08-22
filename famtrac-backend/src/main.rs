@@ -8,7 +8,7 @@ use famtrac_backend::context::RequestContext;
 use famtrac_backend::errors::{AuthError, HandlerError};
 use famtrac_backend::repository::{
     DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
-    DynamoDbRecipeRepository, DynamoDbShareRepository,
+    DynamoDbMealSlotRepository, DynamoDbRecipeRepository, DynamoDbShareRepository,
 };
 use famtrac_backend::router;
 use famtrac_backend::utils::cors::CorsConfig;
@@ -34,6 +34,7 @@ async fn main() -> Result<(), Error> {
     let activity_repo =
         DynamoDbActivityRepository::new(dynamodb_client.clone(), table_name.clone());
     let recipe_repo = DynamoDbRecipeRepository::new(dynamodb_client.clone(), table_name.clone());
+    let meal_repo = DynamoDbMealSlotRepository::new(dynamodb_client.clone(), table_name.clone());
     let share_repo = DynamoDbShareRepository::new(dynamodb_client, table_name);
 
     // Initialize CORS config
@@ -45,6 +46,7 @@ async fn main() -> Result<(), Error> {
         let dependent_repo = dependent_repo.clone();
         let activity_repo = activity_repo.clone();
         let recipe_repo = recipe_repo.clone();
+        let meal_repo = meal_repo.clone();
         let share_repo = share_repo.clone();
         let cors_config = cors_config.clone();
 
@@ -55,6 +57,7 @@ async fn main() -> Result<(), Error> {
                 &dependent_repo,
                 &activity_repo,
                 &recipe_repo,
+                &meal_repo,
                 &share_repo,
                 &cors_config,
             )
@@ -73,6 +76,7 @@ async fn handle_request(
     dependent_repo: &DynamoDbDependentRepository,
     activity_repo: &DynamoDbActivityRepository,
     recipe_repo: &DynamoDbRecipeRepository,
+    meal_repo: &DynamoDbMealSlotRepository,
     share_repo: &DynamoDbShareRepository,
     cors_config: &CorsConfig,
 ) -> Result<ApiGatewayV2httpResponse, Error> {
@@ -112,6 +116,7 @@ async fn handle_request(
         dependent_repo,
         activity_repo,
         recipe_repo,
+        meal_repo,
         share_repo,
         cors_config,
     )

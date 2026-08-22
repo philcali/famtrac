@@ -1,6 +1,6 @@
 use crate::domain::{
-    Activity, ActivityType, Dependent, DependentId, Family, FamilyId, IdentityId, Recipe,
-    RecipeId, Share, ShareId, Timestamp,
+    Activity, ActivityType, Dependent, DependentId, Family, FamilyId, IdentityId, MealSlot,
+    MealSlotId, Recipe, RecipeId, Share, ShareId, Timestamp,
 };
 use crate::errors::StoreError;
 use crate::handlers::{PaginatedResponse, PaginationParams};
@@ -177,4 +177,47 @@ pub trait RecipeRepository: Send + Sync {
 
     /// Delete a recipe by family ID and recipe ID
     async fn delete(&self, family_id: FamilyId, id: RecipeId) -> Result<(), StoreError>;
+}
+
+/// Query parameters for meal slot queries
+#[derive(Debug, Clone)]
+pub struct MealSlotQueryParams {
+    pub family_id: FamilyId,
+    pub dependent_id: DependentId,
+    pub day: Option<String>,
+}
+
+/// Repository trait for MealSlot operations
+#[async_trait]
+pub trait MealSlotRepository: Send + Sync {
+    /// Create a new meal slot
+    async fn create(&self, meal_slot: MealSlot) -> Result<MealSlot, StoreError>;
+
+    /// Get a meal slot by family ID, dependent ID, and meal slot ID
+    async fn get(
+        &self,
+        family_id: FamilyId,
+        dependent_id: DependentId,
+        id: MealSlotId,
+    ) -> Result<Option<MealSlot>, StoreError>;
+
+    /// Update an existing meal slot
+    async fn update(&self, meal_slot: MealSlot) -> Result<MealSlot, StoreError>;
+
+    /// Delete a meal slot by family ID, dependent ID, and meal slot ID
+    async fn delete(
+        &self,
+        family_id: FamilyId,
+        dependent_id: DependentId,
+        id: MealSlotId,
+    ) -> Result<(), StoreError>;
+
+    /// List meal slots for a dependent, optionally filtered by day
+    async fn list_by_dependent(
+        &self,
+        family_id: FamilyId,
+        dependent_id: DependentId,
+        day: Option<String>,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<MealSlot>, StoreError>;
 }

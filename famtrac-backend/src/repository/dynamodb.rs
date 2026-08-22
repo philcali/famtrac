@@ -5,14 +5,14 @@ use std::collections::HashMap;
 
 use crate::domain::{
     Activity, ActivityId, ActivityType, Date, Dependent, DependentId, Family, FamilyId, IdentityId,
-    PermissionScope, Recipe, RecipeId, Share, ShareId, ShareStatus, Timestamp,
+    MealSlot, MealSlotId, PermissionScope, Recipe, RecipeId, Share, ShareId, ShareStatus, Timestamp,
 };
 use crate::errors::StoreError;
 use crate::handlers::{PaginatedResponse, PaginationParams};
 
 use super::traits::{
-    ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository, RecipeRepository,
-    ShareRepository,
+    ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository, MealSlotRepository,
+    RecipeRepository, ShareRepository,
 };
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
@@ -1649,5 +1649,321 @@ impl RecipeRepository for DynamoDbRecipeRepository {
             .map_err(|e| StoreError::QueryError(format!("Failed to delete recipe: {}", e)))?;
 
         Ok(())
+    }
+}
+
+/// DynamoDB implementation of MealSlotRepository
+#[derive(Clone)]
+pub struct DynamoDbMealSlotRepository {
+    client: Client,
+    table_name: String,
+}
+
+impl DynamoDbMealSlotRepository {
+    pub fn new(client: Client, table_name: String) -> Self {
+        Self { client, table_name }
+    }
+
+    /// Convert MealSlot to DynamoDB item
+    fn to_item(&self, meal_slot: &MealSlot) -> HashMap<String, AttributeValue> {
+        let mut item = HashMap::new();
+        item.insert(
+            "PK".to_string(),
+            AttributeValue::S(format!(
+                "FAMILY#{}#DEPENDENT#{}",
+                meal_slot.family_id.0, meal_slot.dependent_id.0
+            )),
+        );
+        item.insert(
+            "SK".to_string(),
+            AttributeValue::S(format!("MEAL_SLOT#{}", meal_slot.id.0)),
+        );
+        item.insert(
+            "Type".to_string(),
+            AttributeValue::S("MealSlot".to_string()),
+        );
+        item.insert(
+            "id".to_string(),
+            AttributeValue::S(meal_slot.id.0.to_string()),
+        );
+        item.insert(
+            "dependent_id".to_string(),
+            AttributeValue::S(meal_slot.dependent_id.0.to_string()),
+        );
+        item.insert(
+            "family_id".to_string(),
+            AttributeValue::S(meal_slot.family_id.0.to_string()),
+        );
+        item.insert(
+            "day".to_string(),
+            AttributeValue::S(meal_slot.day.clone()),
+        );
+        item.insert(
+            "time".to_string(),
+            AttributeValue::S(meal_slot.time.clone()),
+        );
+        if let Some(ref recipe_id) = meal_slot.recipe_id {
+            item.insert(
+                "recipe_id".to_string(),
+                AttributeValue::S(recipe_id.0.to_string()),
+            );
+        }
+        if let Some(ref notes) = meal_slot.notes {
+            item.insert(
+                "notes".to_string(),
+                AttributeValue::S(notes.clone()),
+            );
+        }
+        item.insert(
+            "created_at".to_string(),
+            AttributeValue::S(meal_slot.created_at.0.to_rfc3339()),
+        );
+        item.insert(
+            "updated_at".to_string(),
+            AttributeValue::S(meal_slot.updated_at.0.to_rfc3339()),
+        );
+        if let Some(ref share_id) = meal_slot.share_id {
+            item.insert(
+                "share_id".to_string(),
+                AttributeValue::S(share_id.0.to_string()),
+            );
+        }
+        if let Some(ref permission_scope) = meal_slot.permission_scope {
+            let scope_json =
+                serde_json::to_string(permission_scope).unwrap_or_else(|_| "{}".to_string());
+            item.insert(
+                "permission_scope".to_string(),
+                AttributeValue::S(scope_json),
+            );
+        }
+        item
+    }
+
+    /// Convert DynamoDB item to MealSlot
+    fn parse_item(&self, item: &HashMap<String, AttributeValue>) -> Result<MealSlot, StoreError> {
+        let id = item
+            .get("id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid id".to_string()))?;
+
+        let dependent_id = item
+            .get("dependent_id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| {
+                StoreError::QueryError("Missing or invalid dependent_id".to_string())
+            })?;
+
+        let family_id = item
+            .get("family_id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid family_id".to_string()))?;
+
+        let day = item
+            .get("day")
+            .and_then(|v| v.as_s().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing day".to_string()))?
+            .clone();
+
+        let time = item
+            .get("time")
+            .and_then(|v| v.as_s().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing time".to_string()))?
+            .clone();
+
+        let recipe_id = item
+            .get("recipe_id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .map(RecipeId);
+
+        let notes = item
+            .get("notes")
+            .and_then(|v| v.as_s().ok())
+            .map(|s| s.clone());
+
+        let created_at = item
+            .get("created_at")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid created_at".to_string()))?;
+
+        let updated_at = item
+            .get("updated_at")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .ok_or_else(|| StoreError::QueryError("Missing or invalid updated_at".to_string()))?;
+
+        let share_id = item
+            .get("share_id")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| s.parse().ok())
+            .map(ShareId);
+
+        let permission_scope = item
+            .get("permission_scope")
+            .and_then(|v| v.as_s().ok())
+            .and_then(|s| serde_json::from_str::<PermissionScope>(s).ok());
+
+        Ok(MealSlot {
+            id: MealSlotId(id),
+            dependent_id: DependentId(dependent_id),
+            family_id: FamilyId(family_id),
+            day,
+            time,
+            recipe_id,
+            notes,
+            created_at: Timestamp::from_datetime(created_at),
+            updated_at: Timestamp::from_datetime(updated_at),
+            share_id,
+            permission_scope,
+        })
+    }
+}
+
+#[async_trait]
+impl MealSlotRepository for DynamoDbMealSlotRepository {
+    async fn create(&self, meal_slot: MealSlot) -> Result<MealSlot, StoreError> {
+        let item = self.to_item(&meal_slot);
+
+        self.client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to create meal slot: {}", e)))?;
+
+        Ok(meal_slot)
+    }
+
+    async fn get(
+        &self,
+        family_id: FamilyId,
+        dependent_id: DependentId,
+        id: MealSlotId,
+    ) -> Result<Option<MealSlot>, StoreError> {
+        let pk = format!("FAMILY#{}#DEPENDENT#{}", family_id.0, dependent_id.0);
+        let sk = format!("MEAL_SLOT#{}", id.0);
+
+        let result = self
+            .client
+            .get_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(pk))
+            .key("SK", AttributeValue::S(sk))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to get meal slot: {}", e)))?;
+
+        match result.item {
+            Some(item) => Ok(Some(self.parse_item(&item)?)),
+            None => Ok(None),
+        }
+    }
+
+    async fn update(&self, meal_slot: MealSlot) -> Result<MealSlot, StoreError> {
+        let item = self.to_item(&meal_slot);
+
+        self.client
+            .put_item()
+            .table_name(&self.table_name)
+            .set_item(Some(item))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to update meal slot: {}", e)))?;
+
+        Ok(meal_slot)
+    }
+
+    async fn delete(
+        &self,
+        family_id: FamilyId,
+        dependent_id: DependentId,
+        id: MealSlotId,
+    ) -> Result<(), StoreError> {
+        let pk = format!("FAMILY#{}#DEPENDENT#{}", family_id.0, dependent_id.0);
+        let sk = format!("MEAL_SLOT#{}", id.0);
+
+        self.client
+            .delete_item()
+            .table_name(&self.table_name)
+            .key("PK", AttributeValue::S(pk))
+            .key("SK", AttributeValue::S(sk))
+            .send()
+            .await
+            .map_err(|e| StoreError::QueryError(format!("Failed to delete meal slot: {}", e)))?;
+
+        Ok(())
+    }
+
+    async fn list_by_dependent(
+        &self,
+        family_id: FamilyId,
+        dependent_id: DependentId,
+        day: Option<String>,
+        pagination: PaginationParams,
+    ) -> Result<PaginatedResponse<MealSlot>, StoreError> {
+        let pk = format!(
+            "FAMILY#{}#DEPENDENT#{}",
+            family_id.0, dependent_id.0
+        );
+
+        let mut filter_expressions = Vec::new();
+
+        if day.is_some() {
+            filter_expressions.push("day = :day".to_string());
+        }
+
+        let exclusive_start_key = decode_next_token(&pagination.next_token)?;
+
+        let mut query_builder = self
+            .client
+            .query()
+            .table_name(&self.table_name)
+            .key_condition_expression("PK = :pk AND begins_with(SK, :sk_prefix)")
+            .expression_attribute_values(
+                ":pk",
+                AttributeValue::S(pk),
+            )
+            .expression_attribute_values(
+                ":sk_prefix",
+                AttributeValue::S("MEAL_SLOT#".to_string()),
+            )
+            .scan_index_forward(true) // Sort ascending by SK (MEAL_SLOT#<uuid>)
+            .limit(pagination.effective_limit() as i32);
+
+        if let Some(start_key) = exclusive_start_key {
+            query_builder = query_builder.set_exclusive_start_key(Some(start_key));
+        }
+
+        if let Some(ref day_val) = day {
+            query_builder = query_builder
+                .expression_attribute_values(":day", AttributeValue::S(day_val.clone()));
+        }
+
+        if !filter_expressions.is_empty() {
+            query_builder = query_builder.filter_expression(filter_expressions.join(" AND "));
+        }
+
+        let result = query_builder
+            .send()
+            .await
+            .map_err(|e| {
+                StoreError::QueryError(format!("Failed to list meal slots: {}", e))
+            })?;
+
+        let meal_slots = result
+            .items
+            .unwrap_or_default()
+            .iter()
+            .map(|item| self.parse_item(item))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let next_token = encode_last_evaluated_key(&result.last_evaluated_key)?;
+
+        Ok(PaginatedResponse::with_next_token(meal_slots, next_token))
     }
 }

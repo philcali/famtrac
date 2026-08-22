@@ -5,14 +5,14 @@
 
 pub mod mocks {
     use crate::domain::{
-        Activity, ActivityId, Dependent, DependentId, Family, FamilyId, IdentityId, Recipe,
-        RecipeId, Share, ShareId,
+        Activity, ActivityId, Dependent, DependentId, Family, FamilyId, IdentityId, MealSlot,
+        MealSlotId, Recipe, RecipeId, Share, ShareId,
     };
     use crate::errors::StoreError;
     use crate::handlers::{PaginatedResponse, PaginationParams};
     use crate::repository::{
         ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository,
-        RecipeRepository, ShareRepository,
+        MealSlotRepository, RecipeRepository, ShareRepository,
     };
     use async_trait::async_trait;
     use std::collections::HashMap;
@@ -693,6 +693,126 @@ pub mod mocks {
                 .values()
                 .find(|s| s.family_id == family_id && s.accepter_username == accepter_username)
                 .cloned())
+        }
+    }
+
+    /// Mock implementation of MealSlotRepository for testing
+    #[derive(Clone)]
+    pub struct MockMealSlotRepository {
+        pub should_fail: bool,
+        pub meal_slots: Arc<Mutex<HashMap<MealSlotId, MealSlot>>>,
+    }
+
+    impl MockMealSlotRepository {
+        pub fn new() -> Self {
+            MockMealSlotRepository {
+                should_fail: false,
+                meal_slots: Arc::new(Mutex::new(HashMap::new())),
+            }
+        }
+
+        pub fn with_failure() -> Self {
+            MockMealSlotRepository {
+                should_fail: true,
+                meal_slots: Arc::new(Mutex::new(HashMap::new())),
+            }
+        }
+
+        pub fn insert(&self, meal_slot: MealSlot) {
+            self.meal_slots
+                .lock()
+                .unwrap()
+                .insert(meal_slot.id, meal_slot);
+        }
+    }
+
+    impl Default for MockMealSlotRepository {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    #[async_trait]
+    impl MealSlotRepository for MockMealSlotRepository {
+        async fn create(&self, meal_slot: MealSlot) -> Result<MealSlot, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            self.meal_slots
+                .lock()
+                .unwrap()
+                .insert(meal_slot.id, meal_slot.clone());
+            Ok(meal_slot)
+        }
+
+        async fn get(
+            &self,
+            _family_id: FamilyId,
+            _dependent_id: DependentId,
+            id: MealSlotId,
+        ) -> Result<Option<MealSlot>, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            Ok(self.meal_slots.lock().unwrap().get(&id).cloned())
+        }
+
+        async fn update(&self, meal_slot: MealSlot) -> Result<MealSlot, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            self.meal_slots
+                .lock()
+                .unwrap()
+                .insert(meal_slot.id, meal_slot.clone());
+            Ok(meal_slot)
+        }
+
+        async fn delete(
+            &self,
+            _family_id: FamilyId,
+            _dependent_id: DependentId,
+            id: MealSlotId,
+        ) -> Result<(), StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            self.meal_slots.lock().unwrap().remove(&id);
+            Ok(())
+        }
+
+        async fn list_by_dependent(
+            &self,
+            _family_id: FamilyId,
+            _dependent_id: DependentId,
+            _day: Option<String>,
+            pagination: crate::handlers::PaginationParams,
+        ) -> Result<crate::handlers::PaginatedResponse<MealSlot>, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            let all: Vec<MealSlot> = self
+                .meal_slots
+                .lock()
+                .unwrap()
+                .values()
+                .cloned()
+                .collect();
+            let offset = pagination
+                .next_token
+                .as_deref()
+                .and_then(|t| t.parse::<usize>().ok())
+                .unwrap_or(0);
+            let limit = pagination.effective_limit() as usize;
+            let page: Vec<MealSlot> = all.into_iter().skip(offset).take(limit + 1).collect();
+            let has_more = page.len() > limit;
+            let items: Vec<MealSlot> = page.into_iter().take(limit).collect();
+            let next_token = if has_more {
+                Some((offset + limit).to_string())
+            } else {
+                None
+            };
+            Ok(crate::handlers::PaginatedResponse::with_next_token(items, next_token))
         }
     }
 }

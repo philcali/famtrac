@@ -7,7 +7,7 @@ use crate::context::RequestContext;
 use crate::errors::HandlerError;
 use crate::repository::{
     DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
-    DynamoDbRecipeRepository, DynamoDbShareRepository,
+    DynamoDbMealSlotRepository, DynamoDbRecipeRepository, DynamoDbShareRepository,
 };
 use crate::utils::cors::CorsConfig;
 use crate::utils::response::HttpResponse;
@@ -17,6 +17,7 @@ pub mod activity;
 pub mod dependent;
 pub mod extractors;
 pub mod family;
+pub mod meal_slot;
 pub mod recipe;
 pub mod share;
 
@@ -55,6 +56,7 @@ pub async fn route_request(
     dependent_repo: &DynamoDbDependentRepository,
     activity_repo: &DynamoDbActivityRepository,
     recipe_repo: &DynamoDbRecipeRepository,
+    meal_repo: &DynamoDbMealSlotRepository,
     share_repo: &DynamoDbShareRepository,
     cors_config: &CorsConfig,
 ) -> HttpResponse {
@@ -123,6 +125,7 @@ pub async fn route_request(
             dependent_repo,
             activity_repo,
             recipe_repo,
+            meal_repo,
         )
         .await
     } else {

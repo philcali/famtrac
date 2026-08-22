@@ -193,3 +193,38 @@ export interface RecipeListResponse {
   recipes: RecipeResponse[];
   next_token?: string;
 }
+
+// MealSlot API types
+
+export interface CreateMealSlotRequest {
+  family_id: string;
+  dependent_id: string;
+  day: string;
+  time: string;
+  recipe_id?: string;
+  notes?: string;
+}
+
+export interface UpdateMealSlotRequest {
+  day?: string;
+  time?: string;
+  recipe_id?: string;
+  notes?: string;
+}
+
+export interface MealSlotResponse {
+  id: string;
+  family_id: string;
+  dependent_id: string;
+  day: string;
+  time: string;
+  recipe_id?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MealSlotListResponse {
+  meal_slots: MealSlotResponse[];
+  next_token?: string;
+}
