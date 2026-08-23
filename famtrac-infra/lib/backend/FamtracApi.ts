@@ -50,6 +50,24 @@ export class FamtracApi extends Construct implements IFamtracApi {
         let table = props.table;
         let indexes: string[] = [];
         if (!table) {
+            // Single-table DynamoDB schema — all entity types share PK/SK + GSIs.
+            // Entity types are distinguished by the `Type` attribute (string).
+            //
+            // Entity key patterns:
+            //   Family:       PK=OWNER#{owner_id}  / SK=FAMILY#{family_id}
+            //   Dependent:    PK=OWNER#{owner_id}  / SK=DEPENDENT#{dependent_id}
+            //   Activity:     PK=FAMILY#{fid}#DEPENDENT#{did} / SK=ACTIVITY#{activity_id}
+            //   Recipe:       PK=FAMILY#{family_id}  / SK=RECIPE#{recipe_id}
+            //   MealSlot:     PK=FAMILY#{fid}#DEPENDENT#{did} / SK=MEAL_SLOT#{meal_slot_id}
+            //   FeedingLog:   PK=FAMILY#{fid}#DEPENDENT#{did} / SK=FEEDING_LOG#{feeding_log_id}
+            //   Share:        PK=OWNER#{owner_id}  / SK=SHARE#{share_id}
+            //
+            // GSIs:
+            //   GSI-1:        PK=ACTIVITY#{activity_id} / SK=timestamp  (activity queries)
+            //   GSI-family_id: PK=family_id            / SK=SK         (family-scoped queries)
+            //
+            // Note: Recipe, MealSlot, and FeedingLog items also carry `share_id` and
+            // `permission_scope` fields when mirrored to accepter partitions.
             let newTable = new Table(this, 'Data', {
                 partitionKey: {
                     name: 'PK',

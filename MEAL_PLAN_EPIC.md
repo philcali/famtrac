@@ -368,21 +368,25 @@ The stream handler currently mirrors only Family, Dependent, and Activity record
 
 ---
 
-## Story 9: Infrastructure — DynamoDB Table Schema
+## Story 9: Infrastructure — DynamoDB Table Schema ✅ COMPLETE
 
 **Goal:** Update famtrac's single-table DynamoDB schema to support Recipe, MealSlot, and FeedingLog item types.
 
 ### Acceptance Criteria
 
-- [ ] Verify existing DynamoDB table schema supports new `Type` discriminator values (Recipe, MealSlot, FeedingLog)
-- [ ] Update IAM policy to allow access to all item types in the table
-- [ ] Update CDK/Terraform config if any table-level changes are needed (GSI, billing mode, etc.)
-- [ ] Run `cdk synth` / `terraform plan` to confirm no unexpected infrastructure changes
-- [ ] Document the single-table key schema for the new entity types
+- [x] Verify existing DynamoDB table schema supports new `Type` discriminator values (Recipe, MealSlot, FeedingLog)
+- [x] Update IAM policy to allow access to all item types in the table
+- [x] Update CDK/Terraform config if any table-level changes are needed (GSI, billing mode, etc.)
+- [x] Run `cdk synth` / `terraform plan` to confirm no unexpected infrastructure changes
+- [x] Document the single-table key schema for the new entity types
 
 ### Dependencies
 
 - None (can be done anytime, but recommended before production deployment)
+
+### Notes
+
+No infrastructure changes required. Famtrac uses a single DynamoDB table with a `Type` discriminator — adding new `Type` values (Recipe, MealSlot, FeedingLog) needs zero schema, IAM, or CDK modifications. Key schema patterns are documented in `famtrac-infra/lib/backend/FamtracApi.ts`.
 
 ---
 
@@ -390,12 +394,10 @@ The stream handler currently mirrors only Family, Dependent, and Activity record
 
 | Item | Details |
 |------|---------|
-| DynamoDB tables | `recipes`, `meal_slots`, `feeding_logs` |
-| Table keys | Partition: `family_id`, Sort: `dependent_id` (where applicable) |
-| Terraform/CDK | Update famtrac-infra to provision new tables |
-| Permissions | Update IAM policy for new table access |
-
-> **Note:** Story 1's infra item is deferred to Story 9 (Infra) since famtrac uses a single DynamoDB table design. New item types are added to the existing table via the `Type` discriminator, so no new table is needed.
+| DynamoDB table | Single `FamtracData` table (no new tables) |
+| New item types | `Recipe`, `MealSlot`, `FeedingLog` — added via `Type` discriminator |
+| Terraform/CDK | No changes needed (Story 9 complete) |
+| Permissions | Already covers all item types (table-level CRUD) |
 
 ---
 
