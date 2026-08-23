@@ -1,6 +1,103 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '../common/Button';
-import type { LittleEaterExport, LittleEaterRecipe, CreateRecipeRequest } from '../../types/domain';
+import type {
+  LittleEaterExport,
+  LittleEaterRecipe,
+  CreateRecipeRequest,
+  LittleEaterFeedingLog,
+} from '../../types/domain';
+
+/**
+ * Map Little Eater reaction values to famtrac reaction values.
+ * Handles both export format ("ate_some") and backup format ("Ate some").
+ */
+const mapReaction = (littleEaterReaction?: string): string => {
+  const normalized = (littleEaterReaction ?? '').toLowerCase().replace(/\s+/g, '_');
+  switch (normalized) {
+    case 'ate_some':
+      return 'some';
+    case 'ate_most':
+      return 'most';
+    case 'ate_all':
+      return 'all';
+    case 'none':
+      return 'none';
+    default:
+      return littleEaterReaction ?? 'some';
+  }
+};
+
+/**
+ * Map Little Eater texture values to famtrac texture values.
+ * Little Eater uses different texture vocabulary (e.g., "pureed", "mushy", "thick")
+ * while famtrac uses: smooth, lumpy, chunky, soft, crunchy, mashed, diced, whole.
+ */
+const LITTLE_EATER_TO_FAMTRAC_TEXTURE: Record<string, string> = {
+  pureed: 'smooth',
+  smooth: 'smooth',
+  thick_puree: 'smooth',
+  mushy: 'mashed',
+  mashed: 'mashed',
+  soft_mashed: 'mashed',
+  lumpy: 'lumpy',
+  thick: 'chunky',
+  chunky: 'chunky',
+  soft_chunky: 'chunky',
+  soft: 'soft',
+  soft_cooked: 'soft',
+  crunchy: 'crunchy',
+  hard: 'crunchy',
+  diced: 'diced',
+  chopped: 'diced',
+  small_cubes: 'diced',
+  whole: 'whole',
+  finger_food: 'whole',
+  soft_finger_food: 'whole',
+  // localStorage backup format values
+  thinned: 'smooth',
+  puree: 'smooth',
+};
+
+/**
+ * localStorage backup format from food-plan (Little Eater) app.
+ * Different from the food-plan export format:
+ * - No `type` field
+ * - Data nested under `localStorage.fp_*` keys
+ * - camelCase field names (ingredient, ageMin, prepNotes)
+ * - `ingredient` is a single string (not an array)
+ */
+interface LocalStorageBackup {
+  version: number;
+  exportedAt?: string;
+  localStorage: {
+    fp_recipes: LocalStorageRecipe[];
+    fp_feeding_logs: LocalStorageFeedingLog[];
+  };
+}
+
+interface LocalStorageRecipe {
+  name: string;
+  emoji?: string;
+  ingredient: string;
+  ageMin?: number;
+  texture?: string;
+  allergens: string[];
+  prepNotes?: string;
+  safe?: boolean;
+  ingredients: string[];
+}
+
+interface LocalStorageFeedingLog {
+  date: string;
+  time: string;
+  dependent_name: string;
+  recipe_name: string;
+  ingredient: string;
+  amount: string;
+  reaction: string;
+  notes?: string;
+  dependent_id: string;
+}
 
 type ImportStep = 'preview' | 'importRecipes' | 'importFeedingLogs' | 'results';
 
@@ -73,30 +170,54 @@ export function ImportModal({
 
     try {
       const text = await file.text();
-      const parsed: LittleEaterExport = JSON.parse(text);
+      const raw = JSON.parse(text);
 
-      // Validate format
-      if (parsed.version !== 1) {
-        setImportError(`Unsupported export version: ${parsed.version}. Expected version 1.`);
+      // Detect localStorage backup format (has `localStorage` key, no `type` key)
+      let exportData: LittleEaterExport;
+
+      if ('localStorage' in raw && 'fp_recipes' in raw.localStorage) {
+        // localStorage backup format — normalize to expected structure
+        const backup: LocalStorageBackup = raw as unknown as LocalStorageBackup;
+
+        exportData = {
+          version: backup.version,
+          type: 'full' as const,
+          recipes: backup.localStorage.fp_recipes as LittleEaterRecipe[],
+          feeding_logs: backup.localStorage.fp_feeding_logs.map((log) => ({
+            date: log.date,
+            time: log.time,
+            dependent_name: log.dependent_name,
+            recipe_name: log.recipe_name,
+            // Backup format uses `amount` (string like "Ate some") and `reaction` ("None")
+            // Standard format uses `reaction` (string like "ate_some")
+            dependent_id: log.dependent_id,
+            amount: 30,
+            reaction: log.amount ? mapReaction(log.amount) : mapReaction(log.reaction),
+            notes: log.notes,
+          })) as LittleEaterFeedingLog[],
+        };
+      } else if (
+        'type' in raw &&
+        (raw.type === 'recipes' || raw.type === 'full') &&
+        Array.isArray(raw.recipes)
+      ) {
+        // Standard food-plan export format
+        exportData = raw as LittleEaterExport;
+
+        if (exportData.type === 'full' && !Array.isArray(exportData.feeding_logs)) {
+          setImportError('Export type is "full" but missing "feeding_logs" array.');
+          e.target.value = '';
+          return;
+        }
+      } else {
+        setImportError(
+          'Unsupported file format. Expected a Little Eater export or localStorage backup.'
+        );
+        e.target.value = '';
         return;
       }
 
-      if (parsed.type !== 'recipes' && parsed.type !== 'full') {
-        setImportError(`Unsupported export type: "${parsed.type}". Expected "recipes" or "full".`);
-        return;
-      }
-
-      if (!Array.isArray(parsed.recipes)) {
-        setImportError('Export file is missing "recipes" array.');
-        return;
-      }
-
-      if (parsed.type === 'full' && !Array.isArray(parsed.feeding_logs)) {
-        setImportError('Export type is "full" but missing "feeding_logs" array.');
-        return;
-      }
-
-      setExportData(parsed);
+      setExportData(exportData);
       setStep('preview');
     } catch (err: unknown) {
       const message =
@@ -110,28 +231,43 @@ export function ImportModal({
     e.target.value = '';
   }, []);
 
-  const mapRecipeToCreateRequest = (r: LittleEaterRecipe): CreateRecipeRequest => ({
+  const mapTexture = (littleEaterTexture?: string): string | undefined => {
+    if (!littleEaterTexture) return undefined;
+    const key = littleEaterTexture.toLowerCase().replace(/\s+/g, '_');
+    return LITTLE_EATER_TO_FAMTRAC_TEXTURE[key] ?? littleEaterTexture;
+  };
+  const mapRecipeToCreateRequest = (
+    r: LittleEaterRecipe | LocalStorageRecipe
+  ): CreateRecipeRequest => ({
     name: r.name,
     emoji: r.emoji,
-    ingredients: r.ingredients,
-    age_min: r.age_min,
-    texture: r.texture,
-    allergens: r.allergens,
-    prep_notes: r.prep_notes,
+    // Export format uses `ingredients` (array), backup format uses `ingredient` (string)
+    ingredients: Array.isArray((r as LittleEaterRecipe).ingredients)
+      ? (r as LittleEaterRecipe).ingredients
+      : [(r as LocalStorageRecipe).ingredient],
+    // Export format uses `age_min`, backup format uses `ageMin`
+    age_min: (r as LittleEaterRecipe).age_min ?? (r as LocalStorageRecipe).ageMin,
+    texture: mapTexture(r.texture),
+    // Export format uses `allergens`, backup format uses `allergens` (same)
+    allergens: (r as LittleEaterRecipe).allergens ?? (r as LocalStorageRecipe).allergens,
+    // Export format uses `prep_notes`, backup format uses `prepNotes`
+    prep_notes: (r as LittleEaterRecipe).prep_notes ?? (r as LocalStorageRecipe).prepNotes,
     safe: r.safe,
   });
 
   const reactionToVolume = (reaction?: string): number => {
-    switch (reaction) {
+    switch (mapReaction(reaction)) {
       case 'tasted':
         return 10;
-      case 'ate_some':
+      case 'some':
         return 30;
-      case 'ate_most':
+      case 'most':
         return 60;
-      case 'ate_all':
+      case 'all':
         return 90;
       case 'refused':
+        return 0;
+      case 'none':
         return 0;
       default:
         return 30;
@@ -174,7 +310,7 @@ export function ImportModal({
     } else {
       setStep('results');
     }
-  }, [exportData, familyId]);
+  }, [exportData, familyId, mapRecipeToCreateRequest]);
 
   const handleImportFeedingLogs = useCallback(async () => {
     if (!exportData || !selectedDependentId) return;
@@ -217,7 +353,7 @@ export function ImportModal({
     setImporting(false);
     setFeedingLogImportResult({ success, failed });
     setStep('results');
-  }, [exportData, familyId, selectedDependentId]);
+  }, [exportData, familyId, reactionToVolume, selectedDependentId]);
 
   const handleDone = useCallback(() => {
     onRecipesImported(recipeImportResult?.success ?? 0);

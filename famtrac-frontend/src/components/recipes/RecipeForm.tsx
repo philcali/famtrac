@@ -86,117 +86,126 @@ export function RecipeForm({ recipe, onSubmit, onCancel, loading = false }: Reci
   ];
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Name */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g., Banana Oat Pancakes"
-          required
-          className={inputBase}
-        />
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {/* Name + Emoji row */}
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g., Banana Oat Pancakes"
+            required
+            className={inputBase}
+          />
+        </div>
+        <div className="w-16 shrink-0">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Emoji</label>
+          <input
+            type="text"
+            value={emoji}
+            onChange={(e) => setEmoji(e.target.value)}
+            placeholder="🍌"
+            maxLength={4}
+            className={`${inputBase} text-center text-xl`}
+          />
+          {emoji && <div className="text-center mt-0.5 text-2xl">{emoji}</div>}
+        </div>
       </div>
 
-      {/* Emoji */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Emoji</label>
-        <input
-          type="text"
-          value={emoji}
-          onChange={(e) => setEmoji(e.target.value)}
-          placeholder="🍌"
-          maxLength={4}
-          className={inputBase}
-        />
-        {emoji && <span className="text-2xl mt-1 block">{emoji}</span>}
+      {/* Age + Texture row */}
+      <div className="flex gap-2">
+        <div className="w-28 shrink-0">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Min age (mo)</label>
+          <input
+            type="number"
+            value={ageMin}
+            onChange={(e) => setAgeMin(e.target.value)}
+            placeholder="6"
+            min="0"
+            max="96"
+            className={inputBase}
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Texture</label>
+          <select
+            value={texture}
+            onChange={(e) => setTexture(e.target.value)}
+            className={inputBase}
+          >
+            <option value="">Select texture...</option>
+            {textureOptions.map((t) => (
+              <option key={t} value={t}>
+                {t.charAt(0).toUpperCase() + t.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Ingredients */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Ingredients (one per line)
+          Ingredients <span className="text-gray-400 font-normal">(one per line)</span>
         </label>
         <textarea
           value={ingredientsText}
           onChange={(e) => setIngredientsText(e.target.value)}
-          rows={3}
+          rows={2}
           className={`${inputBase} resize-none`}
           placeholder={'banana\noats\nmilk'}
         />
       </div>
 
-      {/* Age Min */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Minimum Age (months)</label>
-        <input
-          type="number"
-          value={ageMin}
-          onChange={(e) => setAgeMin(e.target.value)}
-          placeholder="6"
-          min="0"
-          max="96"
-          className={inputBase}
-        />
+      {/* Allergens + Prep Notes row */}
+      <div className="flex gap-2">
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Allergens <span className="text-gray-400 font-normal">(one per line)</span>
+          </label>
+          <textarea
+            value={allergensText}
+            onChange={(e) => setAllergensText(e.target.value)}
+            rows={2}
+            className={`${inputBase} resize-none`}
+            placeholder={'milk\ngluten\neggs'}
+          />
+        </div>
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Prep notes <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <textarea
+            value={prepNotes}
+            onChange={(e) => setPrepNotes(e.target.value)}
+            rows={2}
+            className={`${inputBase} resize-none`}
+            placeholder="Cooking tips, storage instructions, etc."
+          />
+        </div>
       </div>
 
-      {/* Texture */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Texture</label>
-        <select value={texture} onChange={(e) => setTexture(e.target.value)} className={inputBase}>
-          <option value="">Select texture...</option>
-          {textureOptions.map((t) => (
-            <option key={t} value={t}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Allergens */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Allergens (one per line)
-        </label>
-        <textarea
-          value={allergensText}
-          onChange={(e) => setAllergensText(e.target.value)}
-          rows={2}
-          className={`${inputBase} resize-none`}
-          placeholder={'milk\ngluten\neggs'}
-        />
-      </div>
-
-      {/* Prep Notes */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Prep Notes</label>
-        <textarea
-          value={prepNotes}
-          onChange={(e) => setPrepNotes(e.target.value)}
-          rows={2}
-          className={`${inputBase} resize-none`}
-          placeholder="Cooking tips, storage instructions, etc."
-        />
-      </div>
-
-      {/* Safe Toggle */}
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          id="safe-toggle"
-          checked={safe}
-          onChange={(e) => setSafe(e.target.checked)}
-          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-        />
-        <label htmlFor="safe-toggle" className="text-sm font-medium text-gray-700">
-          Mark as safe (no allergens)
+      {/* Safe toggle — compact inline pill */}
+      <div className="flex items-center gap-2 pt-1">
+        <label
+          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium cursor-pointer select-none transition-colors ${
+            safe ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={safe}
+            onChange={(e) => setSafe(e.target.checked)}
+            className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          />
+          <span>Mark as safe</span>
         </label>
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2 pt-2">
+      <div className="flex gap-2 pt-1">
         <Button variant="primary" type="submit" loading={loading} disabled={loading}>
           {recipe ? 'Save Changes' : 'Add Recipe'}
         </Button>

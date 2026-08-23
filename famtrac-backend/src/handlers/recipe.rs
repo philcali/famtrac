@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 /// Request body for creating a new recipe
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreateRecipeRequest {
+    #[serde(default)]
     pub family_id: FamilyId,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -144,7 +145,7 @@ pub async fn create_recipe<F: FamilyRepository, R: RecipeRepository>(
     let now = Timestamp::now();
     let recipe = Recipe {
         id: RecipeId::new(),
-        family_id: request.family_id,
+        family_id,
         name: request.name,
         emoji: request.emoji,
         ingredients: request.ingredients.unwrap_or_default(),
