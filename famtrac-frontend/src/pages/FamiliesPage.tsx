@@ -66,6 +66,10 @@ export function FamiliesPage() {
     navigate(`/families/${family.id}`);
   };
 
+  const handleRecipesClick = (family: Family) => {
+    navigate(`/families/${family.id}/recipes`);
+  };
+
   const handleFormSubmit = async (name: string) => {
     if (editingFamily) {
       // Update existing family
@@ -132,6 +136,7 @@ export function FamiliesPage() {
           onEdit={handleEditClick}
           onDelete={handleDeleteClick}
           onView={handleViewClick}
+          onRecipes={handleRecipesClick}
         />
 
         {/* Create/Edit Modal */}

@@ -10,6 +10,7 @@ export interface FamilyListProps {
   onEdit: (family: Family) => void;
   onDelete: (family: Family) => void;
   onView: (family: Family) => void;
+  onRecipes: (family: Family) => void;
 }
 
 /**
@@ -25,6 +26,7 @@ export function FamilyList({
   onEdit,
   onDelete,
   onView,
+  onRecipes,
 }: FamilyListProps) {
   if (loading) {
     return (
@@ -55,6 +57,7 @@ export function FamilyList({
           onEdit={onEdit}
           onDelete={onDelete}
           onView={onView}
+          onRecipes={onRecipes}
         />
       ))}
     </div>

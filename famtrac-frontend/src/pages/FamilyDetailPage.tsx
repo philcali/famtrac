@@ -14,6 +14,7 @@ import { useAuth } from '../auth/useAuth';
 import { useApi, useApiMutation } from '../hooks/useApi';
 import { createApiClient } from '../api/client';
 import { getFamily } from '../api/families';
+import { getRecipes } from '../api/recipes';
 import {
   getDependents,
   createDependent,
@@ -23,6 +24,7 @@ import {
 import { getShares, createShare, updateShare, revokeShare } from '../api/shares';
 import type { Dependent, Share, PermissionAction } from '../types/domain';
 import type { CreateShareRequest, UpdateShareRequest } from '../api/types';
+import type { RecipeResponse } from '../api/types';
 
 function mapShares(raw: { permission_scope: { actions: string[] }; status: string }[]): Share[] {
   return raw.map((s) => ({
@@ -65,6 +67,17 @@ export function FamilyDetailPage() {
     loading: familyLoading,
     error: familyError,
   } = useApi(() => getFamily(apiClient, familyId ?? 'NA'), [familyId]);
+
+  // Fetch recipes for count display
+  const {
+    data: recipesData,
+    loading: recipesLoading,
+    error: recipesError,
+  } = useApi(
+    () => getRecipes(apiClient, familyId ?? 'NA', 100),
+    [familyId]
+  );
+  const recipeCount = recipesData?.recipes?.length ?? 0;
 
   // Fetch dependents for this family
   const {
@@ -356,6 +369,33 @@ export function FamilyDetailPage() {
           <strong>Created:</strong> {new Date(family.created_at).toLocaleDateString()}
           <br />
           <strong>Updated:</strong> {new Date(family.updated_at).toLocaleDateString()}
+        </div>
+      </div>
+
+      {/* Recipes Card */}
+      <div className="mb-4">
+        <div
+          className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100 shadow-sm flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🍽️</span>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900">Recipes</h3>
+              <p className="text-sm text-gray-500">
+                {recipeCount} recipe{recipeCount !== 1 ? 's' : ''} in your library
+              </p>
+            </div>
+          </div>
+          {recipesLoading ? (
+            <LoadingSpinner />
+          ) : (
+            <Button
+              variant="secondary"
+              onClick={() => navigate(`/families/${familyId}/recipes`)}
+            >
+              View all recipes
+            </Button>
+          )}
         </div>
       </div>
 

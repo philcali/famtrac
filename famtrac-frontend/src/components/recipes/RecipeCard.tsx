@@ -18,6 +18,9 @@ export function RecipeCard({ recipe, onEdit, onDelete }: RecipeCardProps) {
     chunky: 'warning',
     soft: 'success',
     crunchy: 'danger',
+    mashed: 'info',
+    diced: 'primary',
+    whole: 'success',
   };
 
   const allergenVariant: string = 'danger';
