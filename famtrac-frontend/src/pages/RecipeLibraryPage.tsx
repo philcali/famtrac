@@ -7,6 +7,7 @@ import { ErrorMessage } from '../components/common/ErrorMessage';
 import { SkeletonCard } from '../components/common/SkeletonCard';
 import { RecipeCard } from '../components/recipes/RecipeCard';
 import { RecipeForm } from '../components/recipes/RecipeForm';
+import { ImportModal } from '../components/recipes/ImportModal';
 import { useAuth } from '../auth/useAuth';
 import { useApi, useApiMutation } from '../hooks/useApi';
 import { createApiClient } from '../api/client';
@@ -30,6 +31,7 @@ export function RecipeLibraryPage() {
   const [editingRecipe, setEditingRecipe] = useState<Recipe | undefined>();
   const [deletingRecipe, setDeletingRecipe] = useState<Recipe | undefined>();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
 
   const apiClient = createApiClient(getToken);
 
@@ -50,12 +52,13 @@ export function RecipeLibraryPage() {
 
   // Update recipe mutation
   const { mutate: updateRecipeMutation, loading: updateLoading } = useApiMutation(
-    (data: UpdateRecipeRequest) => updateRecipe(apiClient, familyId ?? 'NA', editingRecipe!.id, data)
+    (data: UpdateRecipeRequest) =>
+      updateRecipe(apiClient, familyId ?? 'NA', editingRecipe!.id, data)
   );
 
   // Delete recipe mutation
-  const { mutate: deleteRecipeMutation, loading: deleteLoading } = useApiMutation(
-    (id: string) => deleteRecipe(apiClient, familyId ?? 'NA', id)
+  const { mutate: deleteRecipeMutation, loading: deleteLoading } = useApiMutation((id: string) =>
+    deleteRecipe(apiClient, familyId ?? 'NA', id)
   );
 
   // Filter recipes by search query (name + ingredients)
@@ -64,8 +67,7 @@ export function RecipeLibraryPage() {
     const q = searchQuery.toLowerCase();
     return recipes.filter(
       (r) =>
-        r.name.toLowerCase().includes(q) ||
-        r.ingredients.some((i) => i.toLowerCase().includes(q))
+        r.name.toLowerCase().includes(q) || r.ingredients.some((i) => i.toLowerCase().includes(q))
     );
   }, [recipes, searchQuery]);
 
@@ -130,6 +132,30 @@ export function RecipeLibraryPage() {
   const handleBackClick = () => {
     navigate(-1);
   };
+
+  const handleImportOpen = () => {
+    setShowImport(true);
+  };
+
+  const handleImportClose = () => {
+    setShowImport(false);
+  };
+
+  const handleRecipesImported = useCallback(
+    (count: number) => {
+      if (count > 0) {
+        setSuccessMessage(`${count} recipe${count > 1 ? 's' : ''} imported`);
+        refetchRecipes();
+      }
+    },
+    [refetchRecipes]
+  );
+
+  const handleFeedingLogsImported = useCallback((count: number) => {
+    if (count > 0) {
+      setSuccessMessage(`${count} feeding log${count > 1 ? 's' : ''} imported`);
+    }
+  }, []);
 
   // Modal renderer (same pattern as FamilyDetailPage)
   const renderModal = (
@@ -220,15 +246,18 @@ export function RecipeLibraryPage() {
             className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        <Button icon="plus" onClick={handleAddClick}>
-          Add Recipe
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" icon="download" onClick={handleImportOpen}>
+            Import
+          </Button>
+          <Button icon="plus" onClick={handleAddClick}>
+            Add Recipe
+          </Button>
+        </div>
       </div>
 
       {/* Success message */}
-      {successMessage && (
-        <SuccessMessage message={successMessage} onClose={handleSuccessClose} />
-      )}
+      {successMessage && <SuccessMessage message={successMessage} onClose={handleSuccessClose} />}
 
       {/* Recipe grid */}
       {filteredRecipes.length === 0 && recipes.length === 0 ? (
@@ -246,9 +275,7 @@ export function RecipeLibraryPage() {
         <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
           <span className="text-4xl">🔍</span>
           <h3 className="text-lg font-semibold text-gray-900 mt-3">No matching recipes</h3>
-          <p className="text-sm text-gray-500 mt-1">
-            Try a different search term.
-          </p>
+          <p className="text-sm text-gray-500 mt-1">Try a different search term.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -288,6 +315,16 @@ export function RecipeLibraryPage() {
         onCancel={handleDeleteCancel}
         loading={deleteLoading}
       />
+
+      {/* Import Modal */}
+      {showImport && (
+        <ImportModal
+          familyId={familyId ?? 'NA'}
+          onClose={handleImportClose}
+          onRecipesImported={handleRecipesImported}
+          onFeedingLogsImported={handleFeedingLogsImported}
+        />
+      )}
     </div>
   );
 }

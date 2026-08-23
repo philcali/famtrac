@@ -241,3 +241,33 @@ export interface UpdateFeedingLogRequest {
   reaction?: string;
   notes?: string;
 }
+
+// Little Eater (food-plan) export types for import
+
+export interface LittleEaterExport {
+  version: number;
+  type: 'recipes' | 'full';
+  recipes: LittleEaterRecipe[];
+  feeding_logs: LittleEaterFeedingLog[];
+}
+
+export interface LittleEaterRecipe {
+  name: string;
+  emoji?: string;
+  ingredients: string[];
+  age_min?: number;
+  texture?: string;
+  allergens: string[];
+  prep_notes?: string;
+  safe?: boolean;
+}
+
+export interface LittleEaterFeedingLog {
+  dependent_id: string;
+  date: string;
+  time: string;
+  recipe_name?: string;
+  amount: number;
+  reaction?: string;
+  notes?: string;
+}
