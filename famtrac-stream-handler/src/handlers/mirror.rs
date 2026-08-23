@@ -67,7 +67,27 @@ pub async fn handle_share_activated(
         conditional_put(client, table_name, mirrored_dep).await?;
     }
 
-    // 3. For each dependent, fetch and mirror all activities
+    // 3. Mirror all recipes for this family (rekeyed into accepter's partition)
+    let recipes = query_items(
+        client,
+        table_name,
+        &format!("FAMILY#{}", share.family_id.0),
+        "RECIPE#",
+    )
+    .await?;
+
+    for recipe_item in &recipes {
+        let mut mirrored_recipe = rekey_item(
+            recipe_item.clone(),
+            &format!("OWNER#{}", accepter_id.0),
+            &share_id_str,
+            &scope_json,
+        );
+        stamp_sync_token(&mut mirrored_recipe, sync_token);
+        conditional_put(client, table_name, mirrored_recipe).await?;
+    }
+
+    // 4. For each dependent, fetch and mirror all activities
     for dep_item in &dependents {
         let dep_id = match dep_item.get("id").and_then(|v| v.as_s().ok()) {
             Some(id) => id.clone(),
@@ -86,6 +106,36 @@ pub async fn handle_share_activated(
             let mut mirrored_act = annotate_item(act_item, &share_id_str, &scope_json);
             stamp_sync_token(&mut mirrored_act, sync_token);
             conditional_put(client, table_name, mirrored_act).await?;
+        }
+
+        // 5. Mirror all MealSlots for this dependent
+        let meal_slots = query_items(
+            client,
+            table_name,
+            &format!("FAMILY#{}#DEPENDENT#{}", share.family_id.0, dep_id),
+            "MEAL_SLOT#",
+        )
+        .await?;
+
+        for ms_item in &meal_slots {
+            let mut mirrored_ms = annotate_item(ms_item.clone(), &share_id_str, &scope_json);
+            stamp_sync_token(&mut mirrored_ms, sync_token);
+            conditional_put(client, table_name, mirrored_ms).await?;
+        }
+
+        // 6. Mirror all FeedingLogs for this dependent
+        let feeding_logs = query_items(
+            client,
+            table_name,
+            &format!("FAMILY#{}#DEPENDENT#{}", share.family_id.0, dep_id),
+            "FEEDING_LOG#",
+        )
+        .await?;
+
+        for fl_item in &feeding_logs {
+            let mut mirrored_fl = annotate_item(fl_item.clone(), &share_id_str, &scope_json);
+            stamp_sync_token(&mut mirrored_fl, sync_token);
+            conditional_put(client, table_name, mirrored_fl).await?;
         }
     }
 

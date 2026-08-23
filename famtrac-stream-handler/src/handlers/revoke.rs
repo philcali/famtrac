@@ -8,8 +8,11 @@ use crate::dynamo_util::{delete_item, query_items};
 /// Handle a share revocation by deleting all mirrored records associated with
 /// the revoked share. This includes:
 /// 1. The mirrored Family record in the accepter's OWNER partition
-/// 2. All Dependent records annotated with the share's `share_id`
-/// 3. All Activity records for each dependent annotated with the share's `share_id`
+/// 2. All Recipe records for the family annotated with the share's `share_id`
+/// 3. All Dependent records annotated with the share's `share_id`
+/// 4. All Activity records for each dependent annotated with the share's `share_id`
+/// 5. All MealSlot records for each dependent annotated with the share's `share_id`
+/// 6. All FeedingLog records for each dependent annotated with the share's `share_id`
 ///
 /// All deletes are idempotent — `delete_item` on a non-existent key succeeds
 /// silently (Requirement 3.5).
@@ -31,6 +34,39 @@ pub async fn handle_share_revoked(
         &format!("FAMILY#{}", family_id.0),
     )
     .await?;
+
+    // 1b. Delete all mirrored Recipe records for this family.
+    //     Query recipes under FAMILY#{family_id} and delete those matching share_id.
+    let recipes = query_items(
+        client,
+        table_name,
+        &format!("FAMILY#{}", family_id.0),
+        "RECIPE#",
+    )
+    .await?;
+
+    for recipe_item in &recipes {
+        let matches_share = recipe_item
+            .get("share_id")
+            .and_then(|v| v.as_s().ok())
+            .map(|s| s == &share_id_str)
+            .unwrap_or(false);
+
+        if !matches_share {
+            continue;
+        }
+
+        let recipe_pk = match recipe_item.get("PK").and_then(|v| v.as_s().ok()) {
+            Some(pk) => pk.clone(),
+            None => continue,
+        };
+        let recipe_sk = match recipe_item.get("SK").and_then(|v| v.as_s().ok()) {
+            Some(sk) => sk.clone(),
+            None => continue,
+        };
+
+        delete_item(client, table_name, &recipe_pk, &recipe_sk).await?;
+    }
 
     // 2. Query all Dependents under FAMILY#{family_id} and delete those
     //    matching the revoked share_id.
@@ -102,6 +138,84 @@ pub async fn handle_share_revoked(
             };
 
             delete_item(client, table_name, &act_pk, &act_sk).await?;
+        }
+    }
+
+    // 4. Delete all mirrored MealSlot records for each dependent.
+    for dep_item in &matching_dependents {
+        let dep_id = match dep_item.get("id").and_then(|v| v.as_s().ok()) {
+            Some(id) => id.clone(),
+            None => continue,
+        };
+
+        let meal_slots = query_items(
+            client,
+            table_name,
+            &format!("FAMILY#{}#DEPENDENT#{}", family_id.0, dep_id),
+            "MEAL_SLOT#",
+        )
+        .await?;
+
+        for ms_item in &meal_slots {
+            let matches_share = ms_item
+                .get("share_id")
+                .and_then(|v| v.as_s().ok())
+                .map(|s| s == &share_id_str)
+                .unwrap_or(false);
+
+            if !matches_share {
+                continue;
+            }
+
+            let ms_pk = match ms_item.get("PK").and_then(|v| v.as_s().ok()) {
+                Some(pk) => pk.clone(),
+                None => continue,
+            };
+            let ms_sk = match ms_item.get("SK").and_then(|v| v.as_s().ok()) {
+                Some(sk) => sk.clone(),
+                None => continue,
+            };
+
+            delete_item(client, table_name, &ms_pk, &ms_sk).await?;
+        }
+    }
+
+    // 5. Delete all mirrored FeedingLog records for each dependent.
+    for dep_item in &matching_dependents {
+        let dep_id = match dep_item.get("id").and_then(|v| v.as_s().ok()) {
+            Some(id) => id.clone(),
+            None => continue,
+        };
+
+        let feeding_logs = query_items(
+            client,
+            table_name,
+            &format!("FAMILY#{}#DEPENDENT#{}", family_id.0, dep_id),
+            "FEEDING_LOG#",
+        )
+        .await?;
+
+        for fl_item in &feeding_logs {
+            let matches_share = fl_item
+                .get("share_id")
+                .and_then(|v| v.as_s().ok())
+                .map(|s| s == &share_id_str)
+                .unwrap_or(false);
+
+            if !matches_share {
+                continue;
+            }
+
+            let fl_pk = match fl_item.get("PK").and_then(|v| v.as_s().ok()) {
+                Some(pk) => pk.clone(),
+                None => continue,
+            };
+            let fl_sk = match fl_item.get("SK").and_then(|v| v.as_s().ok()) {
+                Some(sk) => sk.clone(),
+                None => continue,
+            };
+
+            delete_item(client, table_name, &fl_pk, &fl_sk).await?;
         }
     }
 

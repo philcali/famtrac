@@ -36,6 +36,12 @@ pub enum PermissionAction {
     DependentWrite,
     ActivityRead,
     ActivityWrite,
+    RecipeRead,
+    RecipeWrite,
+    MealSlotRead,
+    MealSlotWrite,
+    FeedingLogRead,
+    FeedingLogWrite,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -86,6 +92,36 @@ impl PermissionScope {
                     constraint: Some("activity_write requires dependent_read".to_string()),
                 });
             }
+        }
+
+        if self.actions.contains(&PermissionAction::RecipeWrite)
+            && !self.actions.contains(&PermissionAction::RecipeRead)
+        {
+            return Err(ValidationError {
+                field: "permission_scope".to_string(),
+                message: "recipe_write requires recipe_read".to_string(),
+                constraint: Some("recipe_write requires recipe_read".to_string()),
+            });
+        }
+
+        if self.actions.contains(&PermissionAction::MealSlotWrite)
+            && !self.actions.contains(&PermissionAction::MealSlotRead)
+        {
+            return Err(ValidationError {
+                field: "permission_scope".to_string(),
+                message: "meal_slot_write requires meal_slot_read".to_string(),
+                constraint: Some("meal_slot_write requires meal_slot_read".to_string()),
+            });
+        }
+
+        if self.actions.contains(&PermissionAction::FeedingLogWrite)
+            && !self.actions.contains(&PermissionAction::FeedingLogRead)
+        {
+            return Err(ValidationError {
+                field: "permission_scope".to_string(),
+                message: "feeding_log_write requires feeding_log_read".to_string(),
+                constraint: Some("feeding_log_write requires feeding_log_read".to_string()),
+            });
         }
 
         Ok(())

@@ -66,6 +66,7 @@ async fn propagate_to_mirrors(
     }
 
     let is_family_record = change.sk.starts_with("FAMILY#");
+    let is_recipe_record = change.sk.starts_with("RECIPE#");
 
     for share in &active_shares {
         let accepter_id = match &share.accepter_id {
@@ -79,8 +80,8 @@ async fn propagate_to_mirrors(
 
         match change.operation {
             ChangeOperation::Insert | ChangeOperation::Modify => {
-                if is_family_record {
-                    // Family records are rekeyed into accepter's OWNER partition
+                if is_family_record || is_recipe_record {
+                    // Family and Recipe records are rekeyed into accepter's OWNER partition
                     let mut mirrored = rekey_item(
                         change.new_image.clone(),
                         &format!("OWNER#{}", accepter_id),
@@ -93,15 +94,15 @@ async fn propagate_to_mirrors(
                     );
                     put_item(client, table_name, mirrored).await?;
                 } else {
-                    // Dependent/Activity records keep the same PK/SK.
+                    // Dependent/MealSlot/FeedingLog/Activity records keep the same PK/SK.
                     // The original item is shared, so we don't need to create
                     // separate copies. The share metadata is on the mirrored
                     // Family record, and permission checks use that context.
                 }
             }
             ChangeOperation::Remove => {
-                if is_family_record {
-                    // Delete the mirrored Family from the accepter's partition
+                if is_family_record || is_recipe_record {
+                    // Delete the mirrored Family/Recipe from the accepter's partition
                     delete_item(
                         client,
                         table_name,
@@ -110,7 +111,7 @@ async fn propagate_to_mirrors(
                     )
                     .await?;
                 }
-                // For Dependent/Activity removes: the original item is deleted,
+                // For Dependent/MealSlot/FeedingLog/Activity removes: the original item is deleted,
                 // which is the same item the accepter sees. No extra cleanup needed.
             }
         }
@@ -125,7 +126,7 @@ async fn propagate_to_mirrors(
 /// the stream handler detects the `share_id` on the record and propagates the
 /// change back to the original family's partition.
 ///
-/// For Family record write-backs, performs a semantic diff against the existing
+/// For Family and Recipe record write-backs, performs a semantic diff against the existing
 /// owner record before writing — skips if identical (Requirement 6.7, 6.8).
 ///
 /// Stamps `sync_token` on every item written (Requirement 6.1, 6.2).
@@ -141,9 +142,10 @@ async fn propagate_writeback(
     };
 
     let is_family_record = change.sk.starts_with("FAMILY#");
+    let is_recipe_record = change.sk.starts_with("RECIPE#");
 
-    if is_family_record {
-        // Mirrored Family records have PK=OWNER#{accepter_id}.
+    if is_family_record || is_recipe_record {
+        // Mirrored Family/Recipe records have PK=OWNER#{accepter_id}.
         // We need to find the original owner and write back to their partition.
         let family_id = match extract_family_id(&change.pk, &change.sk, image) {
             Some(fid) => fid,
@@ -201,6 +203,57 @@ async fn propagate_writeback(
                 )
                 .await?;
             }
+        }
+    } else if change.sk.starts_with("MEAL_SLOT#") || change.sk.starts_with("FEEDING_LOG#") {
+        // MealSlot/FeedingLog mirrored records share the same PK/SK as originals.
+        // A write-back on these means the accepter modified the shared item directly.
+        // The change is already on the original item — no extra propagation needed.
+        // However, we should ensure the share metadata is preserved on the item.
+        if change.operation == ChangeOperation::Insert
+            || change.operation == ChangeOperation::Modify
+        {
+            // Re-annotate the item with share metadata if it was stripped
+            let share_id_str = match image.get("share_id").and_then(|v| v.as_s().ok()) {
+                Some(s) => s.clone(),
+                None => return Ok(()),
+            };
+            let scope_json = match image.get("permission_scope").and_then(|v| v.as_s().ok()) {
+                Some(s) => s.clone(),
+                None => return Ok(()),
+            };
+
+            // The item already has the correct PK/SK. Just ensure share metadata is present.
+            let mut item = change.new_image.clone();
+            item.insert("share_id".to_string(), DdbAttributeValue::S(share_id_str));
+            item.insert(
+                "permission_scope".to_string(),
+                DdbAttributeValue::S(scope_json),
+            );
+
+            // Semantic diff: compare against existing to avoid no-op writes (Requirement 6.8)
+            let existing_pk = match item.get("PK").and_then(|v| v.as_s().ok()) {
+                Some(pk) => pk.clone(),
+                None => return Ok(()),
+            };
+            let existing_sk = match item.get("SK").and_then(|v| v.as_s().ok()) {
+                Some(sk) => sk.clone(),
+                None => return Ok(()),
+            };
+            let existing = get_item(client, table_name, &existing_pk, &existing_sk).await?;
+            if let Some(existing_item) = existing {
+                let stripped_new = strip_sync_token(&item);
+                let stripped_existing = strip_sync_token(&existing_item);
+                if stripped_new == stripped_existing {
+                    return Ok(()); // No meaningful change — skip write-back
+                }
+            }
+
+            // Stamp sync_token on the write-back item
+            item.insert(
+                "sync_token".to_string(),
+                DdbAttributeValue::S(sync_token.to_string()),
+            );
+            put_item(client, table_name, item).await?;
         }
     } else {
         // Dependent/Activity mirrored records share the same PK/SK as originals.

@@ -11,8 +11,11 @@ use crate::dynamo_util::{conditional_update_permission, query_items};
 ///
 /// Updates:
 /// 1. The mirrored Family record in the accepter's `OWNER#` partition
-/// 2. All mirrored Dependent records under `FAMILY#{family_id}`
-/// 3. All mirrored Activity records under `FAMILY#{family_id}#DEPENDENT#{dep_id}`
+/// 2. All mirrored Recipe records under `FAMILY#{family_id}`
+/// 3. All mirrored Dependent records under `FAMILY#{family_id}`
+/// 4. All mirrored Activity records under `FAMILY#{family_id}#DEPENDENT#{dep_id}`
+/// 5. All mirrored MealSlot records under `FAMILY#{family_id}#DEPENDENT#{dep_id}`
+/// 6. All mirrored FeedingLog records under `FAMILY#{family_id}#DEPENDENT#{dep_id}`
 ///
 /// Each update uses a condition expression `share_id = :sid` so that only
 /// mirrored copies (not originals) are affected. ConditionalCheckFailedExceptions
@@ -42,7 +45,33 @@ pub async fn handle_permission_updated(
     )
     .await?;
 
-    // 2. Query all Dependents for this family and update mirrored ones
+    // 2. Update all mirrored Recipe records for this family
+    let recipes = query_items(
+        client,
+        table_name,
+        &format!("FAMILY#{}", share.family_id.0),
+        "RECIPE#",
+    )
+    .await?;
+
+    for recipe_item in &recipes {
+        let recipe_sk = match recipe_item.get("SK").and_then(|v| v.as_s().ok()) {
+            Some(sk) => sk.clone(),
+            None => continue,
+        };
+
+        conditional_update_permission(
+            client,
+            table_name,
+            &format!("FAMILY#{}", share.family_id.0),
+            &recipe_sk,
+            &share_id_str,
+            &scope_json,
+        )
+        .await?;
+    }
+
+    // 3. Query all Dependents for this family and update mirrored ones
     let dependents = query_items(
         client,
         table_name,
@@ -92,6 +121,63 @@ pub async fn handle_permission_updated(
                 table_name,
                 &format!("FAMILY#{}#DEPENDENT#{}", share.family_id.0, dep_id),
                 &act_sk,
+                &share_id_str,
+                &scope_json,
+            )
+            .await?;
+        }
+
+        // Update mirrored MealSlot records for this dependent
+        let dep_id = match dep_item.get("id").and_then(|v| v.as_s().ok()) {
+            Some(id) => id.clone(),
+            None => continue,
+        };
+
+        let meal_slots = query_items(
+            client,
+            table_name,
+            &format!("FAMILY#{}#DEPENDENT#{}", share.family_id.0, dep_id),
+            "MEAL_SLOT#",
+        )
+        .await?;
+
+        for ms_item in &meal_slots {
+            let ms_sk = match ms_item.get("SK").and_then(|v| v.as_s().ok()) {
+                Some(sk) => sk.clone(),
+                None => continue,
+            };
+
+            conditional_update_permission(
+                client,
+                table_name,
+                &format!("FAMILY#{}#DEPENDENT#{}", share.family_id.0, dep_id),
+                &ms_sk,
+                &share_id_str,
+                &scope_json,
+            )
+            .await?;
+        }
+
+        // Update mirrored FeedingLog records for this dependent
+        let feeding_logs = query_items(
+            client,
+            table_name,
+            &format!("FAMILY#{}#DEPENDENT#{}", share.family_id.0, dep_id),
+            "FEEDING_LOG#",
+        )
+        .await?;
+
+        for fl_item in &feeding_logs {
+            let fl_sk = match fl_item.get("SK").and_then(|v| v.as_s().ok()) {
+                Some(sk) => sk.clone(),
+                None => continue,
+            };
+
+            conditional_update_permission(
+                client,
+                table_name,
+                &format!("FAMILY#{}#DEPENDENT#{}", share.family_id.0, dep_id),
+                &fl_sk,
                 &share_id_str,
                 &scope_json,
             )

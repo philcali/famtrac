@@ -10,6 +10,12 @@ export const PERMISSION_DEPENDENCIES: Record<PermissionAction, PermissionAction[
   dependent_write: ['dependent_read'],
   activity_read: [],
   activity_write: ['activity_read', 'dependent_read'],
+  recipe_read: [],
+  recipe_write: ['recipe_read'],
+  meal_slot_read: [],
+  meal_slot_write: ['meal_slot_read'],
+  feeding_log_read: [],
+  feeding_log_write: ['feeding_log_read'],
 };
 
 /** Human-readable labels for each permission action */
@@ -19,6 +25,12 @@ export const PERMISSION_LABELS: Record<PermissionAction, string> = {
   dependent_write: 'Edit Dependents',
   activity_read: 'View Activities',
   activity_write: 'Edit Activities',
+  recipe_read: 'View Recipes',
+  recipe_write: 'Edit Recipes',
+  meal_slot_read: 'View Meal Plan',
+  meal_slot_write: 'Edit Meal Plan',
+  feeding_log_read: 'View Feeding Logs',
+  feeding_log_write: 'Edit Feeding Logs',
 };
 
 /**
@@ -105,6 +117,15 @@ export function validatePermissionScope(actions: PermissionAction[]): string | n
     if (!actions.includes('dependent_read')) {
       return 'activity_write requires dependent_read';
     }
+  }
+  if (actions.includes('recipe_write') && !actions.includes('recipe_read')) {
+    return 'recipe_write requires recipe_read';
+  }
+  if (actions.includes('meal_slot_write') && !actions.includes('meal_slot_read')) {
+    return 'meal_slot_write requires meal_slot_read';
+  }
+  if (actions.includes('feeding_log_write') && !actions.includes('feeding_log_read')) {
+    return 'feeding_log_write requires feeding_log_read';
   }
   return null;
 }

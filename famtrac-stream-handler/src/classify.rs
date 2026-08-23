@@ -83,10 +83,17 @@ pub fn strip_sync_token(
 
 /// Determine the record type from the SK prefix.
 /// Returns `"Share"` for share records, `"Family"` / `"Dependent"` / `"Activity"` for
-/// resource records, or `None` for anything we don't care about.
+/// resource records, `"Recipe"` / `"MealSlot"` / `"FeedingLog"` for meal planning records,
+/// or `None` for anything we don't care about.
 fn record_type_from_sk(sk: &str) -> Option<&'static str> {
     if sk.starts_with("SHARE#") {
         Some("Share")
+    } else if sk.starts_with("RECIPE#") {
+        Some("Recipe")
+    } else if sk.starts_with("MEAL_SLOT#") {
+        Some("MealSlot")
+    } else if sk.starts_with("FEEDING_LOG#") {
+        Some("FeedingLog")
     } else if sk.starts_with("FAMILY#") {
         Some("Family")
     } else if sk.starts_with("DEPENDENT#") {
@@ -147,7 +154,7 @@ pub fn classify_record(record: &EventRecord) -> RecordChange {
 
     match record_type {
         "Share" => classify_share_record(&pk, &sk, &op, record),
-        "Family" | "Dependent" | "Activity" => {
+        "Family" | "Dependent" | "Activity" | "Recipe" | "MealSlot" | "FeedingLog" => {
             let change_op = match op {
                 OperationType::Insert => ChangeOperation::Insert,
                 OperationType::Modify => ChangeOperation::Modify,
@@ -575,6 +582,75 @@ mod tests {
         let record = make_event_record("INSERT", keys, HashMap::new(), HashMap::new());
 
         assert!(matches!(classify_record(&record), RecordChange::Ignored));
+    }
+
+    #[test]
+    fn test_recipe_insert_is_resource_changed() {
+        let mut keys = HashMap::new();
+        keys.insert(
+            "PK".to_string(),
+            s(&format!("FAMILY#{}", uuid::Uuid::new_v4())),
+        );
+        keys.insert(
+            "SK".to_string(),
+            s(&format!("RECIPE#{}", uuid::Uuid::new_v4())),
+        );
+        let record = make_event_record("INSERT", keys, HashMap::new(), HashMap::new());
+
+        assert!(matches!(
+            classify_record(&record),
+            RecordChange::ResourceChanged(_)
+        ));
+    }
+
+    #[test]
+    fn test_meal_slot_modify_is_resource_changed() {
+        let mut keys = HashMap::new();
+        keys.insert(
+            "PK".to_string(),
+            s(&format!(
+                "FAMILY#{}#DEPENDENT#{}",
+                uuid::Uuid::new_v4(),
+                uuid::Uuid::new_v4()
+            )),
+        );
+        keys.insert(
+            "SK".to_string(),
+            s(&format!("MEAL_SLOT#{}", uuid::Uuid::new_v4())),
+        );
+        let mut old_img = HashMap::new();
+        old_img.insert("time".to_string(), s("08:00"));
+        let mut new_img = HashMap::new();
+        new_img.insert("time".to_string(), s("09:00"));
+        let record = make_event_record("MODIFY", keys, old_img, new_img);
+
+        assert!(matches!(
+            classify_record(&record),
+            RecordChange::ResourceChanged(_)
+        ));
+    }
+
+    #[test]
+    fn test_feeding_log_remove_is_resource_changed() {
+        let mut keys = HashMap::new();
+        keys.insert(
+            "PK".to_string(),
+            s(&format!(
+                "FAMILY#{}#DEPENDENT#{}",
+                uuid::Uuid::new_v4(),
+                uuid::Uuid::new_v4()
+            )),
+        );
+        keys.insert(
+            "SK".to_string(),
+            s(&format!("FEEDING_LOG#{}", uuid::Uuid::new_v4())),
+        );
+        let record = make_event_record("REMOVE", keys, HashMap::new(), HashMap::new());
+
+        assert!(matches!(
+            classify_record(&record),
+            RecordChange::ResourceChanged(_)
+        ));
     }
 
     #[test]
