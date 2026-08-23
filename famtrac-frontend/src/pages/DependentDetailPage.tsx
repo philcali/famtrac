@@ -294,6 +294,12 @@ export function DependentDetailPage() {
             </Button>
             <Button
               variant="secondary"
+              onClick={() => navigate(`/families/${familyId}/dependents/${dependentId}/meal-plan`)}
+            >
+              Meal Plan
+            </Button>
+            <Button
+              variant="secondary"
               onClick={() => navigate(`/families/${familyId}/dependents/${dependentId}/reports`)}
             >
               Reports

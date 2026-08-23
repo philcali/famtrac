@@ -206,14 +206,17 @@ pub fn convert_image(image: &serde_dynamo::Item) -> HashMap<String, DdbAttribute
 /// Extract the family_id from a resource's DynamoDB image or PK.
 ///
 /// For Family records: read the `id` attribute (the family_id IS the record id).
+/// For Recipe records: PK = FAMILY#{fid} (same as Family PK, parsed via SK fallback).
 /// For Dependent records: read the `family_id` attribute, or parse from PK `FAMILY#{fid}`.
+/// For MealSlot records: read the `family_id` attribute, or parse from PK `FAMILY#{fid}#DEPENDENT#{did}`.
+/// For FeedingLog records: read the `family_id` attribute, or parse from PK `FAMILY#{fid}#DEPENDENT#{did}`.
 /// For Activity records: read the `family_id` attribute, or parse from PK `FAMILY#{fid}#DEPENDENT#{did}`.
 pub fn extract_family_id(
     pk: &str,
     sk: &str,
     image: &HashMap<String, DdbAttributeValue>,
 ) -> Option<String> {
-    // Try the image's family_id attribute first (present on Dependent/Activity)
+    // Try the image's family_id attribute first (present on Dependent/MealSlot/FeedingLog/Activity)
     if let Some(fid) = image.get("family_id").and_then(|v| v.as_s().ok()) {
         return Some(fid.clone());
     }
@@ -227,12 +230,19 @@ pub fn extract_family_id(
         return sk.strip_prefix("FAMILY#").map(|s| s.to_string());
     }
 
+    // For Recipe records: PK = FAMILY#{fid} (same pattern as Family PK)
+    if sk.starts_with("RECIPE#")
+        && pk.starts_with("FAMILY#")
+    {
+        return pk.strip_prefix("FAMILY#").map(|s| s.to_string());
+    }
+
     // For Dependent records: PK = FAMILY#{fid}
     if pk.starts_with("FAMILY#") && !pk.contains("#DEPENDENT#") {
         return pk.strip_prefix("FAMILY#").map(|s| s.to_string());
     }
 
-    // For Activity records: PK = FAMILY#{fid}#DEPENDENT#{did}
+    // For MealSlot / FeedingLog / Activity records: PK = FAMILY#{fid}#DEPENDENT#{did}
     if pk.starts_with("FAMILY#") && pk.contains("#DEPENDENT#") {
         let after_family = pk.strip_prefix("FAMILY#")?;
         let fid = after_family.split("#DEPENDENT#").next()?;
@@ -344,6 +354,56 @@ mod tests {
         let pk = format!("FAMILY#{}#DEPENDENT#{}", fid, did);
         let sk = format!("ACTIVITY#{}", uuid::Uuid::new_v4());
         let image: HashMap<String, DdbAttributeValue> = HashMap::new();
+        assert_eq!(extract_family_id(&pk, &sk, &image), Some(fid));
+    }
+
+    #[test]
+    fn test_extract_family_id_from_recipe_record() {
+        let fid = uuid::Uuid::new_v4().to_string();
+        let pk = format!("FAMILY#{}", fid);
+        let sk = format!("RECIPE#{}", uuid::Uuid::new_v4());
+        let mut image = HashMap::new();
+        image.insert(
+            "family_id".to_string(),
+            DdbAttributeValue::S(fid.clone()),
+        );
+        assert_eq!(extract_family_id(&pk, &sk, &image), Some(fid));
+    }
+
+    #[test]
+    fn test_extract_family_id_from_recipe_pk_fallback() {
+        let fid = uuid::Uuid::new_v4().to_string();
+        let pk = format!("FAMILY#{}", fid);
+        let sk = format!("RECIPE#{}", uuid::Uuid::new_v4());
+        let image: HashMap<String, DdbAttributeValue> = HashMap::new();
+        assert_eq!(extract_family_id(&pk, &sk, &image), Some(fid));
+    }
+
+    #[test]
+    fn test_extract_family_id_from_meal_slot_record() {
+        let fid = uuid::Uuid::new_v4().to_string();
+        let did = uuid::Uuid::new_v4().to_string();
+        let pk = format!("FAMILY#{}#DEPENDENT#{}", fid, did);
+        let sk = format!("MEAL_SLOT#{}", uuid::Uuid::new_v4());
+        let mut image = HashMap::new();
+        image.insert(
+            "family_id".to_string(),
+            DdbAttributeValue::S(fid.clone()),
+        );
+        assert_eq!(extract_family_id(&pk, &sk, &image), Some(fid));
+    }
+
+    #[test]
+    fn test_extract_family_id_from_feeding_log_record() {
+        let fid = uuid::Uuid::new_v4().to_string();
+        let did = uuid::Uuid::new_v4().to_string();
+        let pk = format!("FAMILY#{}#DEPENDENT#{}", fid, did);
+        let sk = format!("FEEDING_LOG#{}", uuid::Uuid::new_v4());
+        let mut image = HashMap::new();
+        image.insert(
+            "family_id".to_string(),
+            DdbAttributeValue::S(fid.clone()),
+        );
         assert_eq!(extract_family_id(&pk, &sk, &image), Some(fid));
     }
 

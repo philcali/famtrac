@@ -2,6 +2,8 @@ import { Routes, Route } from 'react-router-dom';
 import { FamiliesPage } from './pages/FamiliesPage';
 import { FamilyDetailPage } from './pages/FamilyDetailPage';
 import { DependentDetailPage } from './pages/DependentDetailPage';
+import { RecipeLibraryPage } from './pages/RecipeLibraryPage';
+import { MealPlanPage } from './pages/MealPlanPage';
 import { ReportPage } from './pages/ReportPage';
 import { PendingSharesPage } from './pages/PendingSharesPage';
 import { CallbackPage } from './pages/CallbackPage';
@@ -42,10 +44,26 @@ function App() {
           }
         />
         <Route
+          path="/families/:familyId/recipes"
+          element={
+            <ProtectedRoute>
+              <RecipeLibraryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/families/:familyId/dependents/:dependentId"
           element={
             <ProtectedRoute>
               <DependentDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/families/:familyId/dependents/:dependentId/meal-plan"
+          element={
+            <ProtectedRoute>
+              <MealPlanPage />
             </ProtectedRoute>
           }
         />

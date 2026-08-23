@@ -5,13 +5,14 @@
 
 pub mod mocks {
     use crate::domain::{
-        Activity, ActivityId, Dependent, DependentId, Family, FamilyId, IdentityId, Share, ShareId,
+        Activity, ActivityId, Dependent, DependentId, Family, FamilyId, FeedingLog, FeedingLogId,
+        IdentityId, MealSlot, MealSlotId, Recipe, RecipeId, Share, ShareId,
     };
     use crate::errors::StoreError;
     use crate::handlers::{PaginatedResponse, PaginationParams};
     use crate::repository::{
         ActivityQueryParams, ActivityRepository, DependentRepository, FamilyRepository,
-        ShareRepository,
+        FeedingLogRepository, MealSlotRepository, RecipeRepository, ShareRepository,
     };
     use async_trait::async_trait;
     use std::collections::HashMap;
@@ -372,6 +373,127 @@ pub mod mocks {
         }
     }
 
+    /// Mock implementation of RecipeRepository for testing
+    #[derive(Clone)]
+    pub struct MockRecipeRepository {
+        pub should_fail: bool,
+        pub recipes: Arc<Mutex<HashMap<RecipeId, Recipe>>>,
+    }
+
+    impl MockRecipeRepository {
+        pub fn new() -> Self {
+            MockRecipeRepository {
+                should_fail: false,
+                recipes: Arc::new(Mutex::new(HashMap::new())),
+            }
+        }
+
+        pub fn with_failure() -> Self {
+            MockRecipeRepository {
+                should_fail: true,
+                recipes: Arc::new(Mutex::new(HashMap::new())),
+            }
+        }
+
+        pub fn insert(&self, recipe: Recipe) {
+            self.recipes.lock().unwrap().insert(recipe.id, recipe);
+        }
+    }
+
+    impl Default for MockRecipeRepository {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    #[async_trait]
+    impl RecipeRepository for MockRecipeRepository {
+        async fn create(&self, recipe: Recipe) -> Result<Recipe, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            self.recipes
+                .lock()
+                .unwrap()
+                .insert(recipe.id, recipe.clone());
+            Ok(recipe)
+        }
+
+        async fn get(
+            &self,
+            family_id: FamilyId,
+            id: RecipeId,
+        ) -> Result<Option<Recipe>, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            Ok(self
+                .recipes
+                .lock()
+                .unwrap()
+                .get(&id)
+                .filter(|r| r.family_id == family_id)
+                .cloned())
+        }
+
+        async fn update(&self, recipe: Recipe) -> Result<Recipe, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            self.recipes
+                .lock()
+                .unwrap()
+                .insert(recipe.id, recipe.clone());
+            Ok(recipe)
+        }
+
+        async fn list_by_family(
+            &self,
+            family_id: FamilyId,
+            pagination: PaginationParams,
+        ) -> Result<PaginatedResponse<Recipe>, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            let all: Vec<Recipe> = self
+                .recipes
+                .lock()
+                .unwrap()
+                .values()
+                .filter(|r| r.family_id == family_id)
+                .cloned()
+                .collect();
+            let offset = pagination
+                .next_token
+                .as_deref()
+                .and_then(|t| t.parse::<usize>().ok())
+                .unwrap_or(0);
+            let limit = pagination.effective_limit() as usize;
+            let page: Vec<Recipe> = all.into_iter().skip(offset).take(limit + 1).collect();
+            let has_more = page.len() > limit;
+            let items: Vec<Recipe> = page.into_iter().take(limit).collect();
+            let next_token = if has_more {
+                Some((offset + limit).to_string())
+            } else {
+                None
+            };
+            Ok(PaginatedResponse::with_next_token(items, next_token))
+        }
+
+        async fn delete(&self, family_id: FamilyId, id: RecipeId) -> Result<(), StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            let mut recipes = self.recipes.lock().unwrap();
+            if let Some(recipe) = recipes.get(&id) {
+                if recipe.family_id == family_id {
+                    recipes.remove(&id);
+                }
+            }
+            Ok(())
+        }
+    }
+
     /// Mock implementation of ShareRepository for testing
     #[derive(Clone)]
     pub struct MockShareRepository {
@@ -571,6 +693,266 @@ pub mod mocks {
                 .values()
                 .find(|s| s.family_id == family_id && s.accepter_username == accepter_username)
                 .cloned())
+        }
+    }
+
+    /// Mock implementation of MealSlotRepository for testing
+    #[derive(Clone)]
+    pub struct MockMealSlotRepository {
+        pub should_fail: bool,
+        pub meal_slots: Arc<Mutex<HashMap<MealSlotId, MealSlot>>>,
+    }
+
+    impl MockMealSlotRepository {
+        pub fn new() -> Self {
+            MockMealSlotRepository {
+                should_fail: false,
+                meal_slots: Arc::new(Mutex::new(HashMap::new())),
+            }
+        }
+
+        pub fn with_failure() -> Self {
+            MockMealSlotRepository {
+                should_fail: true,
+                meal_slots: Arc::new(Mutex::new(HashMap::new())),
+            }
+        }
+
+        pub fn insert(&self, meal_slot: MealSlot) {
+            self.meal_slots
+                .lock()
+                .unwrap()
+                .insert(meal_slot.id, meal_slot);
+        }
+    }
+
+    impl Default for MockMealSlotRepository {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    #[async_trait]
+    impl MealSlotRepository for MockMealSlotRepository {
+        async fn create(&self, meal_slot: MealSlot) -> Result<MealSlot, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            self.meal_slots
+                .lock()
+                .unwrap()
+                .insert(meal_slot.id, meal_slot.clone());
+            Ok(meal_slot)
+        }
+
+        async fn get(
+            &self,
+            _family_id: FamilyId,
+            _dependent_id: DependentId,
+            id: MealSlotId,
+        ) -> Result<Option<MealSlot>, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            Ok(self.meal_slots.lock().unwrap().get(&id).cloned())
+        }
+
+        async fn update(&self, meal_slot: MealSlot) -> Result<MealSlot, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            self.meal_slots
+                .lock()
+                .unwrap()
+                .insert(meal_slot.id, meal_slot.clone());
+            Ok(meal_slot)
+        }
+
+        async fn delete(
+            &self,
+            _family_id: FamilyId,
+            _dependent_id: DependentId,
+            id: MealSlotId,
+        ) -> Result<(), StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            self.meal_slots.lock().unwrap().remove(&id);
+            Ok(())
+        }
+
+        async fn list_by_dependent(
+            &self,
+            _family_id: FamilyId,
+            _dependent_id: DependentId,
+            _day: Option<String>,
+            pagination: crate::handlers::PaginationParams,
+        ) -> Result<crate::handlers::PaginatedResponse<MealSlot>, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            let all: Vec<MealSlot> = self.meal_slots.lock().unwrap().values().cloned().collect();
+            let offset = pagination
+                .next_token
+                .as_deref()
+                .and_then(|t| t.parse::<usize>().ok())
+                .unwrap_or(0);
+            let limit = pagination.effective_limit() as usize;
+            let page: Vec<MealSlot> = all.into_iter().skip(offset).take(limit + 1).collect();
+            let has_more = page.len() > limit;
+            let items: Vec<MealSlot> = page.into_iter().take(limit).collect();
+            let next_token = if has_more {
+                Some((offset + limit).to_string())
+            } else {
+                None
+            };
+            Ok(crate::handlers::PaginatedResponse::with_next_token(
+                items, next_token,
+            ))
+        }
+    }
+
+    /// Mock implementation of FeedingLogRepository for testing
+    #[derive(Clone)]
+    pub struct MockFeedingLogRepository {
+        pub should_fail: bool,
+        pub feeding_logs: Arc<Mutex<HashMap<FeedingLogKey, FeedingLog>>>,
+    }
+
+    #[allow(clippy::type_complexity)]
+    type FeedingLogKey = (FamilyId, DependentId, FeedingLogId);
+
+    impl MockFeedingLogRepository {
+        pub fn new() -> Self {
+            MockFeedingLogRepository {
+                should_fail: false,
+                feeding_logs: Arc::new(Mutex::new(HashMap::new())),
+            }
+        }
+
+        pub fn with_failure() -> Self {
+            MockFeedingLogRepository {
+                should_fail: true,
+                feeding_logs: Arc::new(Mutex::new(HashMap::new())),
+            }
+        }
+
+        pub fn insert(&self, feeding_log: FeedingLog) {
+            self.feeding_logs.lock().unwrap().insert(
+                (
+                    feeding_log.family_id,
+                    feeding_log.dependent_id,
+                    feeding_log.id,
+                ),
+                feeding_log,
+            );
+        }
+    }
+
+    impl Default for MockFeedingLogRepository {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    #[async_trait]
+    impl FeedingLogRepository for MockFeedingLogRepository {
+        async fn create(&self, feeding_log: FeedingLog) -> Result<FeedingLog, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            self.feeding_logs.lock().unwrap().insert(
+                (
+                    feeding_log.family_id,
+                    feeding_log.dependent_id,
+                    feeding_log.id,
+                ),
+                feeding_log.clone(),
+            );
+            Ok(feeding_log)
+        }
+
+        async fn get(
+            &self,
+            _family_id: FamilyId,
+            _dependent_id: DependentId,
+            id: FeedingLogId,
+        ) -> Result<Option<FeedingLog>, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            Ok(self
+                .feeding_logs
+                .lock()
+                .unwrap()
+                .values()
+                .find(|fl| fl.id == id)
+                .cloned())
+        }
+
+        async fn update(&self, feeding_log: FeedingLog) -> Result<FeedingLog, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            self.feeding_logs.lock().unwrap().insert(
+                (
+                    feeding_log.family_id,
+                    feeding_log.dependent_id,
+                    feeding_log.id,
+                ),
+                feeding_log.clone(),
+            );
+            Ok(feeding_log)
+        }
+
+        async fn delete(
+            &self,
+            _family_id: FamilyId,
+            _dependent_id: DependentId,
+            id: FeedingLogId,
+        ) -> Result<(), StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            let mut logs = self.feeding_logs.lock().unwrap();
+            logs.retain(|_, fl| fl.id != id);
+            Ok(())
+        }
+
+        async fn list_by_dependent(
+            &self,
+            _family_id: FamilyId,
+            _dependent_id: DependentId,
+            _date: Option<String>,
+            pagination: crate::handlers::PaginationParams,
+        ) -> Result<crate::handlers::PaginatedResponse<FeedingLog>, StoreError> {
+            if self.should_fail {
+                return Err(StoreError::QueryError("Mock failure".to_string()));
+            }
+            let all: Vec<FeedingLog> = self
+                .feeding_logs
+                .lock()
+                .unwrap()
+                .values()
+                .cloned()
+                .collect();
+            let offset = pagination
+                .next_token
+                .as_deref()
+                .and_then(|t| t.parse::<usize>().ok())
+                .unwrap_or(0);
+            let limit = pagination.effective_limit() as usize;
+            let page: Vec<FeedingLog> = all.into_iter().skip(offset).take(limit + 1).collect();
+            let has_more = page.len() > limit;
+            let items: Vec<FeedingLog> = page.into_iter().take(limit).collect();
+            let next_token = if has_more {
+                Some((offset + limit).to_string())
+            } else {
+                None
+            };
+            Ok(crate::handlers::PaginatedResponse::with_next_token(
+                items, next_token,
+            ))
         }
     }
 }

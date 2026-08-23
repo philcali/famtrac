@@ -7,6 +7,7 @@ use crate::handlers;
 use crate::handlers::PaginationParams;
 use crate::repository::{
     DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
+    DynamoDbFeedingLogRepository, DynamoDbMealSlotRepository, DynamoDbRecipeRepository,
 };
 use crate::router::extractors::extract_uuid_param;
 use aws_lambda_events::apigw::ApiGatewayV2httpRequest;
@@ -54,6 +55,9 @@ pub async fn route_family(
     family_repo: &DynamoDbFamilyRepository,
     dependent_repo: &DynamoDbDependentRepository,
     activity_repo: &DynamoDbActivityRepository,
+    recipe_repo: &DynamoDbRecipeRepository,
+    meal_repo: &DynamoDbMealSlotRepository,
+    feeding_log_repo: &DynamoDbFeedingLogRepository,
 ) -> Result<serde_json::Value, HandlerError> {
     match (method, path) {
         // GET /families - List all families for authenticated identity
@@ -137,6 +141,25 @@ pub async fn route_family(
             Ok(response)
         }
 
+        // /families/{id}/recipes/* - Delegate to recipe router
+        (_, p) if p.starts_with("/families/") && p.contains("/recipes") => {
+            let family_id = extract_uuid_param(path, "/families/", "family_id")?;
+            // Extract the sub-path after /recipes
+            let recipes_idx = p.find("/recipes").unwrap();
+            let after_recipes = &p[recipes_idx + "/recipes".len()..];
+            super::recipe::route_recipe(
+                method,
+                FamilyId(family_id),
+                after_recipes,
+                body,
+                request,
+                context,
+                family_repo,
+                recipe_repo,
+            )
+            .await
+        }
+
         // /families/{id}/dependents/* - Delegate to dependent router
         (_, p) if p.starts_with("/families/") && p.contains("/dependents") => {
             let family_id = extract_uuid_param(path, "/families/", "family_id")?;
@@ -153,6 +176,8 @@ pub async fn route_family(
                 family_repo,
                 dependent_repo,
                 activity_repo,
+                meal_repo,
+                feeding_log_repo,
             )
             .await
         }

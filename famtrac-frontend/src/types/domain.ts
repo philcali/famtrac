@@ -108,7 +108,13 @@ export type PermissionAction =
   | 'dependent_read'
   | 'dependent_write'
   | 'activity_read'
-  | 'activity_write';
+  | 'activity_write'
+  | 'recipe_read'
+  | 'recipe_write'
+  | 'meal_slot_read'
+  | 'meal_slot_write'
+  | 'feeding_log_read'
+  | 'feeding_log_write';
 
 export interface PermissionScope {
   actions: PermissionAction[];
@@ -127,4 +133,147 @@ export interface Share {
   created_at: string;
   updated_at: string;
   expires_at?: string;
+}
+
+// Recipe types
+
+export interface Recipe {
+  id: string;
+  family_id: string;
+  name: string;
+  emoji?: string;
+  ingredients: string[];
+  age_min?: number;
+  texture?: string;
+  allergens: string[];
+  prep_notes?: string;
+  safe?: boolean;
+  created_at: string;
+  updated_at: string;
+  share_id?: string;
+  permission_scope?: PermissionScope;
+}
+
+export interface CreateRecipeRequest {
+  name: string;
+  emoji?: string;
+  ingredients?: string[];
+  age_min?: number;
+  texture?: string;
+  allergens?: string[];
+  prep_notes?: string;
+  safe?: boolean;
+}
+
+export interface UpdateRecipeRequest {
+  name?: string;
+  emoji?: string;
+  ingredients?: string[];
+  age_min?: number;
+  texture?: string;
+  allergens?: string[];
+  prep_notes?: string;
+  safe?: boolean;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  next_token?: string;
+  total_count?: number;
+}
+
+// MealSlot domain types
+
+export interface MealSlot {
+  id: string;
+  family_id: string;
+  dependent_id: string;
+  day: string;
+  time: string;
+  recipe_id?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateMealSlotRequest {
+  family_id: string;
+  dependent_id: string;
+  day: string;
+  time: string;
+  recipe_id?: string;
+  notes?: string;
+}
+
+export interface UpdateMealSlotRequest {
+  day?: string;
+  time?: string;
+  recipe_id?: string;
+  notes?: string;
+}
+
+// FeedingLog domain types
+
+export interface FeedingLog {
+  id: string;
+  family_id: string;
+  dependent_id: string;
+  date: string;
+  time: string;
+  recipe_id?: string;
+  amount: number;
+  reaction?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateFeedingLogRequest {
+  family_id: string;
+  dependent_id: string;
+  date: string;
+  time: string;
+  recipe_id?: string;
+  amount: number;
+  reaction?: string;
+  notes?: string;
+}
+
+export interface UpdateFeedingLogRequest {
+  date?: string;
+  time?: string;
+  recipe_id?: string;
+  amount?: number;
+  reaction?: string;
+  notes?: string;
+}
+
+// Little Eater (food-plan) export types for import
+
+export interface LittleEaterExport {
+  version: number;
+  type: 'recipes' | 'full';
+  recipes: LittleEaterRecipe[];
+  feeding_logs: LittleEaterFeedingLog[];
+}
+
+export interface LittleEaterRecipe {
+  name: string;
+  emoji?: string;
+  ingredients: string[];
+  age_min?: number;
+  texture?: string;
+  allergens: string[];
+  prep_notes?: string;
+  safe?: boolean;
+}
+
+export interface LittleEaterFeedingLog {
+  dependent_id: string;
+  date: string;
+  time: string;
+  recipe_name?: string;
+  amount: number;
+  reaction?: string;
+  notes?: string;
 }

@@ -19,6 +19,12 @@ const ALL_ACTIONS: PermissionAction[] = [
   'dependent_write',
   'activity_read',
   'activity_write',
+  'recipe_read',
+  'recipe_write',
+  'meal_slot_read',
+  'meal_slot_write',
+  'feeding_log_read',
+  'feeding_log_write',
 ];
 
 /**

@@ -10,6 +10,7 @@ export interface DependentListProps {
   onEdit: (dependent: Dependent) => void;
   onDelete: (dependent: Dependent) => void;
   onView: (dependent: Dependent) => void;
+  onMealPlan?: (dependent: Dependent) => void;
 }
 
 /**
@@ -25,6 +26,7 @@ export function DependentList({
   onEdit,
   onDelete,
   onView,
+  onMealPlan,
 }: DependentListProps) {
   if (loading) {
     return (
@@ -55,6 +57,7 @@ export function DependentList({
           onEdit={onEdit}
           onDelete={onDelete}
           onView={onView}
+          onMealPlan={onMealPlan}
         />
       ))}
     </div>

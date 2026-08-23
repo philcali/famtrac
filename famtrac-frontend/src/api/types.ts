@@ -147,3 +147,125 @@ export interface ShareListResponse {
   shares: ShareResponse[];
   next_token?: string;
 }
+
+// Recipe API types
+
+export interface CreateRecipeRequest {
+  name: string;
+  emoji?: string;
+  ingredients?: string[];
+  age_min?: number;
+  texture?: string;
+  allergens?: string[];
+  prep_notes?: string;
+  safe?: boolean;
+}
+
+export interface UpdateRecipeRequest {
+  name?: string;
+  emoji?: string;
+  ingredients?: string[];
+  age_min?: number;
+  texture?: string;
+  allergens?: string[];
+  prep_notes?: string;
+  safe?: boolean;
+}
+
+export interface RecipeResponse {
+  id: string;
+  family_id: string;
+  name: string;
+  emoji?: string;
+  ingredients: string[];
+  age_min?: number;
+  texture?: string;
+  allergens: string[];
+  prep_notes?: string;
+  safe?: boolean;
+  created_at: string;
+  updated_at: string;
+  share_id?: string;
+  permission_scope?: { actions: string[] };
+}
+
+export interface RecipeListResponse {
+  recipes: RecipeResponse[];
+  next_token?: string;
+}
+
+// MealSlot API types
+
+export interface CreateMealSlotRequest {
+  family_id: string;
+  dependent_id: string;
+  day: string;
+  time: string;
+  recipe_id?: string;
+  notes?: string;
+}
+
+export interface UpdateMealSlotRequest {
+  day?: string;
+  time?: string;
+  recipe_id?: string;
+  notes?: string;
+}
+
+export interface MealSlotResponse {
+  id: string;
+  family_id: string;
+  dependent_id: string;
+  day: string;
+  time: string;
+  recipe_id?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MealSlotListResponse {
+  meal_slots: MealSlotResponse[];
+  next_token?: string;
+}
+
+// FeedingLog API types
+
+export interface CreateFeedingLogRequest {
+  family_id: string;
+  dependent_id: string;
+  date: string;
+  time: string;
+  recipe_id?: string;
+  amount: number;
+  reaction?: string;
+  notes?: string;
+}
+
+export interface UpdateFeedingLogRequest {
+  date?: string;
+  time?: string;
+  recipe_id?: string;
+  amount?: number;
+  reaction?: string;
+  notes?: string;
+}
+
+export interface FeedingLogResponse {
+  id: string;
+  family_id: string;
+  dependent_id: string;
+  date: string;
+  time: string;
+  recipe_id?: string;
+  amount: number;
+  reaction?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FeedingLogListResponse {
+  feeding_logs: FeedingLogResponse[];
+  next_token?: string;
+}
