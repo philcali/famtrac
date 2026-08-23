@@ -27,7 +27,7 @@ Key principle: **Don't embed food-plan as an iframe.** Build meal planning nativ
 - [x] Add `RecipeId` type to `famtrac-backend/src/domain/ids.rs`
 - [x] Add `RecipeRepository` trait in `famtrac-backend/src/repository/traits.rs`
 - [x] Add `DynamoDbRecipeRepository` impl in `famtrac-backend/src/repository/dynamodb.rs`
-- [ ] Add DynamoDB table for recipes (infra update) — deferred to Story 9 (Infra)
+- [x] Add DynamoDB table for recipes (infra update) — deferred to Story 9 (Infra) → no infra changes needed
 - [x] Add routes: `GET/POST /families/{fid}/recipes`, `GET/PUT/DELETE /families/{fid}/recipes/{id}`
 - [x] Add request/response types in `famtrac-backend/src/handlers/recipe.rs`
 - [x] Add routes to `famtrac-backend/src/router/mod.rs` dispatch logic
@@ -73,7 +73,7 @@ Key principle: **Don't embed food-plan as an iframe.** Build meal planning nativ
 - [x] Add `MealSlotId` type to `famtrac-backend/src/domain/ids.rs`
 - [x] Add `MealSlotRepository` trait in `famtrac-backend/src/repository/traits.rs`
 - [x] Add `DynamoDbMealSlotRepository` impl in `famtrac-backend/src/repository/dynamodb.rs`
-- [ ] Add DynamoDB table for meal slots (infra update) — deferred to Story 9 (Infra)
+- [x] Add DynamoDB table for meal slots (infra update) — deferred to Story 9 (Infra) → no infra changes needed
 - [x] Add routes: `GET/POST /families/{fid}/dependents/{did}/meal-slots`, `GET/PUT/DELETE /families/{fid}/dependents/{did}/meal-slots/{id}`
 - [x] Add request/response types in `famtrac-backend/src/router/extractors.rs`
 - [x] Add routes to `famtrac-backend/src/router/mod.rs` dispatch logic
@@ -119,7 +119,7 @@ Key principle: **Don't embed food-plan as an iframe.** Build meal planning nativ
 - [x] Add `FeedingLogId` type to `famtrac-backend/src/domain/ids.rs`
 - [x] Add `FeedingLogRepository` trait in `famtrac-backend/src/repository/traits.rs`
 - [x] Add `DynamoDbFeedingLogRepository` impl in `famtrac-backend/src/repository/dynamodb.rs`
-- [ ] Add DynamoDB table for feeding logs (infra update) — deferred to Story 9 (Infra)
+- [x] Add DynamoDB table for feeding logs (infra update) — deferred to Story 9 (Infra) → no infra changes needed
 - [x] Add routes: `GET/POST /families/{fid}/dependents/{did}/feeding-logs`, `GET/PUT/DELETE /families/{fid}/dependents/{did}/feeding-logs/{id}`
 - [x] Add request/response types in `famtrac-backend/src/router/extractors.rs`
 - [x] Add routes to `famtrac-backend/src/router/mod.rs` dispatch logic
@@ -186,26 +186,37 @@ Key principle: **Don't embed food-plan as an iframe.** Build meal planning nativ
 
 ---
 
-## Story 5: Frontend — Meal Plan Page
+## Story 5: Frontend — Meal Plan Page ✅ COMPLETE
 
 **Goal:** Add a "Meal Plan" page to famtrac-frontend with week-by-week meal planning UI.
 
 ### Acceptance Criteria
 
-- [ ] New route: `/families/:familyId/dependents/:dependentId/meal-plan`
-- [ ] Week navigation (prev/next arrows, date picker, "Go to Today")
-- [ ] Day-of-week tabs (Mon–Sun) with meal count indicators
-- [ ] Selected day shows meal slot cards sorted by time
-- [ ] Each slot card shows: recipe emoji/name, age, texture, allergen warnings, time picker, notes
-- [ ] "Add recipe" empty slot button per day
-- [ ] "Add Recipe" modal: search + select from recipe library
-- [ ] "Edit Slot" modal: change time, swap recipe, add notes
-- [ ] "Log Feeding" modal: date, time, recipe, amount eaten, reaction, notes
-- [ ] Delete confirmation on slot removal
-- [ ] Uses famtrac component patterns (Button, Card, Modal/ConfirmDialog)
-- [ ] Tailwind CSS styling matches famtrac design system
-- [ ] Loading and empty states handled
-- [ ] Error state display
+- [x] New route: `/families/:familyId/dependents/:dependentId/meal-plan`
+- [x] Week navigation (prev/next arrows, date picker, "Go to Today")
+- [x] Day-of-week tabs (Mon–Sun) with meal count indicators
+- [x] Selected day shows meal slot cards sorted by time
+- [x] Each slot card shows: recipe emoji/name, age, texture, allergen warnings, time picker, notes
+- [x] "Add recipe" empty slot button per day
+- [x] "Add Recipe" modal: search + select from recipe library
+- [x] "Edit Slot" modal: change time, swap recipe, add notes
+- [x] "Log Feeding" modal: date, time, recipe, amount eaten, reaction, notes
+- [x] Delete confirmation on slot removal
+- [x] Uses famtrac component patterns (Button, Card, Modal/ConfirmDialog)
+- [x] Tailwind CSS styling matches famtrac design system
+- [x] Loading and empty states handled
+- [x] Error state display
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `famtrac-frontend/src/pages/MealPlanPage.tsx` | New file — week-by-week meal planning UI with navigation, day tabs, slot cards, loading/empty/error states |
+| `famtrac-frontend/src/components/meals/MealSlotCard.tsx` | New file — meal slot card with emoji, name, age, texture, allergen badges, edit/log/delete actions |
+| `famtrac-frontend/src/components/meals/RecipePickerModal.tsx` | New file — searchable recipe picker for add/edit slot |
+| `famtrac-frontend/src/components/meals/FeedingLogModal.tsx` | New file — feeding log form (date, time, recipe, amount, reaction, notes) |
+| `famtrac-frontend/src/App.tsx` | Added `/families/:familyId/dependents/:dependentId/meal-plan` route |
+| `famtrac-frontend/src/components/recipes/RecipeCard.tsx` | Minor update (spacing tweak) |
 
 ### Dependencies
 
@@ -270,20 +281,28 @@ Key principle: **Don't embed food-plan as an iframe.** Build meal planning nativ
 
 ---
 
-## Story 8: Optional — Food-Plan Import
+## Story 8: Optional — Food-Plan Import ✅ COMPLETE
 
 **Goal:** Allow users to import recipes and feeding logs from a Little Eater (food-plan) export JSON file.
 
 ### Acceptance Criteria
 
-- [ ] "Import" button on Recipe Library page
-- [ ] File picker accepts Little Eater export JSON
-- [ ] Validates export format (version 1, type: "recipes" or "full")
-- [ ] Shows preview: recipes count, feeding logs count
-- [ ] "Import recipes" creates recipes in famtrac
-- [ ] "Import feeding logs" creates feeding activities in famtrac
-- [ ] Success/error feedback
-- [ ] Import is additive (doesn't delete existing data)
+- [x] "Import" button on Recipe Library page
+- [x] File picker accepts Little Eater export JSON
+- [x] Validates export format (version 1, type: "recipes" or "full")
+- [x] Shows preview: recipes count, feeding logs count
+- [x] "Import recipes" creates recipes in famtrac
+- [x] "Import feeding logs" creates feeding activities in famtrac
+- [x] Success/error feedback
+- [x] Import is additive (doesn't delete existing data)
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `famtrac-frontend/src/components/recipes/ImportModal.tsx` | New file — multi-step import modal (preview → import recipes → import feeding logs → results) |
+| `famtrac-frontend/src/pages/RecipeLibraryPage.tsx` | Added "Import" button, import modal integration, success message handling |
+| `famtrac-frontend/src/types/domain.ts` | Added `LittleEaterExport`, `LittleEaterRecipe`, `LittleEaterFeedingLog` types |
 
 ### Dependencies
 
@@ -291,7 +310,7 @@ Key principle: **Don't embed food-plan as an iframe.** Build meal planning nativ
 
 ---
 
-## Story 10: Backend — Share Recipes, MealSlots, and FeedingLogs via Stream Handler
+## Story 10: Backend — Share Recipes, MealSlots, and FeedingLogs via Stream Handler ✅ COMPLETE
 
 **Goal:** Extend the famtrac-stream-handler to mirror and propagate Recipe, MealSlot, and FeedingLog records so that shared families include meal planning data.
 
@@ -307,39 +326,39 @@ The stream handler currently mirrors only Family, Dependent, and Activity record
 
 #### Share Activation (mirror on accept)
 
-- [ ] WHEN a share transitions to `active`, the stream handler mirrors all Recipe records for the family into the accepter's partition with a rekeyed PK of `OWNER#{accepter_id}` and SK `RECIPE#{recipe_id}`
-- [ ] WHEN a share transitions to `active`, the stream handler mirrors all MealSlot records for the family's dependents, annotated with `share_id` and `permission_scope` (same PK/SK as originals)
-- [ ] WHEN a share transitions to `active`, the stream handler mirrors all FeedingLog records for the family's dependents, annotated with `share_id` and `permission_scope` (same PK/SK as originals)
-- [ ] Every mirrored item is stamped with `sync_token` to identify it as handler-originated
+- [x] WHEN a share transitions to `active`, the stream handler mirrors all Recipe records for the family into the accepter's partition with a rekeyed PK of `OWNER#{accepter_id}` and SK `RECIPE#{recipe_id}`
+- [x] WHEN a share transitions to `active`, the stream handler mirrors all MealSlot records for the family's dependents, annotated with `share_id` and `permission_scope` (same PK/SK as originals)
+- [x] WHEN a share transitions to `active`, the stream handler mirrors all FeedingLog records for the family's dependents, annotated with `share_id` and `permission_scope` (same PK/SK as originals)
+- [x] Every mirrored item is stamped with `sync_token` to identify it as handler-originated
 
 #### Resource Change Propagation (propagate on CRUD)
 
-- [ ] WHEN a Recipe is created/updated/deleted on the owner, the change propagates to all mirrored Recipe copies in accepter partitions
-- [ ] WHEN a MealSlot is created/updated/deleted on the owner, the change propagates to all mirrored MealSlot copies in accepter partitions
-- [ ] WHEN a FeedingLog is created/updated/deleted on the owner, the change propagates to all mirrored FeedingLog copies in accepter partitions
-- [ ] The classifier recognizes `RECIPE#`, `MEAL_SLOT#`, and `FEEDING_LOG#` SK prefixes and classifies them as `ResourceChanged`
-- [ ] `extract_family_id` handles Recipe PKs (`FAMILY#{fid}`) and MealSlot/FeedingLog PKs (`FAMILY#{fid}#DEPENDENT#{did}`) via fallback parsing
+- [x] WHEN a Recipe is created/updated/deleted on the owner, the change propagates to all mirrored Recipe copies in accepter partitions
+- [x] WHEN a MealSlot is created/updated/deleted on the owner, the change propagates to all mirrored MealSlot copies in accepter partitions
+- [x] WHEN a FeedingLog is created/updated/deleted on the owner, the change propagates to all mirrored FeedingLog copies in accepter partitions
+- [x] The classifier recognizes `RECIPE#`, `MEAL_SLOT#`, and `FEEDING_LOG#` SK prefixes and classifies them as `ResourceChanged`
+- [x] `extract_family_id` handles Recipe PKs (`FAMILY#{fid}`) and MealSlot/FeedingLog PKs (`FAMILY#{fid}#DEPENDENT#{did}`) via fallback parsing
 
 #### Write-back from Mirrors (accepter writes)
 
-- [ ] WHEN an accepter writes to a mirrored Recipe, the change propagates back to the owner's partition
-- [ ] WHEN an accepter writes to a mirrored MealSlot or FeedingLog, the share metadata is preserved on the item
-- [ ] Semantic diff prevents no-op write-backs (identical items are not re-written)
+- [x] WHEN an accepter writes to a mirrored Recipe, the change propagates back to the owner's partition
+- [x] WHEN an accepter writes to a mirrored MealSlot or FeedingLog, the share metadata is preserved on the item
+- [x] Semantic diff prevents no-op write-backs (identical items are not re-written)
 
 #### Share Revocation (cleanup on revoke)
 
-- [ ] WHEN a share is revoked, the stream handler deletes the mirrored Recipe records from the accepter's partition
-- [ ] WHEN a share is revoked, the stream handler deletes all mirrored MealSlot records annotated with the revoked `share_id`
-- [ ] WHEN a share is revoked, the stream handler deletes all mirrored FeedingLog records annotated with the revoked `share_id`
+- [x] WHEN a share is revoked, the stream handler deletes the mirrored Recipe records from the accepter's partition
+- [x] WHEN a share is revoked, the stream handler deletes all mirrored MealSlot records annotated with the revoked `share_id`
+- [x] WHEN a share is revoked, the stream handler deletes all mirrored FeedingLog records annotated with the revoked `share_id`
 
 #### Permission Scope Updates
 
-- [ ] WHEN a share's permission scope is updated, the `permission_scope` is updated on the mirrored Family record in the accepter's partition
-- [ ] WHEN a share's permission scope is updated, the `permission_scope` is updated on all mirrored Recipe records with the matching `share_id`
-- [ ] WHEN a share's permission scope is updated, the `permission_scope` is updated on all mirrored MealSlot records with the matching `share_id`
-- [ ] WHEN a share's permission scope is updated, the `permission_scope` is updated on all mirrored FeedingLog records with the matching `share_id`
-- [ ] Each update uses a condition expression `share_id = :sid` so that only mirrored copies (not originals) are affected
-- [ ] ConditionalCheckFailedExceptions are silently ignored (the record may not exist or may not be mirrored)
+- [x] WHEN a share's permission scope is updated, the `permission_scope` is updated on the mirrored Family record in the accepter's partition
+- [x] WHEN a share's permission scope is updated, the `permission_scope` is updated on all mirrored Recipe records with the matching `share_id`
+- [x] WHEN a share's permission scope is updated, the `permission_scope` is updated on all mirrored MealSlot records with the matching `share_id`
+- [x] WHEN a share's permission scope is updated, the `permission_scope` is updated on all mirrored FeedingLog records with the matching `share_id`
+- [x] Each update uses a condition expression `share_id = :sid` so that only mirrored copies (not originals) are affected
+- [x] ConditionalCheckFailedExceptions are silently ignored (the record may not exist or may not be mirrored)
 
 ### Technical Notes
 
@@ -349,16 +368,20 @@ The stream handler currently mirrors only Family, Dependent, and Activity record
 - No new GSI is needed — all three types already have `family_id` and are indexed by `GSI-family_id`
 - The domain structs (`Recipe`, `MealSlot`, `FeedingLog`) already have `share_id: Option<ShareId>` and `permission_scope: Option<PermissionScope>` fields
 
-### Files to modify
+### Files changed
 
 | File | Change |
 |------|--------|
-| `famtrac-stream-handler/src/classify.rs` | Add `RECIPE#`, `MEAL_SLOT#`, `FEEDING_LOG#` to `record_type_from_sk()` |
-| `famtrac-stream-handler/src/dynamo_util.rs` | Extend `extract_family_id()` to handle Recipe and MealSlot/FeedingLog PK patterns |
-| `famtrac-stream-handler/src/handlers/mirror.rs` | Mirror Recipe records (rekeyed), MealSlot records (annotated), FeedingLog records (annotated) on share activation |
-| `famtrac-stream-handler/src/handlers/revoke.rs` | Delete mirrored Recipe, MealSlot, FeedingLog records on share revocation |
-| `famtrac-stream-handler/src/handlers/propagate.rs` | Handle write-back for Recipe (rekeyed back) and MealSlot/FeedingLog (preserve share metadata) |
-| `famtrac-stream-handler/src/handlers/permission.rs` | Update permission_scope on Recipe, MealSlot, FeedingLog mirrored records |
+| `famtrac-stream-handler/src/classify.rs` | Added `RECIPE#`, `MEAL_SLOT#`, `FEEDING_LOG#` to `record_type_from_sk()` + classifier match arm; added unit tests |
+| `famtrac-stream-handler/src/dynamo_util.rs` | Extended `extract_family_id()` to handle Recipe PK (`FAMILY#{fid}`) and MealSlot/FeedingLog PK (`FAMILY#{fid}#DEPENDENT#{did}`) fallback parsing; added unit tests |
+| `famtrac-stream-handler/src/handlers/mirror.rs` | Added mirror steps for Recipe (rekeyed), MealSlot (annotated), FeedingLog (annotated) on share activation |
+| `famtrac-stream-handler/src/handlers/revoke.rs` | Added deletion of mirrored Recipe, MealSlot, FeedingLog records on share revocation |
+| `famtrac-stream-handler/src/handlers/propagate.rs` | Added Recipe write-back (rekeyed), MealSlot/FeedingLog write-back with share metadata preservation and semantic diff |
+| `famtrac-stream-handler/src/handlers/permission.rs` | Added permission_scope updates on mirrored Recipe, MealSlot, FeedingLog records |
+| `famtrac-backend/src/domain/share.rs` | Added ShareId, PermissionScope domain types |
+| `famtrac-frontend/src/types/domain.ts` | Updated share-related types |
+| `famtrac-frontend/src/utils/permissions.ts` | Added permission scope utilities |
+| `famtrac-frontend/src/components/shares/PermissionScopeSelector.tsx` | Updated selector for meal planning context |
 
 ### Dependencies
 
@@ -408,12 +431,12 @@ Story 1 (Recipes) ✅
     └── Story 2 (MealSlots) ✅
             └── Story 3 (FeedingLogs) ✅
                     └── Story 4 (Recipe Library Page) ✅
-                    └── Story 5 (Meal Plan Page)
+                    └── Story 5 (Meal Plan Page) ✅
                             └── Story 6 (Data Bridge) ✅
-                            └── Story 7 (Navigation)
-                                    └── Story 8 (Import)
+                            └── Story 7 (Navigation) ✅
+                                    └── Story 8 (Import) ✅
 
-Story 10 (Stream: share recipes/meal-slots/feeding-logs) — can run in parallel with Stories 4–9
+Story 10 (Stream: share recipes/meal-slots/feeding-logs) ✅ — ran in parallel with Stories 4–9
 
 Story 9 (Infra) — can run in parallel with Stories 2–10
 ```
