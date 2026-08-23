@@ -26,6 +26,7 @@ export interface ButtonProps {
   size?: 'sm' | 'lg';
   className?: string;
   icon?: string;
+  title?: string;
 }
 
 const VARIANT_CLASSES: Record<string, string> = {
@@ -74,6 +75,7 @@ export function Button({
   size,
   className,
   icon,
+  title,
 }: ButtonProps) {
   const base =
     'inline-flex items-center justify-center rounded-xl font-medium transition-colors active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none';
@@ -88,6 +90,7 @@ export function Button({
       disabled={disabled || loading}
       className={`${base} ${variantCls} ${sizeCls} ${touch} ${className ?? ''}`}
       aria-busy={loading}
+      title={title}
     >
       {loading && (
         <span

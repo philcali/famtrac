@@ -19,17 +19,15 @@ const inputBase =
 export function RecipeForm({ recipe, onSubmit, onCancel, loading = false }: RecipeFormProps) {
   const [name, setName] = useState(recipe?.name ?? '');
   const [emoji, setEmoji] = useState(recipe?.emoji ?? '');
-  const [ingredientsText, setIngredientsText] = useState(
-    recipe?.ingredients?.join('\n') ?? ''
-  );
+  const [ingredientsText, setIngredientsText] = useState(recipe?.ingredients?.join('\n') ?? '');
   const [ageMin, setAgeMin] = useState(recipe?.age_min?.toString() ?? '');
   const [texture, setTexture] = useState(recipe?.texture ?? '');
-  const [allergensText, setAllergensText] = useState(
-    recipe?.allergens?.join('\n') ?? ''
-  );
+  const [allergensText, setAllergensText] = useState(recipe?.allergens?.join('\n') ?? '');
   const [prepNotes, setPrepNotes] = useState(recipe?.prep_notes ?? '');
   const [safe, setSafe] = useState(recipe?.safe ?? false);
 
+  // Sync form fields when recipe prop changes
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (recipe) {
       setName(recipe.name);
@@ -42,6 +40,7 @@ export function RecipeForm({ recipe, onSubmit, onCancel, loading = false }: Reci
       setSafe(recipe.safe ?? false);
     }
   }, [recipe]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,9 +111,7 @@ export function RecipeForm({ recipe, onSubmit, onCancel, loading = false }: Reci
           maxLength={4}
           className={inputBase}
         />
-        {emoji && (
-          <span className="text-2xl mt-1 block">{emoji}</span>
-        )}
+        {emoji && <span className="text-2xl mt-1 block">{emoji}</span>}
       </div>
 
       {/* Ingredients */}
@@ -127,15 +124,13 @@ export function RecipeForm({ recipe, onSubmit, onCancel, loading = false }: Reci
           onChange={(e) => setIngredientsText(e.target.value)}
           rows={3}
           className={`${inputBase} resize-none`}
-          placeholder={"banana\noats\nmilk"}
+          placeholder={'banana\noats\nmilk'}
         />
       </div>
 
       {/* Age Min */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Minimum Age (months)
-        </label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Minimum Age (months)</label>
         <input
           type="number"
           value={ageMin}
@@ -150,11 +145,7 @@ export function RecipeForm({ recipe, onSubmit, onCancel, loading = false }: Reci
       {/* Texture */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Texture</label>
-        <select
-          value={texture}
-          onChange={(e) => setTexture(e.target.value)}
-          className={inputBase}
-        >
+        <select value={texture} onChange={(e) => setTexture(e.target.value)} className={inputBase}>
           <option value="">Select texture...</option>
           {textureOptions.map((t) => (
             <option key={t} value={t}>
@@ -174,7 +165,7 @@ export function RecipeForm({ recipe, onSubmit, onCancel, loading = false }: Reci
           onChange={(e) => setAllergensText(e.target.value)}
           rows={2}
           className={`${inputBase} resize-none`}
-          placeholder={"milk\ngluten\neggs"}
+          placeholder={'milk\ngluten\neggs'}
         />
       </div>
 

@@ -14,10 +14,10 @@ interface RecipeCardProps {
 export function RecipeCard({ recipe, onEdit, onDelete }: RecipeCardProps) {
   const textureVariant: Record<string, string> = {
     smooth: 'primary',
-    'lumpy': 'info',
-    'chunky': 'warning',
-    'soft': 'success',
-    'crunchy': 'danger',
+    lumpy: 'info',
+    chunky: 'warning',
+    soft: 'success',
+    crunchy: 'danger',
   };
 
   const allergenVariant: string = 'danger';
@@ -34,11 +34,7 @@ export function RecipeCard({ recipe, onEdit, onDelete }: RecipeCardProps) {
 
           {/* Age + Texture row */}
           <div className="flex flex-wrap gap-1.5 mt-1.5">
-            {recipe.age_min != null && (
-              <Badge variant="secondary">
-                {recipe.age_min}+ months
-              </Badge>
-            )}
+            {recipe.age_min != null && <Badge variant="secondary">{recipe.age_min}+ months</Badge>}
             {recipe.texture && (
               <Badge variant={textureVariant[recipe.texture.toLowerCase()] || 'secondary'}>
                 {recipe.texture}

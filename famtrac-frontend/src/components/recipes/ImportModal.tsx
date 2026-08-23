@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '../common/Button';
-import type { LittleEaterExport, CreateRecipeRequest } from '../../types/domain';
+import type { LittleEaterExport, LittleEaterRecipe, CreateRecipeRequest } from '../../types/domain';
 
 type ImportStep = 'preview' | 'importRecipes' | 'importFeedingLogs' | 'results';
 
@@ -231,7 +231,7 @@ export function ImportModal({
     feedingLogImportResult,
   ]);
 
-  const hasFeedingLogs = exportData?.feeding_logs.length > 0;
+  const hasFeedingLogs = exportData !== null && exportData.feeding_logs.length > 0;
 
   // Modal rendering
   const renderModal = (title: string, body: React.ReactNode, footer?: React.ReactNode) => (

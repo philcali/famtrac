@@ -58,9 +58,7 @@ export function MealSlotCard({
 
           {/* Age + Texture row */}
           <div className="flex flex-wrap gap-1.5 mt-1.5">
-            {recipeAgeMin != null && (
-              <Badge variant="secondary">{recipeAgeMin}+ months</Badge>
-            )}
+            {recipeAgeMin != null && <Badge variant="secondary">{recipeAgeMin}+ months</Badge>}
             {recipeTexture && (
               <Badge variant={TEXTURE_VARIANT[recipeTexture.toLowerCase()] || 'secondary'}>
                 {recipeTexture}
@@ -88,9 +86,7 @@ export function MealSlotCard({
 
           {/* Notes */}
           {notes && (
-            <p className="mt-2 text-sm text-gray-500 border-t border-gray-100 pt-2">
-              {notes}
-            </p>
+            <p className="mt-2 text-sm text-gray-500 border-t border-gray-100 pt-2">{notes}</p>
           )}
         </div>
 

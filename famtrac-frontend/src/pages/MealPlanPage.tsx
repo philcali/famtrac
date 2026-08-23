@@ -18,7 +18,7 @@ import { createActivity } from '../api/activities';
 import type { RecipeResponse } from '../api/types';
 import type { MealSlot, CreateMealSlotRequest, UpdateMealSlotRequest } from '../types/domain';
 import type { CreateFeedingLogRequest } from '../types/domain';
-import type { CreateActivityRequest } from '../api/activities';
+import type { CreateActivityRequest } from '../api/types';
 
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -61,43 +61,31 @@ export function MealPlanPage() {
   const [editFormNotes, setEditFormNotes] = useState('');
 
   // ---- Mutations ----
-  const {
-    mutate: createSlotMutation,
-  } = useApiMutation(
-    (data: CreateMealSlotRequest) => createMealSlot(apiClient, familyId ?? 'NA', dependentId ?? 'NA', data)
+  const { mutate: createSlotMutation } = useApiMutation((data: CreateMealSlotRequest) =>
+    createMealSlot(apiClient, familyId ?? 'NA', dependentId ?? 'NA', data)
   );
 
-  const {
-    mutate: updateSlotMutation,
-  } = useApiMutation(
-    (data: UpdateMealSlotRequest) =>
-      updateMealSlot(apiClient, familyId ?? 'NA', dependentId ?? 'NA', editingSlot!.id, data)
+  const { mutate: updateSlotMutation } = useApiMutation((data: UpdateMealSlotRequest) =>
+    updateMealSlot(apiClient, familyId ?? 'NA', dependentId ?? 'NA', editingSlot!.id, data)
   );
 
-  const {
-    mutate: deleteSlotMutation,
-    loading: deleteSlotLoading,
-  } = useApiMutation((id: string) => deleteMealSlot(apiClient, familyId ?? 'NA', dependentId ?? 'NA', id));
+  const { mutate: deleteSlotMutation, loading: deleteSlotLoading } = useApiMutation((id: string) =>
+    deleteMealSlot(apiClient, familyId ?? 'NA', dependentId ?? 'NA', id)
+  );
 
-  const {
-    mutate: createFeedingLogMutation,
-    loading: feedingLogLoading,
-  } = useApiMutation(
+  const { mutate: createFeedingLogMutation, loading: feedingLogLoading } = useApiMutation(
     (data: CreateFeedingLogRequest) =>
       createFeedingLog(apiClient, familyId ?? 'NA', dependentId ?? 'NA', data)
   );
 
-  const {
-    mutate: createActivityMutation,
-    loading: activityLoading,
-  } = useApiMutation(
+  const { mutate: createActivityMutation, loading: activityLoading } = useApiMutation(
     (data: CreateActivityRequest) =>
       createActivity(apiClient, familyId ?? 'NA', dependentId ?? 'NA', data)
   );
 
   // ---- Derived data ----
-  const recipes: RecipeResponse[] = recipesData?.recipes ?? [];
-  const slots = slotsData?.meal_slots ?? [];
+  const recipes: RecipeResponse[] = useMemo(() => recipesData?.recipes ?? [], [recipesData]);
+  const slots = useMemo(() => slotsData?.meal_slots ?? [], [slotsData]);
 
   // Recipe lookup map for slot cards
   const recipeMap = useMemo(() => {
@@ -270,8 +258,7 @@ export function MealPlanPage() {
     refetchSlots();
   };
 
-  const handleBackClick = () =>
-    navigate(`/families/${familyId}/dependents/${dependentId}`);
+  const handleBackClick = () => navigate(`/families/${familyId}/dependents/${dependentId}`);
   const handleSuccessClose = useCallback(() => setSuccessMessage(null), []);
 
   // ---- Loading state ----
@@ -282,10 +269,7 @@ export function MealPlanPage() {
           <h2 className="heading">
             Meal Plan
             <div className="ml-auto flex items-center gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => navigate(`/families/${familyId}/recipes`)}
-              >
+              <Button variant="secondary" onClick={() => navigate(`/families/${familyId}/recipes`)}>
                 Recipes
               </Button>
               <Button variant="secondary" onClick={handleBackClick} className="heading-right">
@@ -307,10 +291,7 @@ export function MealPlanPage() {
           <h2 className="heading">
             Meal Plan
             <div className="ml-auto flex items-center gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => navigate(`/families/${familyId}/recipes`)}
-              >
+              <Button variant="secondary" onClick={() => navigate(`/families/${familyId}/recipes`)}>
                 Recipes
               </Button>
               <Button variant="secondary" onClick={handleBackClick} className="heading-right">
@@ -335,10 +316,7 @@ export function MealPlanPage() {
         <h2 className="heading">
           Meal Plan
           <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => navigate(`/families/${familyId}/recipes`)}
-            >
+            <Button variant="secondary" onClick={() => navigate(`/families/${familyId}/recipes`)}>
               Recipes
             </Button>
             <Button variant="secondary" onClick={handleBackClick} className="heading-right">
@@ -353,9 +331,7 @@ export function MealPlanPage() {
         <Button variant="secondary" size="sm" onClick={goToPrevWeek}>
           ← Prev
         </Button>
-        <div className="text-sm text-gray-600">
-          {formatWeekRange(currentWeekStart)}
-        </div>
+        <div className="text-sm text-gray-600">{formatWeekRange(currentWeekStart)}</div>
         <div className="flex gap-2">
           <Button variant="secondary" size="sm" onClick={goToToday}>
             Today
@@ -387,9 +363,7 @@ export function MealPlanPage() {
               <span className="text-lg font-bold">{getDayOfMonth(day.date)}</span>
               {day.count > 0 && (
                 <span
-                  className={`text-[10px] mt-0.5 ${
-                    isSelected ? 'text-blue-100' : 'text-gray-400'
-                  }`}
+                  className={`text-[10px] mt-0.5 ${isSelected ? 'text-blue-100' : 'text-gray-400'}`}
                 >
                   {day.count}
                 </span>
@@ -400,9 +374,7 @@ export function MealPlanPage() {
       </div>
 
       {/* Success message */}
-      {successMessage && (
-        <SuccessMessage message={successMessage} onClose={handleSuccessClose} />
-      )}
+      {successMessage && <SuccessMessage message={successMessage} onClose={handleSuccessClose} />}
 
       {/* Selected day content */}
       <div className="mb-4">
@@ -416,9 +388,7 @@ export function MealPlanPage() {
           <div className="text-center py-12 bg-white rounded-xl border border-gray-100">
             <span className="text-4xl">📋</span>
             <h3 className="text-lg font-semibold text-gray-900 mt-3">No meals planned</h3>
-            <p className="text-sm text-gray-500 mt-1">
-              Add a recipe to get started.
-            </p>
+            <p className="text-sm text-gray-500 mt-1">Add a recipe to get started.</p>
             <Button className="mt-4" icon="plus" onClick={handleAddSlot}>
               Add Recipe
             </Button>
@@ -450,7 +420,12 @@ export function MealPlanPage() {
 
         {/* Add recipe button (always visible) */}
         <div className="mt-3">
-          <Button variant="outline-secondary" className="w-full" icon="plus" onClick={handleAddSlot}>
+          <Button
+            variant="outline-secondary"
+            className="w-full"
+            icon="plus"
+            onClick={handleAddSlot}
+          >
             Add Recipe
           </Button>
         </div>

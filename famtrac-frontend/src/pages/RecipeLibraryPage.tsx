@@ -43,7 +43,7 @@ export function RecipeLibraryPage() {
     refetch: refetchRecipes,
   } = useApi(() => getRecipes(apiClient, familyId ?? 'NA'), [familyId]);
 
-  const recipes = recipesData?.recipes ?? [];
+  const recipes = useMemo(() => recipesData?.recipes ?? [], [recipesData]);
 
   // Create recipe mutation
   const { mutate: createRecipeMutation, loading: createLoading } = useApiMutation(
