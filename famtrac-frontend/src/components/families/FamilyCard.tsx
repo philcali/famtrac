@@ -41,32 +41,49 @@ export function FamilyCard({ family, onEdit, onDelete, onView, onRecipes }: Fami
             className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 5v.01M12 12v.01M12 19v.01"
+              />
             </svg>
           </button>
           {menuOpen && (
             <div className="absolute right-0 z-10 mt-1 w-44 bg-white rounded-xl shadow-lg border border-gray-100 py-1">
               <button
-                onClick={() => { onRecipes(family); setMenuOpen(false); }}
+                onClick={() => {
+                  onRecipes(family);
+                  setMenuOpen(false);
+                }}
                 className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
               >
                 <span className="text-base">🍽️</span> Recipes
               </button>
               <button
-                onClick={() => { onView(family); setMenuOpen(false); }}
+                onClick={() => {
+                  onView(family);
+                  setMenuOpen(false);
+                }}
                 className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
               >
                 <span className="text-base">👁️</span> View details
               </button>
               <button
-                onClick={() => { onEdit(family); setMenuOpen(false); }}
+                onClick={() => {
+                  onEdit(family);
+                  setMenuOpen(false);
+                }}
                 className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
               >
                 <span className="text-base">✏️</span> Edit
               </button>
               <div className="border-t border-gray-100 my-1" />
               <button
-                onClick={() => { onDelete(family); setMenuOpen(false); }}
+                onClick={() => {
+                  onDelete(family);
+                  setMenuOpen(false);
+                }}
                 className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
               >
                 <span className="text-base">🗑️</span> Delete

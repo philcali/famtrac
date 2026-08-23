@@ -191,9 +191,7 @@ export function RecipeForm({ recipe, onSubmit, onCancel, loading = false }: Reci
       <div className="flex items-center gap-2 pt-1">
         <label
           className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium cursor-pointer select-none transition-colors ${
-            safe
-              ? 'bg-green-100 text-green-700'
-              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            safe ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
           }`}
         >
           <input

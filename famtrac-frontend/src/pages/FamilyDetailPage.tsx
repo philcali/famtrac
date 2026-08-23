@@ -24,7 +24,6 @@ import {
 import { getShares, createShare, updateShare, revokeShare } from '../api/shares';
 import type { Dependent, Share, PermissionAction } from '../types/domain';
 import type { CreateShareRequest, UpdateShareRequest } from '../api/types';
-import type { RecipeResponse } from '../api/types';
 
 function mapShares(raw: { permission_scope: { actions: string[] }; status: string }[]): Share[] {
   return raw.map((s) => ({
@@ -69,11 +68,7 @@ export function FamilyDetailPage() {
   } = useApi(() => getFamily(apiClient, familyId ?? 'NA'), [familyId]);
 
   // Fetch recipes for count display
-  const {
-    data: recipesData,
-    loading: recipesLoading,
-    error: recipesError,
-  } = useApi(
+  const { data: recipesData, loading: recipesLoading } = useApi(
     () => getRecipes(apiClient, familyId ?? 'NA', 100),
     [familyId]
   );
@@ -374,9 +369,7 @@ export function FamilyDetailPage() {
 
       {/* Recipes Card */}
       <div className="mb-4">
-        <div
-          className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100 shadow-sm flex items-center justify-between"
-        >
+        <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl border border-amber-100 shadow-sm flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-3xl">🍽️</span>
             <div>
@@ -389,10 +382,7 @@ export function FamilyDetailPage() {
           {recipesLoading ? (
             <LoadingSpinner />
           ) : (
-            <Button
-              variant="secondary"
-              onClick={() => navigate(`/families/${familyId}/recipes`)}
-            >
+            <Button variant="secondary" onClick={() => navigate(`/families/${familyId}/recipes`)}>
               View all recipes
             </Button>
           )}
