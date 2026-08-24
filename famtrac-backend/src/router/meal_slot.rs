@@ -23,9 +23,11 @@ pub async fn route_meal_slot(
     meal_repo: &DynamoDbMealSlotRepository,
 ) -> Result<serde_json::Value, HandlerError> {
     // Check if this is a meal-slot detail route: /{meal_slot_id}[/...]
-    if let Some(meal_slot_id_idx) = sub_path.find("/") {
-        // Extract meal_slot_id from the sub_path
-        let meal_slot_id_str = &sub_path[1..meal_slot_id_idx]; // skip leading /
+    // sub_path starts with "/", so we search for the second "/" to find the meal slot ID boundary
+    if let Some(meal_slot_id_idx) = sub_path[1..].find("/") {
+        // Extract meal_slot_id from the sub_path (add 1 to account for the leading "/")
+        let meal_slot_id_idx = meal_slot_id_idx + 1;
+        let meal_slot_id_str = &sub_path[1..meal_slot_id_idx];
         let meal_slot_id = extract_uuid_param(
             &format!("/meal-slots/{}", meal_slot_id_str),
             "/meal-slots/",
@@ -142,5 +144,71 @@ pub async fn route_meal_slot(
                 method, family_id.0, dependent_id.0, sub_path
             ))),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// Test that the index calculation for extracting the meal slot ID from sub_path
+    /// does not panic when sub_path has no trailing segment (e.g., "/{uuid}").
+    ///
+    /// This is a regression test for the bug where sub_path.find("/") on
+    /// "/{uuid}" returned Some(0) (the leading slash), then &sub_path[1..0]
+    /// panicked because start > end in the slice.
+    #[test]
+    fn test_meal_slot_id_extraction_no_trailing_segment() {
+        let meal_slot_id_str = "083ef6d9-2e7a-407e-af22-d1546d437555";
+        let sub_path = format!("/{}", meal_slot_id_str);
+
+        // The fix searches in sub_path[1..] for the second "/"
+        let inner = &sub_path[1..];
+        let meal_slot_id_idx = inner.find("/").map(|i| i + 1);
+
+        // No trailing "/" means no second segment found — should be None
+        // This is the correct behavior: falls through to list/create branch
+        assert!(meal_slot_id_idx.is_none());
+    }
+
+    #[test]
+    fn test_meal_slot_id_extraction_with_trailing_slash() {
+        let meal_slot_id_str = "083ef6d9-2e7a-407e-af22-d1546d437555";
+        let sub_path = format!("/{}", meal_slot_id_str);
+        let sub_path = format!("{}{}", sub_path, "/");
+
+        let inner = &sub_path[1..];
+        let meal_slot_id_idx = inner.find("/").map(|i| i + 1);
+
+        // Trailing "/" found at index == meal_slot_id_str.len()
+        assert!(meal_slot_id_idx.is_some());
+        let idx = meal_slot_id_idx.unwrap();
+        assert_eq!(idx, meal_slot_id_str.len() + 1);
+
+        // Extracting meal_slot_id_str should work: &sub_path[1..idx]
+        let extracted = &sub_path[1..idx];
+        assert_eq!(extracted, meal_slot_id_str);
+
+        // meal_slot_sub_path = &sub_path[idx..] should be "/"
+        let sub_path_remainder = &sub_path[idx..];
+        assert_eq!(sub_path_remainder, "/");
+    }
+
+    #[test]
+    fn test_meal_slot_id_extraction_with_sub_path() {
+        let meal_slot_id_str = "083ef6d9-2e7a-407e-af22-d1546d437555";
+        let sub_path = format!("/{}", meal_slot_id_str);
+        let sub_path = format!("{}{}", sub_path, "/extra");
+
+        let inner = &sub_path[1..];
+        let meal_slot_id_idx = inner.find("/").map(|i| i + 1);
+
+        assert!(meal_slot_id_idx.is_some());
+        let idx = meal_slot_id_idx.unwrap();
+        assert_eq!(idx, meal_slot_id_str.len() + 1);
+
+        let extracted = &sub_path[1..idx];
+        assert_eq!(extracted, meal_slot_id_str);
+
+        let sub_path_remainder = &sub_path[idx..];
+        assert_eq!(sub_path_remainder, "/extra");
     }
 }

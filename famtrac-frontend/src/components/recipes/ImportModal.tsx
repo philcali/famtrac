@@ -231,31 +231,33 @@ export function ImportModal({
     e.target.value = '';
   }, []);
 
-  const mapTexture = (littleEaterTexture?: string): string | undefined => {
+  const mapTexture = useCallback((littleEaterTexture?: string): string | undefined => {
     if (!littleEaterTexture) return undefined;
     const key = littleEaterTexture.toLowerCase().replace(/\s+/g, '_');
     return LITTLE_EATER_TO_FAMTRAC_TEXTURE[key] ?? littleEaterTexture;
-  };
-  const mapRecipeToCreateRequest = (
-    r: LittleEaterRecipe | LocalStorageRecipe
-  ): CreateRecipeRequest => ({
-    name: r.name,
-    emoji: r.emoji,
-    // Export format uses `ingredients` (array), backup format uses `ingredient` (string)
-    ingredients: Array.isArray((r as LittleEaterRecipe).ingredients)
-      ? (r as LittleEaterRecipe).ingredients
-      : [(r as LocalStorageRecipe).ingredient],
-    // Export format uses `age_min`, backup format uses `ageMin`
-    age_min: (r as LittleEaterRecipe).age_min ?? (r as LocalStorageRecipe).ageMin,
-    texture: mapTexture(r.texture),
-    // Export format uses `allergens`, backup format uses `allergens` (same)
-    allergens: (r as LittleEaterRecipe).allergens ?? (r as LocalStorageRecipe).allergens,
-    // Export format uses `prep_notes`, backup format uses `prepNotes`
-    prep_notes: (r as LittleEaterRecipe).prep_notes ?? (r as LocalStorageRecipe).prepNotes,
-    safe: r.safe,
-  });
+  }, []);
 
-  const reactionToVolume = (reaction?: string): number => {
+  const mapRecipeToCreateRequest = useCallback(
+    (r: LittleEaterRecipe | LocalStorageRecipe): CreateRecipeRequest => ({
+      name: r.name,
+      emoji: r.emoji,
+      // Export format uses `ingredients` (array), backup format uses `ingredient` (string)
+      ingredients: Array.isArray((r as LittleEaterRecipe).ingredients)
+        ? (r as LittleEaterRecipe).ingredients
+        : [(r as LocalStorageRecipe).ingredient],
+      // Export format uses `age_min`, backup format uses `ageMin`
+      age_min: (r as LittleEaterRecipe).age_min ?? (r as LocalStorageRecipe).ageMin,
+      texture: mapTexture(r.texture),
+      // Export format uses `allergens`, backup format uses `allergens` (same)
+      allergens: (r as LittleEaterRecipe).allergens ?? (r as LocalStorageRecipe).allergens,
+      // Export format uses `prep_notes`, backup format uses `prepNotes`
+      prep_notes: (r as LittleEaterRecipe).prep_notes ?? (r as LocalStorageRecipe).prepNotes,
+      safe: r.safe,
+    }),
+    [mapTexture]
+  );
+
+  const reactionToVolume = useCallback((reaction?: string): number => {
     switch (mapReaction(reaction)) {
       case 'tasted':
         return 10;
@@ -272,7 +274,7 @@ export function ImportModal({
       default:
         return 30;
     }
-  };
+  }, []);
 
   const handleImportRecipes = useCallback(async () => {
     if (!exportData) return;
