@@ -28,7 +28,7 @@
 
 .heading {
   border-bottom: 1px solid rgb(221, 221, 221);
-  padding-bottom: 1.0rem;
+  padding-bottom: 1rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
