@@ -270,9 +270,14 @@ pub fn extract_owner_id(pk: &str, image: &HashMap<String, DdbAttributeValue>) ->
     None
 }
 
-/// Check if a resource record is a mirrored copy (has a share_id attribute).
-pub fn is_mirrored_resource(image: &HashMap<String, DdbAttributeValue>) -> bool {
-    image.get("share_id").and_then(|v| v.as_s().ok()).is_some()
+/// Check if a resource record is a mirrored copy (has a share_id attribute
+/// and lives in the OWNER partition, not the original FAMILY partition).
+pub fn is_mirrored_resource(pk: &str, image: &HashMap<String, DdbAttributeValue>) -> bool {
+    pk.starts_with("OWNER#")
+        && image
+            .get("share_id")
+            .and_then(|v| v.as_s().ok())
+            .is_some()
 }
 
 /// Query the `GSI-family_id` GSI to find all active shares for a given family.
@@ -437,23 +442,27 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // Tests for is_mirrored_resource
+    // Tests for is_mirrored_resource (legacy tests — updated for pk-aware API)
     // -----------------------------------------------------------------------
 
     #[test]
-    fn test_is_mirrored_resource_true() {
+    fn test_is_mirrored_resource_with_owner_pk_and_share_id_is_mirrored() {
         let mut image = HashMap::new();
         image.insert(
             "share_id".to_string(),
             DdbAttributeValue::S("some-share-id".to_string()),
         );
-        assert!(is_mirrored_resource(&image));
+        assert!(is_mirrored_resource("OWNER#accepter-id", &image));
     }
 
     #[test]
-    fn test_is_mirrored_resource_false() {
-        let image: HashMap<String, DdbAttributeValue> = HashMap::new();
-        assert!(!is_mirrored_resource(&image));
+    fn test_is_mirrored_resource_with_family_pk_and_share_id_is_not_mirrored() {
+        let mut image = HashMap::new();
+        image.insert(
+            "share_id".to_string(),
+            DdbAttributeValue::S("some-share-id".to_string()),
+        );
+        assert!(!is_mirrored_resource("FAMILY#some-fid", &image));
     }
 
     // -----------------------------------------------------------------------
@@ -601,5 +610,64 @@ mod tests {
             result.get("active").and_then(|v| v.as_bool().ok()),
             Some(&true)
         );
+    }
+
+    #[test]
+    fn test_is_mirrored_resource_original_recipe_with_share_id_is_not_mirrored() {
+        // This is the critical bug fix: a recipe in the FAMILY partition
+        // that has share_id is the ORIGINAL (shared) copy, not a mirrored copy.
+        // It must NOT be treated as mirrored.
+        let mut image = HashMap::new();
+        image.insert(
+            "share_id".to_string(),
+            DdbAttributeValue::S("share-123".to_string()),
+        );
+        let pk = "FAMILY#some-fid";
+        assert!(!is_mirrored_resource(pk, &image));
+    }
+
+    #[test]
+    fn test_is_mirrored_resource_mirrored_recipe_with_share_id_is_mirrored() {
+        let mut image = HashMap::new();
+        image.insert(
+            "share_id".to_string(),
+            DdbAttributeValue::S("share-123".to_string()),
+        );
+        let pk = "OWNER#accepter-id";
+        assert!(is_mirrored_resource(pk, &image));
+    }
+
+    #[test]
+    fn test_is_mirrored_resource_original_recipe_without_share_id_is_not_mirrored() {
+        let image: HashMap<String, DdbAttributeValue> = HashMap::new();
+        let pk = "FAMILY#some-fid";
+        assert!(!is_mirrored_resource(pk, &image));
+    }
+
+    #[test]
+    fn test_is_mirrored_resource_mirrored_family_with_share_id_is_mirrored() {
+        let mut image = HashMap::new();
+        image.insert(
+            "share_id".to_string(),
+            DdbAttributeValue::S("share-123".to_string()),
+        );
+        let pk = "OWNER#accepter-id";
+        assert!(is_mirrored_resource(pk, &image));
+    }
+
+    #[test]
+    fn test_is_mirrored_resource_no_share_id_is_not_mirrored() {
+        let image: HashMap<String, DdbAttributeValue> = HashMap::new();
+        let pk = "OWNER#accepter-id";
+        assert!(!is_mirrored_resource(pk, &image));
+    }
+
+    #[test]
+    fn test_is_mirrored_resource_owner_pk_without_share_id_is_not_mirrored() {
+        // Owner partition without share_id is the original owner's record
+        let mut image = HashMap::new();
+        image.insert("name".to_string(), DdbAttributeValue::S("Test".to_string()));
+        let pk = "OWNER#user1";
+        assert!(!is_mirrored_resource(pk, &image));
     }
 }
