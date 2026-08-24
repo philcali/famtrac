@@ -236,9 +236,7 @@ export function MealPlanPage() {
 
     // Look up the recipe name and reaction label for the activity notes
     const activityRecipe = recipes.find((r) => r.id === data.recipe_id);
-    const mealSlotRecipe = feedingSlot.recipe_id
-      ? recipeMap[feedingSlot.recipe_id]
-      : undefined;
+    const mealSlotRecipe = feedingSlot.recipe_id ? recipeMap[feedingSlot.recipe_id] : undefined;
     const recipeName = activityRecipe?.name ?? mealSlotRecipe?.name;
 
     const reactionLabel: Record<string, string> = {
