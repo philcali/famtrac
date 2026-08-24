@@ -99,6 +99,17 @@ pub fn extract_uuid_param(
     })
 }
 
+/// Parse a string as a UUID, returning a validation error on failure.
+pub fn parse_uuid(value: &str, field_name: &str) -> Result<uuid::Uuid, HandlerError> {
+    value.parse::<uuid::Uuid>().map_err(|_| {
+        HandlerError::Validation(ValidationError {
+            field: field_name.to_string(),
+            message: format!("Invalid {} format", field_name),
+            constraint: Some("must be a valid UUID".to_string()),
+        })
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,7 +135,6 @@ mod tests {
     #[test]
     fn test_extract_path_param_empty_segment() {
         let result = extract_path_param("/families/", "/families/");
-        // Empty string after prefix is still extracted as a segment
         assert_eq!(result, Some("".to_string()));
     }
 
@@ -194,7 +204,6 @@ mod tests {
 
     #[test]
     fn test_extract_uuid_param_different_field_names() {
-        // Test with dependent_id
         let result = extract_uuid_param("/dependents/not-a-uuid", "/dependents/", "dependent_id");
         assert!(result.is_err());
         match result {
@@ -205,7 +214,6 @@ mod tests {
             _ => panic!("Expected ValidationError"),
         }
 
-        // Test with activity_id
         let result = extract_uuid_param("/activities/not-a-uuid", "/activities/", "activity_id");
         assert!(result.is_err());
         match result {
@@ -219,17 +227,38 @@ mod tests {
 
     #[test]
     fn test_extract_uuid_param_malformed_uuid() {
-        // Test various malformed UUIDs
         let test_cases = vec![
             "/families/123",
             "/families/abc-def-ghi",
-            "/families/550e8400-e29b-41d4-a716", // Too short
-            "/families/550e8400-e29b-41d4-a716-446655440000-extra", // Too long
+            "/families/550e8400-e29b-41d4-a716",
+            "/families/550e8400-e29b-41d4-a716-446655440000-extra",
         ];
 
         for path in test_cases {
             let result = extract_uuid_param(path, "/families/", "family_id");
             assert!(result.is_err(), "Expected error for path: {}", path);
+        }
+    }
+
+    #[test]
+    fn test_parse_uuid_valid() {
+        let uuid_str = "550e8400-e29b-41d4-a716-446655440000";
+        let result = parse_uuid(uuid_str, "family_id");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), uuid::Uuid::parse_str(uuid_str).unwrap());
+    }
+
+    #[test]
+    fn test_parse_uuid_invalid() {
+        let result = parse_uuid("not-a-uuid", "family_id");
+        assert!(result.is_err());
+        match result {
+            Err(HandlerError::Validation(err)) => {
+                assert_eq!(err.field, "family_id");
+                assert_eq!(err.message, "Invalid family_id format");
+                assert_eq!(err.constraint, Some("must be a valid UUID".to_string()));
+            }
+            _ => panic!("Expected ValidationError"),
         }
     }
 }

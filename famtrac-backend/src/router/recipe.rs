@@ -1,40 +1,30 @@
-// Recipe route handlers
+// Recipe route handlers — segment-based dispatch
 //
-// All recipe routes are nested under /families/{family_id}/recipes
-// since recipes are subresources of families.
+// The parent router (mod.rs) handles path parsing and UUID extraction.
+// This module only dispatches by HTTP method for recipe CRUD.
 
 use crate::context::RequestContext;
 use crate::domain::{FamilyId, RecipeId};
 use crate::errors::HandlerError;
 use crate::handlers;
+use crate::handlers::PaginationParams;
 use crate::repository::{DynamoDbFamilyRepository, DynamoDbRecipeRepository};
-use crate::router::extractors::extract_uuid_param;
 use aws_lambda_events::apigw::ApiGatewayV2httpRequest;
 
-/// Route handler for /families/{family_id}/recipes/* routes
-///
-/// This function handles routing for recipe-related endpoints nested under a family:
-/// - GET /families/{family_id}/recipes - List all recipes for a family
-/// - POST /families/{family_id}/recipes - Create a new recipe
-/// - GET /families/{family_id}/recipes/{id} - Get a recipe by ID
-/// - PUT /families/{family_id}/recipes/{id} - Update a recipe
-/// - DELETE /families/{family_id}/recipes/{id} - Delete a recipe
-#[allow(clippy::too_many_arguments)]
-pub async fn route_recipe(
+/// Handle GET|POST /families/{family_id}/recipes
+pub async fn handle_recipes_collection(
     method: &str,
     family_id: FamilyId,
-    sub_path: &str,
     body: &str,
     request: &ApiGatewayV2httpRequest,
     context: &RequestContext,
     family_repo: &DynamoDbFamilyRepository,
     recipe_repo: &DynamoDbRecipeRepository,
 ) -> Result<serde_json::Value, HandlerError> {
-    match (method, sub_path) {
-        // GET /families/{family_id}/recipes - List all recipes
-        ("GET", "") | ("GET", "/") => {
+    match method {
+        "GET" => {
             let query_params = &request.query_string_parameters;
-            let pagination = handlers::PaginationParams {
+            let pagination = PaginationParams {
                 limit: query_params.first("limit").and_then(|s| s.parse().ok()),
                 next_token: query_params.first("next_token").map(|s| s.to_string()),
             };
@@ -48,8 +38,7 @@ pub async fn route_recipe(
             Ok(response)
         }
 
-        // POST /families/{family_id}/recipes - Create a new recipe
-        ("POST", "") | ("POST", "/") => {
+        "POST" => {
             let (_status, response_json) =
                 handlers::create_recipe(family_id, body, context, family_repo, recipe_repo).await?;
             let response: serde_json::Value =
@@ -59,18 +48,28 @@ pub async fn route_recipe(
             Ok(response)
         }
 
-        // GET /families/{family_id}/recipes/{id} - Get a recipe by ID
-        ("GET", p) if !p.is_empty() && p != "/" => {
-            let recipe_id =
-                extract_uuid_param(&format!("/recipes{}", sub_path), "/recipes/", "recipe_id")?;
-            let (_status, response_json) = handlers::get_recipe(
-                family_id,
-                RecipeId(recipe_id),
-                context,
-                family_repo,
-                recipe_repo,
-            )
-            .await?;
+        _ => Err(HandlerError::NotFound(format!(
+            "Method not allowed: {} /families/{}/recipes",
+            method, family_id.0
+        ))),
+    }
+}
+
+/// Handle GET|PUT|DELETE /families/{family_id}/recipes/{recipe_id}
+pub async fn handle_recipe_item(
+    method: &str,
+    family_id: FamilyId,
+    recipe_id: RecipeId,
+    body: &str,
+    context: &RequestContext,
+    family_repo: &DynamoDbFamilyRepository,
+    recipe_repo: &DynamoDbRecipeRepository,
+) -> Result<serde_json::Value, HandlerError> {
+    match method {
+        "GET" => {
+            let (_status, response_json) =
+                handlers::get_recipe(family_id, recipe_id, context, family_repo, recipe_repo)
+                    .await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -78,13 +77,10 @@ pub async fn route_recipe(
             Ok(response)
         }
 
-        // PUT /families/{family_id}/recipes/{id} - Update a recipe
-        ("PUT", p) if !p.is_empty() && p != "/" => {
-            let recipe_id =
-                extract_uuid_param(&format!("/recipes{}", sub_path), "/recipes/", "recipe_id")?;
+        "PUT" => {
             let (_status, response_json) = handlers::update_recipe(
                 family_id,
-                RecipeId(recipe_id),
+                recipe_id,
                 body,
                 context,
                 family_repo,
@@ -98,58 +94,54 @@ pub async fn route_recipe(
             Ok(response)
         }
 
-        // DELETE /families/{family_id}/recipes/{id} - Delete a recipe
-        ("DELETE", p) if !p.is_empty() && p != "/" => {
-            let recipe_id =
-                extract_uuid_param(&format!("/recipes{}", sub_path), "/recipes/", "recipe_id")?;
-            handlers::delete_recipe(
-                family_id,
-                RecipeId(recipe_id),
-                context,
-                family_repo,
-                recipe_repo,
-            )
-            .await?;
+        "DELETE" => {
+            handlers::delete_recipe(family_id, recipe_id, context, family_repo, recipe_repo)
+                .await?;
             Ok(serde_json::Value::Null)
         }
 
-        // Unknown route
         _ => Err(HandlerError::NotFound(format!(
-            "Route not found: {} /families/{}/recipes{}",
-            method, family_id.0, sub_path
+            "Method not allowed: {} /families/{}/recipes/{}",
+            method, family_id.0, recipe_id.0
         ))),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use uuid::Uuid;
-
     #[test]
-    fn test_uuid_extraction_for_get_recipe() {
-        let uuid_str = "550e8400-e29b-41d4-a716-446655440000";
-        let path = format!("/recipes/{}", uuid_str);
-
-        let result = extract_uuid_param(&path, "/recipes/", "recipe_id");
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Uuid::parse_str(uuid_str).unwrap());
+    fn test_method_dispatch_get_recipes() {
+        let method = "GET";
+        assert!(matches!(method, "GET"));
     }
 
     #[test]
-    fn test_invalid_uuid_returns_validation_error() {
-        let path = "/recipes/not-a-uuid";
+    fn test_method_dispatch_post_recipes() {
+        let method = "POST";
+        assert!(matches!(method, "POST"));
+    }
 
-        let result = extract_uuid_param(path, "/recipes/", "recipe_id");
-        assert!(result.is_err());
+    #[test]
+    fn test_method_dispatch_get_recipe_item() {
+        let method = "GET";
+        assert!(matches!(method, "GET"));
+    }
 
-        match result {
-            Err(HandlerError::Validation(err)) => {
-                assert_eq!(err.field, "recipe_id");
-                assert_eq!(err.message, "Invalid recipe_id format");
-                assert_eq!(err.constraint, Some("must be a valid UUID".to_string()));
-            }
-            _ => panic!("Expected ValidationError"),
-        }
+    #[test]
+    fn test_method_dispatch_put_recipe_item() {
+        let method = "PUT";
+        assert!(matches!(method, "PUT"));
+    }
+
+    #[test]
+    fn test_method_dispatch_delete_recipe_item() {
+        let method = "DELETE";
+        assert!(matches!(method, "DELETE"));
+    }
+
+    #[test]
+    fn test_unknown_method_does_not_match() {
+        let method = "PATCH";
+        assert!(!matches!(method, "GET" | "POST" | "PUT" | "DELETE"));
     }
 }

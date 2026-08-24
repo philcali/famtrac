@@ -276,10 +276,14 @@ export function MealPlanPage() {
     refetchSlots();
   };
 
-  const handleDeleteSlot = () => {
+  const handleDeleteSlot = async () => {
     if (!deletingSlot) return;
-    deleteSlotMutation(deletingSlot.id);
-    setSuccessMessage('Meal removed from plan');
+    const response = await deleteSlotMutation(deletingSlot.id);
+    if (response.error) {
+      setSuccessMessage('Failed to remove meal from plan');
+    } else {
+      setSuccessMessage('Meal removed from plan');
+    }
     setDeletingSlot(undefined);
     refetchSlots();
   };
@@ -466,6 +470,11 @@ export function MealPlanPage() {
           setShowAddRecipe(false);
           setEditingSlot(undefined);
         }}
+        editMode={!!editingSlot}
+        time={editFormTime}
+        onTimeChange={setEditFormTime}
+        notes={editFormNotes}
+        onNotesChange={setEditFormNotes}
       />
 
       {/* Log Feeding Modal */}

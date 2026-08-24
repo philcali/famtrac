@@ -54,6 +54,7 @@ export class ApiClient {
         headers,
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
+        cache: 'no-store',
       });
 
       clearTimeout(timeoutId);
@@ -95,7 +96,9 @@ export class ApiClient {
   }
 
   private async buildHeaders(hasBody: boolean): Promise<Record<string, string>> {
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = {
+      'Cache-Control': 'no-cache',
+    };
 
     // Add Authorization header with token
     const token = await this.getAuthToken();

@@ -18,3 +18,4 @@ famtrac-backend = { path = "../famtrac-backend" }
 
 [dev-dependencies]
 proptest = "1"
+uuid = { version = "1.10", features = ["v4"] }

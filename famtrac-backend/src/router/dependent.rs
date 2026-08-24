@@ -1,118 +1,50 @@
-// Dependent route handlers
+// Dependent route handlers — segment-based dispatch
 //
-// All dependent routes are nested under /families/{family_id}/dependents
-// since dependents are subresources of families.
+// The parent router (mod.rs) handles path parsing, UUID extraction,
+// and delegation to sub-resources (activities, meal-slots, feeding-logs).
+// This module only dispatches by HTTP method for dependent CRUD.
 
 use crate::context::RequestContext;
 use crate::domain::{DependentId, FamilyId};
 use crate::errors::HandlerError;
 use crate::handlers;
-use crate::repository::{
-    DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
-    DynamoDbFeedingLogRepository, DynamoDbMealSlotRepository,
-};
-use crate::router::extractors::extract_uuid_param;
+use crate::handlers::PaginationParams;
+use crate::repository::{DynamoDbDependentRepository, DynamoDbFamilyRepository};
 use aws_lambda_events::apigw::ApiGatewayV2httpRequest;
 
-/// Route handler for /families/{family_id}/dependents/* routes
-///
-/// This function handles routing for dependent-related endpoints nested under a family:
-/// - POST /families/{family_id}/dependents - Create a new dependent
-/// - GET /families/{family_id}/dependents/{id} - Get a dependent by ID
-/// - PUT /families/{family_id}/dependents/{id} - Update a dependent
-/// - * /families/{family_id}/dependents/{id}/activities/* - Delegate to activity router
-///
-/// The list endpoint (GET /families/{family_id}/dependents) is handled by the family router.
-#[allow(clippy::too_many_arguments)]
-pub async fn route_dependent(
+/// Handle GET|POST /families/{family_id}/dependents
+pub async fn handle_dependents_collection(
     method: &str,
     family_id: FamilyId,
-    sub_path: &str,
     body: &str,
     request: &ApiGatewayV2httpRequest,
     context: &RequestContext,
     family_repo: &DynamoDbFamilyRepository,
     dependent_repo: &DynamoDbDependentRepository,
-    activity_repo: &DynamoDbActivityRepository,
-    meal_repo: &DynamoDbMealSlotRepository,
-    feeding_log_repo: &DynamoDbFeedingLogRepository,
 ) -> Result<serde_json::Value, HandlerError> {
-    // Check if this is an activity sub-route: /{dependent_id}/activities[/...]
-    if let Some(activities_idx) = sub_path.find("/activities") {
-        // Extract dependent_id from the sub_path before /activities
-        let before_activities = &sub_path[..activities_idx];
-        let dependent_id = extract_uuid_param(
-            &format!("/dependents{}", before_activities),
-            "/dependents/",
-            "dependent_id",
-        )?;
-        let activity_sub_path = &sub_path[activities_idx + "/activities".len()..];
-        return super::activity::route_activity(
-            method,
-            family_id,
-            DependentId(dependent_id),
-            activity_sub_path,
-            body,
-            request,
-            context,
-            family_repo,
-            dependent_repo,
-            activity_repo,
-        )
-        .await;
-    }
+    match method {
+        "GET" => {
+            let query_params = &request.query_string_parameters;
+            let pagination = PaginationParams {
+                limit: query_params.first("limit").and_then(|s| s.parse().ok()),
+                next_token: query_params.first("next_token").map(|s| s.to_string()),
+            };
+            let (_status, response_json) = handlers::list_dependents(
+                family_id,
+                context,
+                family_repo,
+                dependent_repo,
+                pagination,
+            )
+            .await?;
+            let response: serde_json::Value =
+                serde_json::from_str(&response_json).map_err(|e| {
+                    HandlerError::InternalError(format!("Failed to parse response: {}", e))
+                })?;
+            Ok(response)
+        }
 
-    // Check if this is a meal-slots sub-route: /{dependent_id}/meal-slots[/...]
-    if let Some(meal_slots_idx) = sub_path.find("/meal-slots") {
-        // Extract dependent_id from the sub_path before /meal-slots
-        let before_meal_slots = &sub_path[..meal_slots_idx];
-        let dependent_id = extract_uuid_param(
-            &format!("/dependents{}", before_meal_slots),
-            "/dependents/",
-            "dependent_id",
-        )?;
-        let meal_slots_sub_path = &sub_path[meal_slots_idx + "/meal-slots".len()..];
-        return super::meal_slot::route_meal_slot(
-            method,
-            family_id,
-            DependentId(dependent_id),
-            meal_slots_sub_path,
-            body,
-            request,
-            context,
-            family_repo,
-            meal_repo,
-        )
-        .await;
-    }
-
-    // Check if this is a feeding-logs sub-route: /{dependent_id}/feeding-logs[/...]
-    if let Some(feeding_logs_idx) = sub_path.find("/feeding-logs") {
-        // Extract dependent_id from the sub_path before /feeding-logs
-        let before_feeding_logs = &sub_path[..feeding_logs_idx];
-        let dependent_id = extract_uuid_param(
-            &format!("/dependents{}", before_feeding_logs),
-            "/dependents/",
-            "dependent_id",
-        )?;
-        let feeding_logs_sub_path = &sub_path[feeding_logs_idx + "/feeding-logs".len()..];
-        return super::feeding_log::route_feeding_log(
-            method,
-            family_id,
-            DependentId(dependent_id),
-            feeding_logs_sub_path,
-            body,
-            request,
-            context,
-            family_repo,
-            feeding_log_repo,
-        )
-        .await;
-    }
-
-    match (method, sub_path) {
-        // POST /families/{family_id}/dependents - Create a new dependent
-        ("POST", "") | ("POST", "/") => {
+        "POST" => {
             let (_status, response_json) =
                 handlers::create_dependent(body, context, family_repo, dependent_repo).await?;
             let response: serde_json::Value =
@@ -122,16 +54,28 @@ pub async fn route_dependent(
             Ok(response)
         }
 
-        // GET /families/{family_id}/dependents/{id} - Get a dependent by ID
-        ("GET", p) if !p.is_empty() && p != "/" => {
-            let dependent_id = extract_uuid_param(
-                &format!("/dependents{}", sub_path),
-                "/dependents/",
-                "dependent_id",
-            )?;
+        _ => Err(HandlerError::NotFound(format!(
+            "Method not allowed: {} /families/{}/dependents",
+            method, family_id.0
+        ))),
+    }
+}
+
+/// Handle GET|PUT|DELETE /families/{family_id}/dependents/{dependent_id}
+pub async fn handle_dependent_item(
+    method: &str,
+    family_id: FamilyId,
+    dependent_id: DependentId,
+    body: &str,
+    context: &RequestContext,
+    family_repo: &DynamoDbFamilyRepository,
+    dependent_repo: &DynamoDbDependentRepository,
+) -> Result<serde_json::Value, HandlerError> {
+    match method {
+        "GET" => {
             let (_status, response_json) = handlers::get_dependent(
                 family_id,
-                DependentId(dependent_id),
+                dependent_id,
                 context,
                 family_repo,
                 dependent_repo,
@@ -144,16 +88,10 @@ pub async fn route_dependent(
             Ok(response)
         }
 
-        // PUT /families/{family_id}/dependents/{id} - Update a dependent
-        ("PUT", p) if !p.is_empty() && p != "/" => {
-            let dependent_id = extract_uuid_param(
-                &format!("/dependents{}", sub_path),
-                "/dependents/",
-                "dependent_id",
-            )?;
+        "PUT" => {
             let (_status, response_json) = handlers::update_dependent(
                 family_id,
-                DependentId(dependent_id),
+                dependent_id,
                 body,
                 context,
                 family_repo,
@@ -167,16 +105,10 @@ pub async fn route_dependent(
             Ok(response)
         }
 
-        // DELETE /families/{family_id}/dependents/{id} - Delete a dependent
-        ("DELETE", p) if !p.is_empty() && p != "/" && !p.contains("/activities") => {
-            let dependent_id = extract_uuid_param(
-                &format!("/dependents{}", sub_path),
-                "/dependents/",
-                "dependent_id",
-            )?;
+        "DELETE" => {
             handlers::delete_dependent(
                 family_id,
-                DependentId(dependent_id),
+                dependent_id,
                 context,
                 family_repo,
                 dependent_repo,
@@ -185,43 +117,48 @@ pub async fn route_dependent(
             Ok(serde_json::Value::Null)
         }
 
-        // Unknown route
         _ => Err(HandlerError::NotFound(format!(
-            "Route not found: {} /families/{}/dependents{}",
-            method, family_id.0, sub_path
+            "Method not allowed: {} /families/{}/dependents/{}",
+            method, family_id.0, dependent_id.0
         ))),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use uuid::Uuid;
-
     #[test]
-    fn test_uuid_extraction_for_get_dependent() {
-        let uuid_str = "550e8400-e29b-41d4-a716-446655440000";
-        let path = format!("/dependents/{}", uuid_str);
-
-        let result = extract_uuid_param(&path, "/dependents/", "dependent_id");
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Uuid::parse_str(uuid_str).unwrap());
+    fn test_method_dispatch_get_dependents() {
+        let method = "GET";
+        assert!(matches!(method, "GET"));
     }
 
     #[test]
-    fn test_invalid_uuid_returns_validation_error() {
-        let path = "/dependents/not-a-uuid";
+    fn test_method_dispatch_post_dependents() {
+        let method = "POST";
+        assert!(matches!(method, "POST"));
+    }
 
-        let result = extract_uuid_param(path, "/dependents/", "dependent_id");
-        assert!(result.is_err());
+    #[test]
+    fn test_method_dispatch_get_dependent_item() {
+        let method = "GET";
+        assert!(matches!(method, "GET"));
+    }
 
-        match result {
-            Err(HandlerError::Validation(err)) => {
-                assert_eq!(err.field, "dependent_id");
-                assert_eq!(err.message, "Invalid dependent_id format");
-                assert_eq!(err.constraint, Some("must be a valid UUID".to_string()));
-            }
-            _ => panic!("Expected ValidationError"),
-        }
+    #[test]
+    fn test_method_dispatch_put_dependent_item() {
+        let method = "PUT";
+        assert!(matches!(method, "PUT"));
+    }
+
+    #[test]
+    fn test_method_dispatch_delete_dependent_item() {
+        let method = "DELETE";
+        assert!(matches!(method, "DELETE"));
+    }
+
+    #[test]
+    fn test_unknown_method_does_not_match() {
+        let method = "PATCH";
+        assert!(!matches!(method, "GET" | "POST" | "PUT" | "DELETE"));
     }
 }

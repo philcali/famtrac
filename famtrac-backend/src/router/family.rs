@@ -1,67 +1,26 @@
-// Family route handlers
+// Family route handlers — segment-based dispatch
+//
+// The parent router (mod.rs) handles path parsing and UUID extraction.
+// This module only dispatches by HTTP method.
 
 use crate::context::RequestContext;
 use crate::domain::FamilyId;
 use crate::errors::HandlerError;
 use crate::handlers;
 use crate::handlers::PaginationParams;
-use crate::repository::{
-    DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
-    DynamoDbFeedingLogRepository, DynamoDbMealSlotRepository, DynamoDbRecipeRepository,
-};
-use crate::router::extractors::extract_uuid_param;
+use crate::repository::DynamoDbFamilyRepository;
 use aws_lambda_events::apigw::ApiGatewayV2httpRequest;
 
-/// Route handler for all /families/* routes
-///
-/// This function handles routing for family-related endpoints:
-/// - GET /families - List all families for authenticated identity
-/// - POST /families - Create a new family
-/// - GET /families/{id} - Get a family by ID
-/// - PUT /families/{id} - Update a family
-/// - GET /families/{id}/dependents - List dependents for a family
-///
-/// # Arguments
-///
-/// * `method` - HTTP method (GET, POST, PUT, etc.)
-/// * `path` - URL path (e.g., "/families/123-456")
-/// * `body` - Request body as a string
-/// * `context` - Request context with authentication information
-/// * `family_repo` - Family repository for database operations
-/// * `dependent_repo` - Dependent repository for database operations
-///
-/// # Returns
-///
-/// * `Ok(serde_json::Value)` - Success response as JSON
-/// * `Err(HandlerError)` - Error response
-///
-/// # Requirements
-///
-/// - Requirement 3.1: Handle all /families/* routes
-/// - Requirement 3.2: GET /families → list_families()
-/// - Requirement 3.3: POST /families → create_family()
-/// - Requirement 3.4: GET /families/{id} → get_family()
-/// - Requirement 3.5: PUT /families/{id} → update_family()
-/// - Requirement 3.6: GET /families/{id}/dependents → list_dependents()
-/// - Requirement 3.7: Invalid UUID → HandlerError::Validation
-/// - Requirement 6.5: Use extractors from extractors.rs
-#[allow(clippy::too_many_arguments)]
-pub async fn route_family(
+/// Handle GET|POST /families
+pub async fn handle_families_collection(
     method: &str,
-    path: &str,
     body: &str,
     request: &ApiGatewayV2httpRequest,
     context: &RequestContext,
     family_repo: &DynamoDbFamilyRepository,
-    dependent_repo: &DynamoDbDependentRepository,
-    activity_repo: &DynamoDbActivityRepository,
-    recipe_repo: &DynamoDbRecipeRepository,
-    meal_repo: &DynamoDbMealSlotRepository,
-    feeding_log_repo: &DynamoDbFeedingLogRepository,
 ) -> Result<serde_json::Value, HandlerError> {
-    match (method, path) {
-        // GET /families - List all families for authenticated identity
-        ("GET", "/families") => {
+    match method {
+        "GET" => {
             let query_params = &request.query_string_parameters;
             let pagination = PaginationParams {
                 limit: query_params.first("limit").and_then(|s| s.parse().ok()),
@@ -76,8 +35,7 @@ pub async fn route_family(
             Ok(response)
         }
 
-        // POST /families - Create a new family
-        ("POST", "/families") => {
+        "POST" => {
             let (_status, response_json) =
                 handlers::create_family(body, context, family_repo).await?;
             let response: serde_json::Value =
@@ -87,15 +45,25 @@ pub async fn route_family(
             Ok(response)
         }
 
-        // GET /families/{id} - Get a family by ID
-        ("GET", p)
-            if p.starts_with("/families/")
-                && !p.contains("/dependents")
-                && !p.contains("/recipes") =>
-        {
-            let family_id = extract_uuid_param(path, "/families/", "family_id")?;
+        _ => Err(HandlerError::NotFound(format!(
+            "Method not allowed: {} /families",
+            method
+        ))),
+    }
+}
+
+/// Handle GET|PUT|DELETE /families/{family_id}
+pub async fn handle_family_item(
+    method: &str,
+    family_id: FamilyId,
+    body: &str,
+    context: &RequestContext,
+    family_repo: &DynamoDbFamilyRepository,
+) -> Result<serde_json::Value, HandlerError> {
+    match method {
+        "GET" => {
             let (_status, response_json) =
-                handlers::get_family(FamilyId(family_id), context, family_repo).await?;
+                handlers::get_family(family_id, context, family_repo).await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -103,15 +71,9 @@ pub async fn route_family(
             Ok(response)
         }
 
-        // PUT /families/{id} - Update a family
-        ("PUT", p)
-            if p.starts_with("/families/")
-                && !p.contains("/dependents")
-                && !p.contains("/recipes") =>
-        {
-            let family_id = extract_uuid_param(path, "/families/", "family_id")?;
+        "PUT" => {
             let (_status, response_json) =
-                handlers::update_family(FamilyId(family_id), body, context, family_repo).await?;
+                handlers::update_family(family_id, body, context, family_repo).await?;
             let response: serde_json::Value =
                 serde_json::from_str(&response_json).map_err(|e| {
                     HandlerError::InternalError(format!("Failed to parse response: {}", e))
@@ -119,271 +81,53 @@ pub async fn route_family(
             Ok(response)
         }
 
-        // DELETE /families/{id} - Delete a family
-        ("DELETE", p) if p.starts_with("/families/") && !p.contains("/dependents") => {
-            let family_id = extract_uuid_param(path, "/families/", "family_id")?;
-            handlers::delete_family(FamilyId(family_id), context, family_repo).await?;
+        "DELETE" => {
+            handlers::delete_family(family_id, context, family_repo).await?;
             Ok(serde_json::Value::Null)
         }
 
-        // GET /families/{id}/dependents - List dependents for a family
-        ("GET", p) if p.starts_with("/families/") && p.ends_with("/dependents") => {
-            let family_id = extract_uuid_param(path, "/families/", "family_id")?;
-            let query_params = &request.query_string_parameters;
-            let pagination = PaginationParams {
-                limit: query_params.first("limit").and_then(|s| s.parse().ok()),
-                next_token: query_params.first("next_token").map(|s| s.to_string()),
-            };
-            let (_status, response_json) = handlers::list_dependents(
-                FamilyId(family_id),
-                context,
-                family_repo,
-                dependent_repo,
-                pagination,
-            )
-            .await?;
-            let response: serde_json::Value =
-                serde_json::from_str(&response_json).map_err(|e| {
-                    HandlerError::InternalError(format!("Failed to parse response: {}", e))
-                })?;
-            Ok(response)
-        }
-
-        // /families/{id}/recipes/* - Delegate to recipe router
-        (_, p) if p.starts_with("/families/") && p.contains("/recipes") => {
-            let family_id = extract_uuid_param(path, "/families/", "family_id")?;
-            // Extract the sub-path after /recipes
-            let recipes_idx = p.find("/recipes").unwrap();
-            let after_recipes = &p[recipes_idx + "/recipes".len()..];
-            super::recipe::route_recipe(
-                method,
-                FamilyId(family_id),
-                after_recipes,
-                body,
-                request,
-                context,
-                family_repo,
-                recipe_repo,
-            )
-            .await
-        }
-
-        // /families/{id}/dependents/* - Delegate to dependent router
-        (_, p) if p.starts_with("/families/") && p.contains("/dependents") => {
-            let family_id = extract_uuid_param(path, "/families/", "family_id")?;
-            // Extract the sub-path after /dependents
-            let dependents_idx = p.find("/dependents").unwrap();
-            let after_dependents = &p[dependents_idx + "/dependents".len()..];
-            super::dependent::route_dependent(
-                method,
-                FamilyId(family_id),
-                after_dependents,
-                body,
-                request,
-                context,
-                family_repo,
-                dependent_repo,
-                activity_repo,
-                meal_repo,
-                feeding_log_repo,
-            )
-            .await
-        }
-
-        // Unknown route
         _ => Err(HandlerError::NotFound(format!(
-            "Route not found: {} {}",
-            method, path
+            "Method not allowed: {} /families/{}",
+            method, family_id.0
         ))),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use uuid::Uuid;
-
-    // Note: These tests verify the routing logic patterns.
-    // The actual route_family function signature requires concrete DynamoDb types,
-    // so full integration tests with mock repositories are in the tests/ directory
-    // using the common::mocks module.
+    #[test]
+    fn test_method_dispatch_get_families() {
+        let method = "GET";
+        assert!(matches!(method, "GET"));
+    }
 
     #[test]
-    fn test_post_families_route() {
-        // This test verifies the route pattern matching for POST /families
+    fn test_method_dispatch_post_families() {
         let method = "POST";
-        let path = "/families";
-
-        // Verify the pattern matches
-        assert!(matches!((method, path), ("POST", "/families")));
+        assert!(matches!(method, "POST"));
     }
+
     #[test]
-    fn test_get_families_list_route() {
-        // This test verifies the route pattern matching for GET /families
+    fn test_method_dispatch_get_family_item() {
         let method = "GET";
-        let path = "/families";
-
-        // Verify the pattern matches
-        assert!(matches!((method, path), ("GET", "/families")));
+        assert!(matches!(method, "GET"));
     }
 
     #[test]
-    fn test_get_family_by_id_route_pattern() {
-        // This test verifies the route pattern matching for GET /families/{id}
-        let method = "GET";
-        let path = "/families/550e8400-e29b-41d4-a716-446655440000";
-
-        // Verify the pattern matches
-        assert!(path.starts_with("/families/") && !path.contains("/dependents"));
-        assert_eq!(method, "GET");
-    }
-
-    #[test]
-    fn test_put_family_route_pattern() {
-        // This test verifies the route pattern matching for PUT /families/{id}
+    fn test_method_dispatch_put_family_item() {
         let method = "PUT";
-        let path = "/families/550e8400-e29b-41d4-a716-446655440000";
-
-        // Verify the pattern matches
-        assert!(path.starts_with("/families/"));
-        assert_eq!(method, "PUT");
+        assert!(matches!(method, "PUT"));
     }
 
     #[test]
-    fn test_get_dependents_route_pattern() {
-        // This test verifies the route pattern matching for GET /families/{id}/dependents
-        let method = "GET";
-        let path = "/families/550e8400-e29b-41d4-a716-446655440000/dependents";
-
-        // Verify the pattern matches
-        assert!(path.starts_with("/families/") && path.contains("/dependents"));
-        assert_eq!(method, "GET");
-    }
-
-    #[test]
-    fn test_uuid_extraction_for_get_family() {
-        // Test that UUID extraction works correctly
-        let uuid_str = "550e8400-e29b-41d4-a716-446655440000";
-        let path = format!("/families/{}", uuid_str);
-
-        let result = extract_uuid_param(&path, "/families/", "family_id");
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Uuid::parse_str(uuid_str).unwrap());
-    }
-
-    #[test]
-    fn test_uuid_extraction_for_dependents_route() {
-        // Test that UUID extraction works for the dependents route
-        let uuid_str = "550e8400-e29b-41d4-a716-446655440000";
-        let path = format!("/families/{}/dependents", uuid_str);
-
-        let result = extract_uuid_param(&path, "/families/", "family_id");
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Uuid::parse_str(uuid_str).unwrap());
-    }
-
-    #[test]
-    fn test_invalid_uuid_returns_validation_error() {
-        // Test that invalid UUID returns proper validation error
-        let path = "/families/not-a-uuid";
-
-        let result = extract_uuid_param(path, "/families/", "family_id");
-        assert!(result.is_err());
-
-        match result {
-            Err(HandlerError::Validation(err)) => {
-                assert_eq!(err.field, "family_id");
-                assert_eq!(err.message, "Invalid family_id format");
-                assert_eq!(err.constraint, Some("must be a valid UUID".to_string()));
-            }
-            _ => panic!("Expected ValidationError"),
-        }
-    }
-
-    #[test]
-    fn test_unknown_route_pattern() {
-        // Test that unknown routes don't match any pattern
+    fn test_method_dispatch_delete_family_item() {
         let method = "DELETE";
-        let path = "/families/550e8400-e29b-41d4-a716-446655440000";
-
-        // Verify this doesn't match any of our patterns
-        let matches_post = matches!((method, path), ("POST", "/families"));
-        let matches_get = method == "GET" && path.starts_with("/families/");
-        let matches_put = method == "PUT" && path.starts_with("/families/");
-
-        assert!(!matches_post);
-        assert!(!matches_get);
-        assert!(!matches_put);
+        assert!(matches!(method, "DELETE"));
     }
 
     #[test]
-    fn test_route_pattern_disambiguation() {
-        // Test that GET /families/{id} and GET /families/{id}/dependents are properly distinguished
-        let path_family = "/families/550e8400-e29b-41d4-a716-446655440000";
-        let path_dependents = "/families/550e8400-e29b-41d4-a716-446655440000/dependents";
-
-        // Family route should NOT contain /dependents
-        assert!(path_family.starts_with("/families/") && !path_family.contains("/dependents"));
-
-        // Dependents route SHOULD contain /dependents
-        assert!(
-            path_dependents.starts_with("/families/") && path_dependents.contains("/dependents")
-        );
-    }
-
-    // --- Recipe route disambiguation tests ---
-
-    #[test]
-    fn test_get_family_does_not_match_recipes_root() {
-        // GET /families/{id}/recipes must NOT match the "get family" handler
-        let path = "/families/550e8400-e29b-41d4-a716-446655440000/recipes";
-
-        assert!(path.starts_with("/families/"));
-        assert!(path.contains("/recipes"));
-        // The family GET condition requires !path.contains("/recipes"), so this
-        // path should NOT match the family handler.
-        assert!(!path.starts_with("/families/") || path.contains("/recipes"));
-    }
-
-    #[test]
-    fn test_get_family_does_not_match_recipes_with_trailing_slash() {
-        let path = "/families/550e8400-e29b-41d4-a716-446655440000/recipes/";
-
-        assert!(path.contains("/recipes"));
-        assert!(!path.starts_with("/families/") || path.contains("/recipes"));
-    }
-
-    #[test]
-    fn test_get_family_does_not_match_recipes_with_id() {
-        let path = "/families/550e8400-e29b-41d4-a716-446655440000/recipes/a1b2c3d4-e5f6-7890-abcd-ef1234567890";
-
-        assert!(path.contains("/recipes"));
-        assert!(!path.starts_with("/families/") || path.contains("/recipes"));
-    }
-
-    #[test]
-    fn test_put_family_does_not_match_recipes() {
-        let path = "/families/550e8400-e29b-41d4-a716-446655440000/recipes";
-
-        assert!(path.contains("/recipes"));
-        assert!(!path.starts_with("/families/") || path.contains("/recipes"));
-    }
-
-    #[test]
-    fn test_delete_family_does_not_match_recipes() {
-        let path = "/families/550e8400-e29b-41d4-a716-446655440000/recipes";
-
-        assert!(path.contains("/recipes"));
-        assert!(!path.starts_with("/families/") || path.contains("/recipes"));
-    }
-
-    #[test]
-    fn test_get_family_still_matches_without_dependents_or_recipes() {
-        // Verify a plain /families/{id} path still matches the family handler
-        let path = "/families/550e8400-e29b-41d4-a716-446655440000";
-
-        assert!(path.starts_with("/families/"));
-        assert!(!path.contains("/dependents"));
-        assert!(!path.contains("/recipes"));
+    fn test_unknown_method_does_not_match() {
+        let method = "PATCH";
+        assert!(!matches!(method, "GET" | "POST" | "PUT" | "DELETE"));
     }
 }

@@ -320,6 +320,7 @@ export function RecipeLibraryPage() {
       {showImport && (
         <ImportModal
           familyId={familyId ?? 'NA'}
+          apiClient={apiClient}
           onClose={handleImportClose}
           onRecipesImported={handleRecipesImported}
           onFeedingLogsImported={handleFeedingLogsImported}

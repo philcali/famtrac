@@ -7,12 +7,28 @@ interface RecipePickerModalProps {
   recipes: RecipeResponse[];
   onSelect: (recipe: RecipeResponse) => void;
   onClose: () => void;
+  /** When set, the modal is in "edit" mode and shows time/notes fields */
+  editMode?: boolean;
+  time?: string;
+  onTimeChange?: (time: string) => void;
+  notes?: string;
+  onNotesChange?: (notes: string) => void;
 }
 
 /**
  * Modal that lets the user search and select a recipe from the library.
  */
-export function RecipePickerModal({ show, recipes, onSelect, onClose }: RecipePickerModalProps) {
+export function RecipePickerModal({
+  show,
+  recipes,
+  onSelect,
+  onClose,
+  editMode,
+  time,
+  onTimeChange,
+  notes,
+  onNotesChange,
+}: RecipePickerModalProps) {
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -32,7 +48,7 @@ export function RecipePickerModal({ show, recipes, onSelect, onClose }: RecipePi
       <div className="relative z-10 w-full max-w-2xl bg-white rounded-2xl shadow-xl max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-gray-100">
-          <h3 className="text-base font-semibold">Add Recipe</h3>
+          <h3 className="text-base font-semibold">{editMode ? 'Edit Meal Slot' : 'Add Recipe'}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -44,6 +60,36 @@ export function RecipePickerModal({ show, recipes, onSelect, onClose }: RecipePi
             </svg>
           </button>
         </div>
+
+        {/* Time/Notes fields */}
+        {onTimeChange && (
+          <div className="px-4 pt-4 space-y-3 border-b border-gray-100 pb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+              <input
+                type="time"
+                value={time ?? ''}
+                onChange={(e) => onTimeChange(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Notes (optional)
+              </label>
+              <input
+                type="text"
+                value={notes ?? ''}
+                onChange={(e) => onNotesChange?.(e.target.value)}
+                placeholder="e.g. breakfast, snack..."
+                className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm text-gray-900 bg-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <p className="text-xs text-gray-500">
+              {editMode ? 'Select a recipe below to save changes' : 'Select a recipe to add'}
+            </p>
+          </div>
+        )}
 
         {/* Search */}
         <div className="px-4 pt-4">
