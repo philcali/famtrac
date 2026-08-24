@@ -156,9 +156,7 @@ export function ImportModal({
     getDependents(apiClient, familyId)
       .then((res) => {
         if (!cancelled) {
-          setDependents(
-            res.data?.dependents.map((d) => ({ id: d.id, name: d.name })) ?? []
-          );
+          setDependents(res.data?.dependents.map((d) => ({ id: d.id, name: d.name })) ?? []);
         }
       })
       .catch(() => {

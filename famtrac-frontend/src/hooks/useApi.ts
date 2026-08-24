@@ -41,7 +41,32 @@ export function useApi<T>(
   }, [apiCall]);
 
   useEffect(() => {
-    fetchData();
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+
+      const response = await apiCall();
+
+      if (cancelled) return;
+
+      if (response.error) {
+        setError(response.error);
+        setData(null);
+      } else if (response.data) {
+        setData(response.data);
+        setError(null);
+      }
+
+      setLoading(false);
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, dependencies);
 

@@ -8,14 +8,7 @@ export interface ConfirmDialogProps {
   confirmText?: string;
   cancelText?: string;
   confirmVariant?:
-    | 'primary'
-    | 'secondary'
-    | 'success'
-    | 'danger'
-    | 'warning'
-    | 'info'
-    | 'light'
-    | 'dark';
+    'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'info' | 'light' | 'dark';
   onConfirm: () => void;
   onCancel: () => void;
   loading?: boolean;
