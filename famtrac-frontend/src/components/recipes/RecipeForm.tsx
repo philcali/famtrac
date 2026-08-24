@@ -35,7 +35,7 @@ export function RecipeForm({ recipe, onSubmit, onCancel, loading = false }: Reci
       setIngredientsText(recipe.ingredients.join('\n'));
       setAgeMin(recipe.age_min?.toString() ?? '');
       setTexture(recipe.texture ?? '');
-      setAllergensText(recipe.allergens.join('\n'));
+      setAllergensText(recipe.allergens?.join('\n') ?? '');
       setPrepNotes(recipe.prep_notes ?? '');
       setSafe(recipe.safe ?? false);
     }
