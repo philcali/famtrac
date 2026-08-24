@@ -14,6 +14,10 @@ use crate::dynamo_util::{
 /// Before any propagation, checks if the new image contains a `sync_token`
 /// attribute. If present, the write was handler-originated and propagation
 /// is skipped to break infinite cycles (Requirement 6.4, 6.6).
+///
+/// # Errors
+///
+/// Returns an error if any `DynamoDB` operation fails.
 pub async fn handle_resource_changed(
     client: &Client,
     table_name: &str,
@@ -53,9 +57,8 @@ async fn propagate_to_mirrors(
         _ => &change.new_image,
     };
 
-    let family_id = match extract_family_id(&change.pk, &change.sk, image) {
-        Some(fid) => fid,
-        None => return Ok(()), // Can't determine family — skip
+    let Some(family_id) = extract_family_id(&change.pk, &change.sk, image) else {
+        return Ok(()); // Can't determine family — skip
     };
 
     // Use GSI query to find all active shares for this family (Requirement 2.1)
@@ -84,7 +87,7 @@ async fn propagate_to_mirrors(
                     // Family and Recipe records are rekeyed into accepter's OWNER partition
                     let mut mirrored = rekey_item(
                         change.new_image.clone(),
-                        &format!("OWNER#{}", accepter_id),
+                        &format!("OWNER#{accepter_id}"),
                         &share_id_str,
                         &scope_json,
                     );
@@ -106,7 +109,7 @@ async fn propagate_to_mirrors(
                     delete_item(
                         client,
                         table_name,
-                        &format!("OWNER#{}", accepter_id),
+                        &format!("OWNER#{accepter_id}"),
                         &change.sk,
                     )
                     .await?;
@@ -130,6 +133,8 @@ async fn propagate_to_mirrors(
 /// owner record before writing — skips if identical (Requirement 6.7, 6.8).
 ///
 /// Stamps `sync_token` on every item written (Requirement 6.1, 6.2).
+#[allow(clippy::similar_names)]
+#[allow(clippy::too_many_lines)]
 async fn propagate_writeback(
     client: &Client,
     table_name: &str,
@@ -147,16 +152,14 @@ async fn propagate_writeback(
     if is_family_record || is_recipe_record {
         // Mirrored Family/Recipe records have PK=OWNER#{accepter_id}.
         // We need to find the original owner and write back to their partition.
-        let family_id = match extract_family_id(&change.pk, &change.sk, image) {
-            Some(fid) => fid,
-            None => return Ok(()),
+        let Some(family_id) = extract_family_id(&change.pk, &change.sk, image) else {
+            return Ok(());
         };
 
         // Query active shares by family_id via GSI, derive owner from requester_id
         let active_shares = find_active_shares_by_family_id(client, table_name, &family_id).await?;
-        let original_owner = match active_shares.first().map(|s| s.requester_id.0.clone()) {
-            Some(oid) => oid,
-            None => return Ok(()),
+        let Some(original_owner) = active_shares.first().map(|s| s.requester_id.0.clone()) else {
+            return Ok(());
         };
 
         match change.operation {
@@ -165,7 +168,7 @@ async fn propagate_writeback(
                 let mut original_item = change.new_image.clone();
                 original_item.insert(
                     "PK".to_string(),
-                    DdbAttributeValue::S(format!("OWNER#{}", original_owner)),
+                    DdbAttributeValue::S(format!("OWNER#{original_owner}")),
                 );
                 original_item.remove("share_id");
                 original_item.remove("permission_scope");
@@ -175,7 +178,7 @@ async fn propagate_writeback(
                 let existing = get_item(
                     client,
                     table_name,
-                    &format!("OWNER#{}", original_owner),
+                    &format!("OWNER#{original_owner}"),
                     &change.sk,
                 )
                 .await?;
@@ -198,7 +201,7 @@ async fn propagate_writeback(
                 delete_item(
                     client,
                     table_name,
-                    &format!("OWNER#{}", original_owner),
+                    &format!("OWNER#{original_owner}"),
                     &change.sk,
                 )
                 .await?;
