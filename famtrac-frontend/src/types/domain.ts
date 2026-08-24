@@ -145,7 +145,7 @@ export interface Recipe {
   ingredients: string[];
   age_min?: number;
   texture?: string;
-  allergens: string[];
+  allergens?: string[];
   prep_notes?: string;
   safe?: boolean;
   created_at: string;
