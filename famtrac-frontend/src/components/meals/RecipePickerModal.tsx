@@ -86,7 +86,7 @@ export function RecipePickerModal({ show, recipes, onSelect, onClose }: RecipePi
                             {recipe.texture}
                           </Badge>
                         )}
-                        {recipe.allergens.length > 0 && (
+                        {recipe.allergens && recipe.allergens.length > 0 && (
                           <Badge variant="danger" className="text-[10px] px-1.5 py-0">
                             ⚠️ {recipe.allergens.length}
                           </Badge>

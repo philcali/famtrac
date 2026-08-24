@@ -46,7 +46,7 @@ export function RecipeCard({ recipe, onEdit, onDelete }: RecipeCardProps) {
           </div>
 
           {/* Allergens */}
-          {recipe.allergens.length > 0 && (
+          {recipe.allergens && recipe.allergens.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-1.5">
               {recipe.allergens.map((a) => (
                 <Badge key={a} variant={allergenVariant}>
