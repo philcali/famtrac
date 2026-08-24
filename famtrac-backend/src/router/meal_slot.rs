@@ -22,12 +22,14 @@ pub async fn route_meal_slot(
     family_repo: &DynamoDbFamilyRepository,
     meal_repo: &DynamoDbMealSlotRepository,
 ) -> Result<serde_json::Value, HandlerError> {
-    // Check if this is a meal-slot detail route: /{meal_slot_id}[/...]
-    // sub_path starts with "/", so we search for the second "/" to find the meal slot ID boundary
-    if let Some(meal_slot_id_idx) = sub_path[1..].find("/") {
-        // Extract meal_slot_id from the sub_path (add 1 to account for the leading "/")
-        let meal_slot_id_idx = meal_slot_id_idx + 1;
-        let meal_slot_id_str = &sub_path[1..meal_slot_id_idx];
+    // Determine if this is a meal-slot detail route (/{uuid}[/...])
+    // vs a collection route ("") or trailing-slash ("/").
+    // sub_path can be: "" (no slash), "/" (just slash), "/{uuid}", "/{uuid}/", "/{uuid}/extra"
+    if sub_path.len() > 1 {
+        // Has content after leading / — this is a detail route
+        let rest = &sub_path[1..];
+        let meal_slot_id_idx = rest.find('/').map(|i| i + 1).unwrap_or(rest.len());
+        let meal_slot_id_str = &rest[..meal_slot_id_idx];
         let meal_slot_id = extract_uuid_param(
             &format!("/meal-slots/{}", meal_slot_id_str),
             "/meal-slots/",
@@ -94,7 +96,7 @@ pub async fn route_meal_slot(
             ))),
         }
     } else {
-        // No sub-path after /meal-slots - list or create
+        // No UUID segment — list or create
         match (method, sub_path) {
             // GET /families/{fid}/dependents/{did}/meal-slots
             ("GET", "") | ("GET", "/") => {
