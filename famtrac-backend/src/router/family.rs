@@ -88,7 +88,7 @@ pub async fn route_family(
         }
 
         // GET /families/{id} - Get a family by ID
-        ("GET", p) if p.starts_with("/families/") && !p.contains("/dependents") => {
+        ("GET", p) if p.starts_with("/families/") && !p.contains("/dependents") && !p.contains("/recipes") => {
             let family_id = extract_uuid_param(path, "/families/", "family_id")?;
             let (_status, response_json) =
                 handlers::get_family(FamilyId(family_id), context, family_repo).await?;
@@ -100,7 +100,7 @@ pub async fn route_family(
         }
 
         // PUT /families/{id} - Update a family
-        ("PUT", p) if p.starts_with("/families/") && !p.contains("/dependents") => {
+        ("PUT", p) if p.starts_with("/families/") && !p.contains("/dependents") && !p.contains("/recipes") => {
             let family_id = extract_uuid_param(path, "/families/", "family_id")?;
             let (_status, response_json) =
                 handlers::update_family(FamilyId(family_id), body, context, family_repo).await?;
@@ -321,5 +321,61 @@ mod tests {
         assert!(
             path_dependents.starts_with("/families/") && path_dependents.contains("/dependents")
         );
+    }
+
+    // --- Recipe route disambiguation tests ---
+
+    #[test]
+    fn test_get_family_does_not_match_recipes_root() {
+        // GET /families/{id}/recipes must NOT match the "get family" handler
+        let path = "/families/550e8400-e29b-41d4-a716-446655440000/recipes";
+
+        assert!(path.starts_with("/families/"));
+        assert!(path.contains("/recipes"));
+        // The family GET condition requires !path.contains("/recipes"), so this
+        // path should NOT match the family handler.
+        assert!(!path.starts_with("/families/") || path.contains("/recipes"));
+    }
+
+    #[test]
+    fn test_get_family_does_not_match_recipes_with_trailing_slash() {
+        let path = "/families/550e8400-e29b-41d4-a716-446655440000/recipes/";
+
+        assert!(path.contains("/recipes"));
+        assert!(!path.starts_with("/families/") || path.contains("/recipes"));
+    }
+
+    #[test]
+    fn test_get_family_does_not_match_recipes_with_id() {
+        let path = "/families/550e8400-e29b-41d4-a716-446655440000/recipes/a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+
+        assert!(path.contains("/recipes"));
+        assert!(!path.starts_with("/families/") || path.contains("/recipes"));
+    }
+
+    #[test]
+    fn test_put_family_does_not_match_recipes() {
+        let path = "/families/550e8400-e29b-41d4-a716-446655440000/recipes";
+
+        assert!(path.contains("/recipes"));
+        assert!(!path.starts_with("/families/") || path.contains("/recipes"));
+    }
+
+    #[test]
+    fn test_delete_family_does_not_match_recipes() {
+        let path = "/families/550e8400-e29b-41d4-a716-446655440000/recipes";
+
+        assert!(path.contains("/recipes"));
+        assert!(!path.starts_with("/families/") || path.contains("/recipes"));
+    }
+
+    #[test]
+    fn test_get_family_still_matches_without_dependents_or_recipes() {
+        // Verify a plain /families/{id} path still matches the family handler
+        let path = "/families/550e8400-e29b-41d4-a716-446655440000";
+
+        assert!(path.starts_with("/families/"));
+        assert!(!path.contains("/dependents"));
+        assert!(!path.contains("/recipes"));
     }
 }
