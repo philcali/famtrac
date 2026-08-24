@@ -261,19 +261,23 @@ pub fn extract_family_id(
             return Some(id.clone());
         }
         // Fallback: parse from SK
-        return sk.strip_prefix("FAMILY#").map(std::string::ToString::to_string);
+        return sk
+            .strip_prefix("FAMILY#")
+            .map(std::string::ToString::to_string);
     }
 
     // For Recipe records: PK = FAMILY#{fid} (same pattern as Family PK)
-    if sk.starts_with("RECIPE#")
-        && pk.starts_with("FAMILY#")
-    {
-        return pk.strip_prefix("FAMILY#").map(std::string::ToString::to_string);
+    if sk.starts_with("RECIPE#") && pk.starts_with("FAMILY#") {
+        return pk
+            .strip_prefix("FAMILY#")
+            .map(std::string::ToString::to_string);
     }
 
     // For Dependent records: PK = FAMILY#{fid}
     if pk.starts_with("FAMILY#") && !pk.contains("#DEPENDENT#") {
-        return pk.strip_prefix("FAMILY#").map(std::string::ToString::to_string);
+        return pk
+            .strip_prefix("FAMILY#")
+            .map(std::string::ToString::to_string);
     }
 
     // For MealSlot / FeedingLog / Activity records: PK = FAMILY#{fid}#DEPENDENT#{did}
@@ -301,7 +305,9 @@ pub fn extract_owner_id(pk: &str, image: &HashMap<String, DdbAttributeValue>) ->
 
     // For Family records: PK = OWNER#{owner_id}
     if pk.starts_with("OWNER#") {
-        return pk.strip_prefix("OWNER#").map(std::string::ToString::to_string);
+        return pk
+            .strip_prefix("OWNER#")
+            .map(std::string::ToString::to_string);
     }
 
     None
@@ -312,11 +318,7 @@ pub fn extract_owner_id(pk: &str, image: &HashMap<String, DdbAttributeValue>) ->
 #[must_use]
 #[allow(clippy::implicit_hasher)]
 pub fn is_mirrored_resource(pk: &str, image: &HashMap<String, DdbAttributeValue>) -> bool {
-    pk.starts_with("OWNER#")
-        && image
-            .get("share_id")
-            .and_then(|v| v.as_s().ok())
-            .is_some()
+    pk.starts_with("OWNER#") && image.get("share_id").and_then(|v| v.as_s().ok()).is_some()
 }
 
 /// Query the `GSI-family_id` GSI to find all active shares for a given family.
@@ -411,10 +413,7 @@ mod tests {
         let pk = format!("FAMILY#{}", fid);
         let sk = format!("RECIPE#{}", uuid::Uuid::new_v4());
         let mut image = HashMap::new();
-        image.insert(
-            "family_id".to_string(),
-            DdbAttributeValue::S(fid.clone()),
-        );
+        image.insert("family_id".to_string(), DdbAttributeValue::S(fid.clone()));
         assert_eq!(extract_family_id(&pk, &sk, &image), Some(fid));
     }
 
@@ -434,10 +433,7 @@ mod tests {
         let pk = format!("FAMILY#{}#DEPENDENT#{}", fid, did);
         let sk = format!("MEAL_SLOT#{}", uuid::Uuid::new_v4());
         let mut image = HashMap::new();
-        image.insert(
-            "family_id".to_string(),
-            DdbAttributeValue::S(fid.clone()),
-        );
+        image.insert("family_id".to_string(), DdbAttributeValue::S(fid.clone()));
         assert_eq!(extract_family_id(&pk, &sk, &image), Some(fid));
     }
 
@@ -448,10 +444,7 @@ mod tests {
         let pk = format!("FAMILY#{}#DEPENDENT#{}", fid, did);
         let sk = format!("FEEDING_LOG#{}", uuid::Uuid::new_v4());
         let mut image = HashMap::new();
-        image.insert(
-            "family_id".to_string(),
-            DdbAttributeValue::S(fid.clone()),
-        );
+        image.insert("family_id".to_string(), DdbAttributeValue::S(fid.clone()));
         assert_eq!(extract_family_id(&pk, &sk, &image), Some(fid));
     }
 

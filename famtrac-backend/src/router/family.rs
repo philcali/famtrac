@@ -88,7 +88,11 @@ pub async fn route_family(
         }
 
         // GET /families/{id} - Get a family by ID
-        ("GET", p) if p.starts_with("/families/") && !p.contains("/dependents") && !p.contains("/recipes") => {
+        ("GET", p)
+            if p.starts_with("/families/")
+                && !p.contains("/dependents")
+                && !p.contains("/recipes") =>
+        {
             let family_id = extract_uuid_param(path, "/families/", "family_id")?;
             let (_status, response_json) =
                 handlers::get_family(FamilyId(family_id), context, family_repo).await?;
@@ -100,7 +104,11 @@ pub async fn route_family(
         }
 
         // PUT /families/{id} - Update a family
-        ("PUT", p) if p.starts_with("/families/") && !p.contains("/dependents") && !p.contains("/recipes") => {
+        ("PUT", p)
+            if p.starts_with("/families/")
+                && !p.contains("/dependents")
+                && !p.contains("/recipes") =>
+        {
             let family_id = extract_uuid_param(path, "/families/", "family_id")?;
             let (_status, response_json) =
                 handlers::update_family(FamilyId(family_id), body, context, family_repo).await?;

@@ -361,17 +361,18 @@ mod tests {
         m
     }
 
-    fn mirrored_recipe_keys(
-        accepter_id: &str,
-        recipe_id: &str,
-    ) -> HashMap<String, AttributeValue> {
+    fn mirrored_recipe_keys(accepter_id: &str, recipe_id: &str) -> HashMap<String, AttributeValue> {
         let mut m = HashMap::new();
         m.insert("PK".to_string(), s(&format!("OWNER#{accepter_id}")));
         m.insert("SK".to_string(), s(&format!("RECIPE#{recipe_id}")));
         m
     }
 
-    fn recipe_image(recipe_id: &str, family_id: &str, name: &str) -> HashMap<String, AttributeValue> {
+    fn recipe_image(
+        recipe_id: &str,
+        family_id: &str,
+        name: &str,
+    ) -> HashMap<String, AttributeValue> {
         let mut m = HashMap::new();
         m.insert("id".to_string(), s(recipe_id));
         m.insert("family_id".to_string(), s(family_id));
@@ -429,10 +430,7 @@ mod tests {
                     "Original recipe delete PK must NOT be OWNER#, got {pk}"
                 );
             }
-            other => panic!(
-                "Expected ResourceChanged with Remove, got {:?}",
-                other
-            ),
+            other => panic!("Expected ResourceChanged with Remove, got {:?}", other),
         }
     }
 
@@ -458,10 +456,7 @@ mod tests {
                     "Mirrored recipe delete PK must be OWNER#{accepter_id}, got {pk}"
                 );
             }
-            other => panic!(
-                "Expected ResourceChanged, got {:?}",
-                other
-            ),
+            other => panic!("Expected ResourceChanged, got {:?}", other),
         }
     }
 
@@ -473,16 +468,13 @@ mod tests {
         // mirrored copy that was created by the share activation.
         let fid = uuid::Uuid::new_v4().to_string();
         let mut keys = HashMap::new();
-        keys.insert("PK".to_string(), s(&format!("OWNER#original-owner")));
+        keys.insert("PK".to_string(), s("OWNER#original-owner"));
         keys.insert("SK".to_string(), s(&format!("FAMILY#{fid}")));
         let old_img = {
             let mut m = HashMap::new();
             m.insert("id".to_string(), s(&fid));
             m.insert("name".to_string(), s("Test Family"));
-            m.insert(
-                "owner_id".to_string(),
-                s("original-owner"),
-            );
+            m.insert("owner_id".to_string(), s("original-owner"));
             m.insert("share_id".to_string(), s("share-123"));
             m
         };
@@ -495,10 +487,7 @@ mod tests {
                 // The PK is OWNER#{original-owner} which is the accepter's mirrored copy
                 assert!(pk.starts_with("OWNER#"));
             }
-            other => panic!(
-                "Expected ResourceChanged, got {:?}",
-                other
-            ),
+            other => panic!("Expected ResourceChanged, got {:?}", other),
         }
     }
 
@@ -517,10 +506,7 @@ mod tests {
             RecordChange::ResourceChanged(ResourceChange { pk, .. }) => {
                 assert_eq!(pk, format!("FAMILY#{fid}"));
             }
-            other => panic!(
-                "Expected ResourceChanged, got {:?}",
-                other
-            ),
+            other => panic!("Expected ResourceChanged, got {:?}", other),
         }
     }
 
@@ -540,10 +526,7 @@ mod tests {
                 assert_eq!(pk, format!("FAMILY#{fid}"));
                 assert_eq!(operation, ChangeOperation::Insert);
             }
-            other => panic!(
-                "Expected ResourceChanged, got {:?}",
-                other
-            ),
+            other => panic!("Expected ResourceChanged, got {:?}", other),
         }
     }
 
@@ -565,10 +548,7 @@ mod tests {
                 assert_eq!(pk, format!("FAMILY#{fid}"));
                 assert_eq!(operation, ChangeOperation::Modify);
             }
-            other => panic!(
-                "Expected ResourceChanged, got {:?}",
-                other
-            ),
+            other => panic!("Expected ResourceChanged, got {:?}", other),
         }
     }
 }

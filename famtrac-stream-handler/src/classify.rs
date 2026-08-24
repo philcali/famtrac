@@ -239,8 +239,8 @@ fn classify_share_record(
 
             // Check if this is an activation (status transitioned to Active).
             if *new_status == ShareStatus::Active {
-                let old_was_active = get_str(&record.change.old_image, "status")
-                    .is_some_and(|s| s == "active");
+                let old_was_active =
+                    get_str(&record.change.old_image, "status").is_some_and(|s| s == "active");
 
                 if !old_was_active {
                     return RecordChange::ShareActivated(new_share);
