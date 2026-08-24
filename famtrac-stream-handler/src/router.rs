@@ -7,9 +7,11 @@ use std::sync::Arc;
 
 use crate::classify::{change_kind, ChangeKind, RecordChange};
 
-/// A handler function signature. Receives the DDB client, table name,
-/// the classified RecordChange, and the sync_token for the current invocation.
-/// Uses `Arc<RecordChange>` so multiple handlers can process the same event.
+/// A handler function signature.
+///
+/// Receives the DDB client, table name, the classified `RecordChange`, and
+/// the `sync_token` for the current invocation. Uses `Arc<RecordChange>` so
+/// multiple handlers can process the same event.
 pub type HandlerFn = Box<
     dyn Fn(
             Arc<Client>,
@@ -29,14 +31,16 @@ pub struct Router {
 }
 
 impl Router {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             handlers: HashMap::new(),
         }
     }
 
+    #[must_use]
     pub fn supported_change_kinds(&self) -> Vec<ChangeKind> {
-        self.handlers.keys().cloned().collect()
+        self.handlers.keys().copied().collect()
     }
 
     /// Register a handler for the given `ChangeKind`. Multiple handlers can be
@@ -51,6 +55,10 @@ impl Router {
     /// - All registered handlers for the variant's `ChangeKind` are invoked,
     ///   even if earlier handlers fail.
     /// - Returns the first error encountered, if any.
+    ///
+    /// # Errors
+    ///
+    /// Returns the first error encountered from any handler.
     pub async fn dispatch(
         &self,
         client: Arc<Client>,
@@ -58,14 +66,12 @@ impl Router {
         change: RecordChange,
         sync_token: &str,
     ) -> Result<(), Error> {
-        let kind = match change_kind(&change) {
-            Some(k) => k,
-            None => return Ok(()), // Ignored — skip
+        let Some(kind) = change_kind(&change) else {
+            return Ok(()); // Ignored — skip
         };
 
-        let handlers = match self.handlers.get(&kind) {
-            Some(h) => h,
-            None => return Ok(()),
+        let Some(handlers) = self.handlers.get(&kind) else {
+            return Ok(());
         };
 
         let change = Arc::new(change);
@@ -84,11 +90,7 @@ impl Router {
             }
         }
 
-        if let Some(first) = errors.into_iter().next() {
-            Err(first)
-        } else {
-            Ok(())
-        }
+        errors.into_iter().next().map_or_else(|| Ok(()), Err)
     }
 }
 

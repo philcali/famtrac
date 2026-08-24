@@ -6,16 +6,24 @@ use famtrac_backend::domain::{FamilyId, IdentityId, ShareId};
 use crate::dynamo_util::{delete_item, query_items};
 
 /// Handle a share revocation by deleting all mirrored records associated with
-/// the revoked share. This includes:
+/// the revoked share.
+///
+/// This includes:
 /// 1. The mirrored Family record in the accepter's OWNER partition
 /// 2. All Recipe records for the family annotated with the share's `share_id`
 /// 3. All Dependent records annotated with the share's `share_id`
 /// 4. All Activity records for each dependent annotated with the share's `share_id`
-/// 5. All MealSlot records for each dependent annotated with the share's `share_id`
-/// 6. All FeedingLog records for each dependent annotated with the share's `share_id`
+/// 5. All `MealSlot` records for each dependent annotated with the share's `share_id`
+/// 6. All `FeedingLog` records for each dependent annotated with the share's `share_id`
 ///
 /// All deletes are idempotent — `delete_item` on a non-existent key succeeds
 /// silently (Requirement 3.5).
+///
+/// # Errors
+///
+/// Returns an error if any `DynamoDB` operation fails.
+#[allow(clippy::too_many_lines)]
+#[allow(clippy::similar_names)]
 pub async fn handle_share_revoked(
     client: &Client,
     table_name: &str,
@@ -49,8 +57,7 @@ pub async fn handle_share_revoked(
         let matches_share = recipe_item
             .get("share_id")
             .and_then(|v| v.as_s().ok())
-            .map(|s| s == &share_id_str)
-            .unwrap_or(false);
+            .is_some_and(|s| s == &share_id_str);
 
         if !matches_share {
             continue;
@@ -83,8 +90,7 @@ pub async fn handle_share_revoked(
         .filter(|item| {
             item.get("share_id")
                 .and_then(|v| v.as_s().ok())
-                .map(|s| s == &share_id_str)
-                .unwrap_or(false)
+                .is_some_and(|s| s == &share_id_str)
         })
         .collect();
 
@@ -121,8 +127,7 @@ pub async fn handle_share_revoked(
             let matches_share = act_item
                 .get("share_id")
                 .and_then(|v| v.as_s().ok())
-                .map(|s| s == &share_id_str)
-                .unwrap_or(false);
+                .is_some_and(|s| s == &share_id_str);
 
             if !matches_share {
                 continue;
@@ -160,8 +165,7 @@ pub async fn handle_share_revoked(
             let matches_share = ms_item
                 .get("share_id")
                 .and_then(|v| v.as_s().ok())
-                .map(|s| s == &share_id_str)
-                .unwrap_or(false);
+                .is_some_and(|s| s == &share_id_str);
 
             if !matches_share {
                 continue;
@@ -199,8 +203,7 @@ pub async fn handle_share_revoked(
             let matches_share = fl_item
                 .get("share_id")
                 .and_then(|v| v.as_s().ok())
-                .map(|s| s == &share_id_str)
-                .unwrap_or(false);
+                .is_some_and(|s| s == &share_id_str);
 
             if !matches_share {
                 continue;

@@ -7,21 +7,26 @@ use famtrac_backend::domain::Share;
 use crate::dynamo_util::{annotate_item, conditional_put, get_item, query_items, rekey_item};
 
 /// Mirror the shared family, all its dependents, and all their activities into
-/// the accepter's partition. Each mirrored record is annotated with the share's
-/// `share_id` and `permission_scope`. Conditional writes (`attribute_not_exists`)
-/// ensure idempotency — duplicate stream deliveries are safely ignored.
+/// the accepter's partition.
+///
+/// Each mirrored record is annotated with the share's `share_id` and
+/// `permission_scope`. Conditional writes (`attribute_not_exists`) ensure
+/// idempotency — duplicate stream deliveries are safely ignored.
 ///
 /// Every mirrored item written is stamped with `sync_token` to identify it as
 /// handler-originated and break infinite write-back cycles.
+///
+/// # Errors
+///
+/// Returns an error if any `DynamoDB` operation fails.
 pub async fn handle_share_activated(
     client: &Client,
     table_name: &str,
     share: &Share,
     sync_token: &str,
 ) -> Result<(), Error> {
-    let accepter_id = match &share.accepter_id {
-        Some(id) => id,
-        None => return Ok(()), // No accepter identity yet — nothing to mirror
+    let Some(accepter_id) = &share.accepter_id else {
+        return Ok(()); // No accepter identity yet — nothing to mirror
     };
 
     let share_id_str = share.id.0.to_string();
@@ -37,9 +42,8 @@ pub async fn handle_share_activated(
     )
     .await?;
 
-    let family_item = match family_item {
-        Some(item) => item,
-        None => return Ok(()), // Family not found — nothing to mirror
+    let Some(family_item) = family_item else {
+        return Ok(()); // Family not found — nothing to mirror
     };
 
     // Mirror the family into the accepter's partition with rekeyed PK
@@ -142,7 +146,7 @@ pub async fn handle_share_activated(
     Ok(())
 }
 
-/// Stamp the `sync_token` attribute on a DynamoDB item.
+/// Stamp the `sync_token` attribute on a `DynamoDB` item.
 fn stamp_sync_token(
     item: &mut std::collections::HashMap<String, DdbAttributeValue>,
     sync_token: &str,

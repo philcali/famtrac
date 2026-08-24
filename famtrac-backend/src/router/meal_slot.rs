@@ -189,7 +189,8 @@ mod tests {
     #[test]
     fn test_sub_path_from_dependent_with_uuid_no_trailing() {
         // URL: .../dependents/{did}/meal-slots/{uuid}
-        let full_path = "/2324403a-a3c8-4ab7-933a-db5e7e21c756/meal-slots/083ef6d9-2e7a-407e-af22-d1546d437555";
+        let full_path =
+            "/2324403a-a3c8-4ab7-933a-db5e7e21c756/meal-slots/083ef6d9-2e7a-407e-af22-d1546d437555";
         let sub_path = simulate_dependent_to_meal_slot_sub_path(full_path);
         assert_eq!(sub_path, "/083ef6d9-2e7a-407e-af22-d1546d437555");
     }
@@ -327,7 +328,8 @@ mod tests {
     #[test]
     fn test_full_chain_delete_meal_slot_no_trailing() {
         // Simulate: DELETE /families/{fid}/dependents/{did}/meal-slots/{uuid}
-        let full_path = "/2324403a-a3c8-4ab7-933a-db5e7e21c756/meal-slots/083ef6d9-2e7a-407e-af22-d1546d437555";
+        let full_path =
+            "/2324403a-a3c8-4ab7-933a-db5e7e21c756/meal-slots/083ef6d9-2e7a-407e-af22-d1546d437555";
 
         // Step 1: route_dependent constructs sub_path
         let sub_path = simulate_dependent_to_meal_slot_sub_path(full_path);
@@ -377,7 +379,10 @@ mod tests {
 
         let sub_path = simulate_dependent_to_meal_slot_sub_path(full_path);
         assert_eq!(sub_path, "");
-        assert!(!sub_path.len() > 1, "should be classified as collection route");
+        assert!(
+            !sub_path.len() > 1,
+            "should be classified as collection route"
+        );
 
         // Should fall to the list branch
         assert!(matches!(("GET", sub_path), ("GET", "")));
@@ -390,7 +395,10 @@ mod tests {
 
         let sub_path = simulate_dependent_to_meal_slot_sub_path(full_path);
         assert_eq!(sub_path, "/");
-        assert!(!sub_path.len() > 1, "should be classified as collection route");
+        assert!(
+            !sub_path.len() > 1,
+            "should be classified as collection route"
+        );
 
         assert!(matches!(("GET", sub_path), ("GET", "/")));
     }
@@ -410,7 +418,8 @@ mod tests {
     #[test]
     fn test_full_chain_put_update_meal_slot() {
         // Simulate: PUT /families/{fid}/dependents/{did}/meal-slots/{uuid}
-        let full_path = "/2324403a-a3c8-4ab7-933a-db5e7e21c756/meal-slots/083ef6d9-2e7a-407e-af22-d1546d437555";
+        let full_path =
+            "/2324403a-a3c8-4ab7-933a-db5e7e21c756/meal-slots/083ef6d9-2e7a-407e-af22-d1546d437555";
 
         let sub_path = simulate_dependent_to_meal_slot_sub_path(full_path);
         assert!(sub_path.len() > 1);
@@ -433,11 +442,7 @@ mod tests {
     #[test]
     fn test_extract_uuid_param_invalid_uuid_returns_error() {
         // Verify that extract_uuid_param returns a validation error for invalid UUIDs
-        let result = extract_uuid_param(
-            "/meal-slots/not-a-uuid",
-            "/meal-slots/",
-            "meal_slot_id",
-        );
+        let result = extract_uuid_param("/meal-slots/not-a-uuid", "/meal-slots/", "meal_slot_id");
         assert!(result.is_err());
         match result.unwrap_err() {
             HandlerError::Validation(err) => {
@@ -547,10 +552,7 @@ mod tests {
 
         for (full_path, expected_sub_path) in test_cases {
             let sub_path = simulate_dependent_to_meal_slot_sub_path(full_path);
-            assert_eq!(
-                sub_path, expected_sub_path,
-                "full_path: {}", full_path
-            );
+            assert_eq!(sub_path, expected_sub_path, "full_path: {}", full_path);
         }
     }
 
@@ -563,14 +565,20 @@ mod tests {
     fn test_route_dispatch_delete_no_trailing() {
         let method = "DELETE";
         let meal_slot_sub_path = "";
-        assert!(matches!((method, meal_slot_sub_path), ("DELETE", "") | ("DELETE", "/")));
+        assert!(matches!(
+            (method, meal_slot_sub_path),
+            ("DELETE", "") | ("DELETE", "/")
+        ));
     }
 
     #[test]
     fn test_route_dispatch_delete_with_trailing() {
         let method = "DELETE";
         let meal_slot_sub_path = "/";
-        assert!(matches!((method, meal_slot_sub_path), ("DELETE", "") | ("DELETE", "/")));
+        assert!(matches!(
+            (method, meal_slot_sub_path),
+            ("DELETE", "") | ("DELETE", "/")
+        ));
     }
 
     #[test]
@@ -598,26 +606,39 @@ mod tests {
     fn test_route_dispatch_put_detail() {
         let method = "PUT";
         let meal_slot_sub_path = "";
-        assert!(matches!((method, meal_slot_sub_path), ("PUT", "") | ("PUT", "/")));
+        assert!(matches!(
+            (method, meal_slot_sub_path),
+            ("PUT", "") | ("PUT", "/")
+        ));
     }
 
     #[test]
     fn test_route_dispatch_unknown_method_returns_not_found() {
         let method = "PATCH";
         let meal_slot_sub_path = "";
-        assert!(!matches!((method, meal_slot_sub_path),
-            ("GET", "") | ("GET", "/")
-            | ("PUT", "") | ("PUT", "/")
-            | ("DELETE", "") | ("DELETE", "/")));
+        assert!(!matches!(
+            (method, meal_slot_sub_path),
+            ("GET", "")
+                | ("GET", "/")
+                | ("PUT", "")
+                | ("PUT", "/")
+                | ("DELETE", "")
+                | ("DELETE", "/")
+        ));
     }
 
     #[test]
     fn test_route_dispatch_unknown_sub_path_returns_not_found() {
         let method = "GET";
         let meal_slot_sub_path = "/unknown";
-        assert!(!matches!((method, meal_slot_sub_path),
-            ("GET", "") | ("GET", "/")
-            | ("PUT", "") | ("PUT", "/")
-            | ("DELETE", "") | ("DELETE", "/")));
+        assert!(!matches!(
+            (method, meal_slot_sub_path),
+            ("GET", "")
+                | ("GET", "/")
+                | ("PUT", "")
+                | ("PUT", "/")
+                | ("DELETE", "")
+                | ("DELETE", "/")
+        ));
     }
 }

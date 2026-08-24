@@ -14,20 +14,25 @@ use crate::dynamo_util::{conditional_update_permission, query_items};
 /// 2. All mirrored Recipe records under `FAMILY#{family_id}`
 /// 3. All mirrored Dependent records under `FAMILY#{family_id}`
 /// 4. All mirrored Activity records under `FAMILY#{family_id}#DEPENDENT#{dep_id}`
-/// 5. All mirrored MealSlot records under `FAMILY#{family_id}#DEPENDENT#{dep_id}`
-/// 6. All mirrored FeedingLog records under `FAMILY#{family_id}#DEPENDENT#{dep_id}`
+/// 5. All mirrored `MealSlot` records under `FAMILY#{family_id}#DEPENDENT#{dep_id}`
+/// 6. All mirrored `FeedingLog` records under `FAMILY#{family_id}#DEPENDENT#{dep_id}`
 ///
 /// Each update uses a condition expression `share_id = :sid` so that only
-/// mirrored copies (not originals) are affected. ConditionalCheckFailedExceptions
-/// are silently ignored (the record may not exist or may not be mirrored).
+/// mirrored copies (not originals) are affected.
+/// `ConditionalCheckFailedExceptions` are silently ignored (the record may not
+/// exist or may not be mirrored).
+///
+/// # Errors
+///
+/// Returns an error if any `DynamoDB` operation fails.
+#[allow(clippy::too_many_lines)]
 pub async fn handle_permission_updated(
     client: &Client,
     table_name: &str,
     share: &Share,
 ) -> Result<(), Error> {
-    let accepter_id = match &share.accepter_id {
-        Some(id) => id,
-        None => return Ok(()), // No accepter identity yet — nothing to update
+    let Some(accepter_id) = &share.accepter_id else {
+        return Ok(()); // No accepter identity yet — nothing to update
     };
 
     let share_id_str = share.id.0.to_string();

@@ -7,7 +7,7 @@ use famtrac_backend::domain::{FamilyId, IdentityId, Share, ShareId, ShareStatus}
 use crate::dynamo_util::convert_image;
 use crate::parser::{get_str, parse_share};
 
-/// The type of DynamoDB Stream operation.
+/// The type of `DynamoDB` Stream operation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChangeOperation {
     Insert,
@@ -30,7 +30,7 @@ pub struct ResourceChange {
     pub old_image: HashMap<String, DdbAttributeValue>,
 }
 
-/// Classification of a DynamoDB Stream record change.
+/// Classification of a `DynamoDB` Stream record change.
 #[derive(Debug)]
 pub enum RecordChange {
     /// A share transitioned to active status — mirror resources into accepter's partition.
@@ -60,7 +60,8 @@ pub enum ChangeKind {
 
 /// Map a `RecordChange` to its `ChangeKind` routing key.
 /// Returns `None` for `Ignored` variants (the router skips these).
-pub fn change_kind(rc: &RecordChange) -> Option<ChangeKind> {
+#[must_use]
+pub const fn change_kind(rc: &RecordChange) -> Option<ChangeKind> {
     match rc {
         RecordChange::ShareActivated(_) => Some(ChangeKind::ShareActivated),
         RecordChange::ShareRevoked { .. } => Some(ChangeKind::ShareRevoked),
@@ -70,7 +71,9 @@ pub fn change_kind(rc: &RecordChange) -> Option<ChangeKind> {
     }
 }
 
-/// Strip the `sync_token` attribute from a DynamoDB image for semantic comparison.
+/// Strip the `sync_token` attribute from a `DynamoDB` image for semantic comparison.
+#[must_use]
+#[allow(clippy::implicit_hasher)]
 pub fn strip_sync_token(
     image: &HashMap<String, DdbAttributeValue>,
 ) -> HashMap<String, DdbAttributeValue> {
@@ -112,7 +115,7 @@ fn is_owner_partition(pk: &str) -> bool {
     pk.starts_with("OWNER#")
 }
 
-/// Classify a single DynamoDB Stream record into a `RecordChange` variant.
+/// Classify a single `DynamoDB` Stream record into a `RecordChange` variant.
 ///
 /// Classification rules:
 /// - Share records (SK starts with `SHARE#`) in the owner partition:
@@ -126,22 +129,20 @@ fn is_owner_partition(pk: &str) -> bool {
 ///   - Any INSERT / MODIFY / REMOVE → `ResourceChanged`
 ///   - Semantic no-op (old == new after stripping `sync_token`) → `Ignored`
 /// - Anything else → `Ignored`
+#[must_use]
 pub fn classify_record(record: &EventRecord) -> RecordChange {
     let keys = &record.change.keys;
 
     // Extract PK and SK from the key attributes.
-    let pk = match get_str(keys, "PK") {
-        Some(v) => v,
-        None => return RecordChange::Ignored,
+    let Some(pk) = get_str(keys, "PK") else {
+        return RecordChange::Ignored;
     };
-    let sk = match get_str(keys, "SK") {
-        Some(v) => v,
-        None => return RecordChange::Ignored,
+    let Some(sk) = get_str(keys, "SK") else {
+        return RecordChange::Ignored;
     };
 
-    let record_type = match record_type_from_sk(&sk) {
-        Some(t) => t,
-        None => return RecordChange::Ignored,
+    let Some(record_type) = record_type_from_sk(&sk) else {
+        return RecordChange::Ignored;
     };
 
     // Determine the operation type from the event_name field.
@@ -230,18 +231,16 @@ fn classify_share_record(
         }
         OperationType::Insert | OperationType::Modify => {
             let new_image = &record.change.new_image;
-            let new_share = match parse_share(new_image) {
-                Some(s) => s,
-                None => return RecordChange::Ignored,
+            let Some(new_share) = parse_share(new_image) else {
+                return RecordChange::Ignored;
             };
 
             let new_status = &new_share.status;
 
             // Check if this is an activation (status transitioned to Active).
             if *new_status == ShareStatus::Active {
-                let old_was_active = get_str(&record.change.old_image, "status")
-                    .map(|s| s == "active")
-                    .unwrap_or(false);
+                let old_was_active =
+                    get_str(&record.change.old_image, "status").is_some_and(|s| s == "active");
 
                 if !old_was_active {
                     return RecordChange::ShareActivated(new_share);

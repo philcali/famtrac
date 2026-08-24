@@ -8,6 +8,10 @@ use famtrac_backend::domain::Share;
 use crate::parser::parse_share_from_attrs;
 
 /// Fetch a single item by PK and SK.
+///
+/// # Errors
+///
+/// Returns an error if the `DynamoDB` query fails.
 pub async fn get_item(
     client: &Client,
     table_name: &str,
@@ -26,6 +30,10 @@ pub async fn get_item(
 }
 
 /// Query all items matching a PK and SK prefix.
+///
+/// # Errors
+///
+/// Returns an error if the `DynamoDB` query fails.
 pub async fn query_items(
     client: &Client,
     table_name: &str,
@@ -45,6 +53,11 @@ pub async fn query_items(
 }
 
 /// Put an item, overwriting any existing item at the same PK/SK.
+///
+/// # Errors
+///
+/// Returns an error if the `DynamoDB` write fails.
+#[allow(clippy::implicit_hasher)]
 pub async fn put_item(
     client: &Client,
     table_name: &str,
@@ -60,6 +73,10 @@ pub async fn put_item(
 }
 
 /// Delete an item by PK and SK.
+///
+/// # Errors
+///
+/// Returns an error if the `DynamoDB` delete fails.
 pub async fn delete_item(
     client: &Client,
     table_name: &str,
@@ -77,7 +94,13 @@ pub async fn delete_item(
 }
 
 /// Put an item with a condition that it doesn't already exist (idempotent write).
-/// If the item already exists, the ConditionalCheckFailedException is silently ignored.
+///
+/// If the item already exists, the `ConditionalCheckFailedException` is silently ignored.
+///
+/// # Errors
+///
+/// Returns an error if the `DynamoDB` write fails for a reason other than the condition check.
+#[allow(clippy::implicit_hasher)]
 pub async fn conditional_put(
     client: &Client,
     table_name: &str,
@@ -96,8 +119,7 @@ pub async fn conditional_put(
         Err(err) => {
             if err
                 .as_service_error()
-                .map(|e| e.is_conditional_check_failed_exception())
-                .unwrap_or(false)
+                .is_some_and(aws_sdk_dynamodb::operation::put_item::PutItemError::is_conditional_check_failed_exception)
             {
                 Ok(())
             } else {
@@ -108,8 +130,14 @@ pub async fn conditional_put(
 }
 
 /// Update the `permission_scope` attribute on a single item, conditioned on
-/// `share_id = :sid`. Silently ignores ConditionalCheckFailedException (the
-/// item may not exist or may not be a mirrored copy for this share).
+/// `share_id = :sid`.
+///
+/// Silently ignores `ConditionalCheckFailedException` (the item may not exist
+/// or may not be a mirrored copy for this share).
+///
+/// # Errors
+///
+/// Returns an error if the `DynamoDB` update fails for a reason other than the condition check.
 pub async fn conditional_update_permission(
     client: &Client,
     table_name: &str,
@@ -135,8 +163,7 @@ pub async fn conditional_update_permission(
         Err(err) => {
             if err
                 .as_service_error()
-                .map(|e| e.is_conditional_check_failed_exception())
-                .unwrap_or(false)
+                .is_some_and(aws_sdk_dynamodb::operation::update_item::UpdateItemError::is_conditional_check_failed_exception)
             {
                 Ok(())
             } else {
@@ -148,6 +175,8 @@ pub async fn conditional_update_permission(
 
 /// Rekey an item's PK to a new value and annotate with share metadata.
 /// Used for Family records that need to move into the accepter's OWNER partition.
+#[must_use]
+#[allow(clippy::implicit_hasher)]
 pub fn rekey_item(
     mut item: HashMap<String, DdbAttributeValue>,
     new_pk: &str,
@@ -168,6 +197,8 @@ pub fn rekey_item(
 
 /// Annotate an item with share metadata without changing its PK/SK.
 /// Used for Dependent and Activity records that keep their original keys.
+#[must_use]
+#[allow(clippy::implicit_hasher)]
 pub fn annotate_item(
     mut item: HashMap<String, DdbAttributeValue>,
     share_id: &str,
@@ -185,7 +216,8 @@ pub fn annotate_item(
 }
 
 /// Convert a `serde_dynamo::Item` to a `HashMap<String, DdbAttributeValue>` for use
-/// with the AWS SDK DynamoDB client.
+/// with the AWS SDK `DynamoDB` client.
+#[must_use]
 pub fn convert_image(image: &serde_dynamo::Item) -> HashMap<String, DdbAttributeValue> {
     image
         .inner()
@@ -203,14 +235,16 @@ pub fn convert_image(image: &serde_dynamo::Item) -> HashMap<String, DdbAttribute
         .collect()
 }
 
-/// Extract the family_id from a resource's DynamoDB image or PK.
+/// Extract the `family_id` from a resource's `DynamoDB` image or PK.
 ///
-/// For Family records: read the `id` attribute (the family_id IS the record id).
+/// For Family records: read the `id` attribute (the `family_id` IS the record id).
 /// For Recipe records: PK = FAMILY#{fid} (same as Family PK, parsed via SK fallback).
 /// For Dependent records: read the `family_id` attribute, or parse from PK `FAMILY#{fid}`.
-/// For MealSlot records: read the `family_id` attribute, or parse from PK `FAMILY#{fid}#DEPENDENT#{did}`.
-/// For FeedingLog records: read the `family_id` attribute, or parse from PK `FAMILY#{fid}#DEPENDENT#{did}`.
+/// For `MealSlot` records: read the `family_id` attribute, or parse from PK `FAMILY#{fid}#DEPENDENT#{did}`.
+/// For `FeedingLog` records: read the `family_id` attribute, or parse from PK `FAMILY#{fid}#DEPENDENT#{did}`.
 /// For Activity records: read the `family_id` attribute, or parse from PK `FAMILY#{fid}#DEPENDENT#{did}`.
+#[must_use]
+#[allow(clippy::implicit_hasher)]
 pub fn extract_family_id(
     pk: &str,
     sk: &str,
@@ -227,19 +261,23 @@ pub fn extract_family_id(
             return Some(id.clone());
         }
         // Fallback: parse from SK
-        return sk.strip_prefix("FAMILY#").map(|s| s.to_string());
+        return sk
+            .strip_prefix("FAMILY#")
+            .map(std::string::ToString::to_string);
     }
 
     // For Recipe records: PK = FAMILY#{fid} (same pattern as Family PK)
-    if sk.starts_with("RECIPE#")
-        && pk.starts_with("FAMILY#")
-    {
-        return pk.strip_prefix("FAMILY#").map(|s| s.to_string());
+    if sk.starts_with("RECIPE#") && pk.starts_with("FAMILY#") {
+        return pk
+            .strip_prefix("FAMILY#")
+            .map(std::string::ToString::to_string);
     }
 
     // For Dependent records: PK = FAMILY#{fid}
     if pk.starts_with("FAMILY#") && !pk.contains("#DEPENDENT#") {
-        return pk.strip_prefix("FAMILY#").map(|s| s.to_string());
+        return pk
+            .strip_prefix("FAMILY#")
+            .map(std::string::ToString::to_string);
     }
 
     // For MealSlot / FeedingLog / Activity records: PK = FAMILY#{fid}#DEPENDENT#{did}
@@ -252,10 +290,13 @@ pub fn extract_family_id(
     None
 }
 
-/// Extract the owner_id from a resource's DynamoDB image or PK.
-/// For Family records: PK = OWNER#{owner_id}, or read `owner_id` attribute.
+/// Extract the `owner_id` from a resource's `DynamoDB` image or PK.
+///
+/// For Family records: PK = `OWNER#{owner_id`}, or read `owner_id` attribute.
 /// For Dependent/Activity records: read `owner_id` attribute if present, otherwise
 /// we need to look up the family to find the owner.
+#[must_use]
+#[allow(clippy::implicit_hasher)]
 pub fn extract_owner_id(pk: &str, image: &HashMap<String, DdbAttributeValue>) -> Option<String> {
     // Try the image's owner_id attribute first
     if let Some(oid) = image.get("owner_id").and_then(|v| v.as_s().ok()) {
@@ -264,20 +305,29 @@ pub fn extract_owner_id(pk: &str, image: &HashMap<String, DdbAttributeValue>) ->
 
     // For Family records: PK = OWNER#{owner_id}
     if pk.starts_with("OWNER#") {
-        return pk.strip_prefix("OWNER#").map(|s| s.to_string());
+        return pk
+            .strip_prefix("OWNER#")
+            .map(std::string::ToString::to_string);
     }
 
     None
 }
 
-/// Check if a resource record is a mirrored copy (has a share_id attribute).
-pub fn is_mirrored_resource(image: &HashMap<String, DdbAttributeValue>) -> bool {
-    image.get("share_id").and_then(|v| v.as_s().ok()).is_some()
+/// Check if a resource record is a mirrored copy (has a `share_id` attribute
+/// and lives in the OWNER partition, not the original FAMILY partition).
+#[must_use]
+#[allow(clippy::implicit_hasher)]
+pub fn is_mirrored_resource(pk: &str, image: &HashMap<String, DdbAttributeValue>) -> bool {
+    pk.starts_with("OWNER#") && image.get("share_id").and_then(|v| v.as_s().ok()).is_some()
 }
 
 /// Query the `GSI-family_id` GSI to find all active shares for a given family.
 /// This replaces both `find_owner_for_family` (table scan) and
 /// `find_active_shares_for_family` (owner-partition query).
+///
+/// # Errors
+///
+/// Returns an error if the `DynamoDB` query fails.
 pub async fn find_active_shares_by_family_id(
     client: &Client,
     table_name: &str,
@@ -363,10 +413,7 @@ mod tests {
         let pk = format!("FAMILY#{}", fid);
         let sk = format!("RECIPE#{}", uuid::Uuid::new_v4());
         let mut image = HashMap::new();
-        image.insert(
-            "family_id".to_string(),
-            DdbAttributeValue::S(fid.clone()),
-        );
+        image.insert("family_id".to_string(), DdbAttributeValue::S(fid.clone()));
         assert_eq!(extract_family_id(&pk, &sk, &image), Some(fid));
     }
 
@@ -386,10 +433,7 @@ mod tests {
         let pk = format!("FAMILY#{}#DEPENDENT#{}", fid, did);
         let sk = format!("MEAL_SLOT#{}", uuid::Uuid::new_v4());
         let mut image = HashMap::new();
-        image.insert(
-            "family_id".to_string(),
-            DdbAttributeValue::S(fid.clone()),
-        );
+        image.insert("family_id".to_string(), DdbAttributeValue::S(fid.clone()));
         assert_eq!(extract_family_id(&pk, &sk, &image), Some(fid));
     }
 
@@ -400,10 +444,7 @@ mod tests {
         let pk = format!("FAMILY#{}#DEPENDENT#{}", fid, did);
         let sk = format!("FEEDING_LOG#{}", uuid::Uuid::new_v4());
         let mut image = HashMap::new();
-        image.insert(
-            "family_id".to_string(),
-            DdbAttributeValue::S(fid.clone()),
-        );
+        image.insert("family_id".to_string(), DdbAttributeValue::S(fid.clone()));
         assert_eq!(extract_family_id(&pk, &sk, &image), Some(fid));
     }
 
@@ -437,23 +478,27 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // Tests for is_mirrored_resource
+    // Tests for is_mirrored_resource (legacy tests — updated for pk-aware API)
     // -----------------------------------------------------------------------
 
     #[test]
-    fn test_is_mirrored_resource_true() {
+    fn test_is_mirrored_resource_with_owner_pk_and_share_id_is_mirrored() {
         let mut image = HashMap::new();
         image.insert(
             "share_id".to_string(),
             DdbAttributeValue::S("some-share-id".to_string()),
         );
-        assert!(is_mirrored_resource(&image));
+        assert!(is_mirrored_resource("OWNER#accepter-id", &image));
     }
 
     #[test]
-    fn test_is_mirrored_resource_false() {
-        let image: HashMap<String, DdbAttributeValue> = HashMap::new();
-        assert!(!is_mirrored_resource(&image));
+    fn test_is_mirrored_resource_with_family_pk_and_share_id_is_not_mirrored() {
+        let mut image = HashMap::new();
+        image.insert(
+            "share_id".to_string(),
+            DdbAttributeValue::S("some-share-id".to_string()),
+        );
+        assert!(!is_mirrored_resource("FAMILY#some-fid", &image));
     }
 
     // -----------------------------------------------------------------------
@@ -601,5 +646,64 @@ mod tests {
             result.get("active").and_then(|v| v.as_bool().ok()),
             Some(&true)
         );
+    }
+
+    #[test]
+    fn test_is_mirrored_resource_original_recipe_with_share_id_is_not_mirrored() {
+        // This is the critical bug fix: a recipe in the FAMILY partition
+        // that has share_id is the ORIGINAL (shared) copy, not a mirrored copy.
+        // It must NOT be treated as mirrored.
+        let mut image = HashMap::new();
+        image.insert(
+            "share_id".to_string(),
+            DdbAttributeValue::S("share-123".to_string()),
+        );
+        let pk = "FAMILY#some-fid";
+        assert!(!is_mirrored_resource(pk, &image));
+    }
+
+    #[test]
+    fn test_is_mirrored_resource_mirrored_recipe_with_share_id_is_mirrored() {
+        let mut image = HashMap::new();
+        image.insert(
+            "share_id".to_string(),
+            DdbAttributeValue::S("share-123".to_string()),
+        );
+        let pk = "OWNER#accepter-id";
+        assert!(is_mirrored_resource(pk, &image));
+    }
+
+    #[test]
+    fn test_is_mirrored_resource_original_recipe_without_share_id_is_not_mirrored() {
+        let image: HashMap<String, DdbAttributeValue> = HashMap::new();
+        let pk = "FAMILY#some-fid";
+        assert!(!is_mirrored_resource(pk, &image));
+    }
+
+    #[test]
+    fn test_is_mirrored_resource_mirrored_family_with_share_id_is_mirrored() {
+        let mut image = HashMap::new();
+        image.insert(
+            "share_id".to_string(),
+            DdbAttributeValue::S("share-123".to_string()),
+        );
+        let pk = "OWNER#accepter-id";
+        assert!(is_mirrored_resource(pk, &image));
+    }
+
+    #[test]
+    fn test_is_mirrored_resource_no_share_id_is_not_mirrored() {
+        let image: HashMap<String, DdbAttributeValue> = HashMap::new();
+        let pk = "OWNER#accepter-id";
+        assert!(!is_mirrored_resource(pk, &image));
+    }
+
+    #[test]
+    fn test_is_mirrored_resource_owner_pk_without_share_id_is_not_mirrored() {
+        // Owner partition without share_id is the original owner's record
+        let mut image = HashMap::new();
+        image.insert("name".to_string(), DdbAttributeValue::S("Test".to_string()));
+        let pk = "OWNER#user1";
+        assert!(!is_mirrored_resource(pk, &image));
     }
 }

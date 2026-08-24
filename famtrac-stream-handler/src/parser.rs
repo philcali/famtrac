@@ -6,6 +6,7 @@ use famtrac_backend::domain::{
 };
 
 /// Extract a string value from a `serde_dynamo::Item` by attribute name.
+#[must_use]
 pub fn get_str(item: &serde_dynamo::Item, key: &str) -> Option<String> {
     match item.inner().get(key)? {
         serde_dynamo::AttributeValue::S(s) => Some(s.clone()),
@@ -14,9 +15,10 @@ pub fn get_str(item: &serde_dynamo::Item, key: &str) -> Option<String> {
 }
 
 /// Parse a `Share` from a `serde_dynamo::Item` (stream image).
+#[must_use]
 pub fn parse_share(image: &serde_dynamo::Item) -> Option<Share> {
     let mut map = HashMap::new();
-    for (k, v) in image.inner().iter() {
+    for (k, v) in image.inner() {
         if let serde_dynamo::AttributeValue::S(s) = v {
             map.insert(k.clone(), s.clone());
         }
@@ -24,10 +26,12 @@ pub fn parse_share(image: &serde_dynamo::Item) -> Option<Share> {
     parse_share_from_strings(&map)
 }
 
-/// Parse a `Share` from a raw DynamoDB SDK `HashMap<String, DdbAttributeValue>`.
+/// Parse a `Share` from a raw `DynamoDB` SDK `HashMap<String, DdbAttributeValue>`.
+#[must_use]
+#[allow(clippy::implicit_hasher)]
 pub fn parse_share_from_attrs(item: &HashMap<String, DdbAttributeValue>) -> Option<Share> {
     let mut map = HashMap::new();
-    for (k, v) in item.iter() {
+    for (k, v) in item {
         if let Ok(s) = v.as_s() {
             map.insert(k.clone(), s.clone());
         }
@@ -47,7 +51,7 @@ fn parse_share_from_strings(map: &HashMap<String, String>) -> Option<Share> {
     let permission_scope: PermissionScope = serde_json::from_str(scope_json).ok()?;
 
     let status_str = map.get("status")?;
-    let status: ShareStatus = serde_json::from_str(&format!("\"{}\"", status_str)).ok()?;
+    let status: ShareStatus = serde_json::from_str(&format!("\"{status_str}\"")).ok()?;
 
     let created_at = map
         .get("created_at")?

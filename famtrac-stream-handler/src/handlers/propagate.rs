@@ -14,6 +14,10 @@ use crate::dynamo_util::{
 /// Before any propagation, checks if the new image contains a `sync_token`
 /// attribute. If present, the write was handler-originated and propagation
 /// is skipped to break infinite cycles (Requirement 6.4, 6.6).
+///
+/// # Errors
+///
+/// Returns an error if any `DynamoDB` operation fails.
 pub async fn handle_resource_changed(
     client: &Client,
     table_name: &str,
@@ -32,7 +36,7 @@ pub async fn handle_resource_changed(
     };
 
     // If this is a mirrored resource, propagate back to the original (write-back)
-    if is_mirrored_resource(image) {
+    if is_mirrored_resource(&change.pk, image) {
         return propagate_writeback(client, table_name, change, sync_token).await;
     }
 
@@ -53,9 +57,8 @@ async fn propagate_to_mirrors(
         _ => &change.new_image,
     };
 
-    let family_id = match extract_family_id(&change.pk, &change.sk, image) {
-        Some(fid) => fid,
-        None => return Ok(()), // Can't determine family — skip
+    let Some(family_id) = extract_family_id(&change.pk, &change.sk, image) else {
+        return Ok(()); // Can't determine family — skip
     };
 
     // Use GSI query to find all active shares for this family (Requirement 2.1)
@@ -84,7 +87,7 @@ async fn propagate_to_mirrors(
                     // Family and Recipe records are rekeyed into accepter's OWNER partition
                     let mut mirrored = rekey_item(
                         change.new_image.clone(),
-                        &format!("OWNER#{}", accepter_id),
+                        &format!("OWNER#{accepter_id}"),
                         &share_id_str,
                         &scope_json,
                     );
@@ -106,7 +109,7 @@ async fn propagate_to_mirrors(
                     delete_item(
                         client,
                         table_name,
-                        &format!("OWNER#{}", accepter_id),
+                        &format!("OWNER#{accepter_id}"),
                         &change.sk,
                     )
                     .await?;
@@ -130,6 +133,8 @@ async fn propagate_to_mirrors(
 /// owner record before writing — skips if identical (Requirement 6.7, 6.8).
 ///
 /// Stamps `sync_token` on every item written (Requirement 6.1, 6.2).
+#[allow(clippy::similar_names)]
+#[allow(clippy::too_many_lines)]
 async fn propagate_writeback(
     client: &Client,
     table_name: &str,
@@ -147,16 +152,14 @@ async fn propagate_writeback(
     if is_family_record || is_recipe_record {
         // Mirrored Family/Recipe records have PK=OWNER#{accepter_id}.
         // We need to find the original owner and write back to their partition.
-        let family_id = match extract_family_id(&change.pk, &change.sk, image) {
-            Some(fid) => fid,
-            None => return Ok(()),
+        let Some(family_id) = extract_family_id(&change.pk, &change.sk, image) else {
+            return Ok(());
         };
 
         // Query active shares by family_id via GSI, derive owner from requester_id
         let active_shares = find_active_shares_by_family_id(client, table_name, &family_id).await?;
-        let original_owner = match active_shares.first().map(|s| s.requester_id.0.clone()) {
-            Some(oid) => oid,
-            None => return Ok(()),
+        let Some(original_owner) = active_shares.first().map(|s| s.requester_id.0.clone()) else {
+            return Ok(());
         };
 
         match change.operation {
@@ -165,7 +168,7 @@ async fn propagate_writeback(
                 let mut original_item = change.new_image.clone();
                 original_item.insert(
                     "PK".to_string(),
-                    DdbAttributeValue::S(format!("OWNER#{}", original_owner)),
+                    DdbAttributeValue::S(format!("OWNER#{original_owner}")),
                 );
                 original_item.remove("share_id");
                 original_item.remove("permission_scope");
@@ -175,7 +178,7 @@ async fn propagate_writeback(
                 let existing = get_item(
                     client,
                     table_name,
-                    &format!("OWNER#{}", original_owner),
+                    &format!("OWNER#{original_owner}"),
                     &change.sk,
                 )
                 .await?;
@@ -198,7 +201,7 @@ async fn propagate_writeback(
                 delete_item(
                     client,
                     table_name,
-                    &format!("OWNER#{}", original_owner),
+                    &format!("OWNER#{original_owner}"),
                     &change.sk,
                 )
                 .await?;
@@ -309,4 +312,243 @@ async fn propagate_writeback(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::classify::{classify_record, ChangeOperation, RecordChange, ResourceChange};
+    use aws_lambda_events::event::dynamodb::{EventRecord, StreamRecord};
+    use chrono::Utc;
+    use serde_dynamo::AttributeValue;
+    use std::collections::HashMap;
+
+    fn s(val: &str) -> AttributeValue {
+        AttributeValue::S(val.to_string())
+    }
+
+    fn make_event_record(
+        event_name: &str,
+        keys: HashMap<String, AttributeValue>,
+        old_image: HashMap<String, AttributeValue>,
+        new_image: HashMap<String, AttributeValue>,
+    ) -> EventRecord {
+        EventRecord {
+            aws_region: "us-east-1".to_string(),
+            change: StreamRecord {
+                approximate_creation_date_time: Utc::now(),
+                keys: serde_dynamo::Item::from(keys),
+                new_image: serde_dynamo::Item::from(new_image),
+                old_image: serde_dynamo::Item::from(old_image),
+                sequence_number: Some("1".to_string()),
+                size_bytes: 0,
+                stream_view_type: None,
+            },
+            event_id: "1".to_string(),
+            event_name: event_name.to_string(),
+            event_source: Some("aws:dynamodb".to_string()),
+            event_version: Some("1.1".to_string()),
+            event_source_arn: None,
+            user_identity: None,
+            record_format: None,
+            table_name: None,
+        }
+    }
+
+    fn recipe_keys(family_id: &str, recipe_id: &str) -> HashMap<String, AttributeValue> {
+        let mut m = HashMap::new();
+        m.insert("PK".to_string(), s(&format!("FAMILY#{family_id}")));
+        m.insert("SK".to_string(), s(&format!("RECIPE#{recipe_id}")));
+        m
+    }
+
+    fn mirrored_recipe_keys(accepter_id: &str, recipe_id: &str) -> HashMap<String, AttributeValue> {
+        let mut m = HashMap::new();
+        m.insert("PK".to_string(), s(&format!("OWNER#{accepter_id}")));
+        m.insert("SK".to_string(), s(&format!("RECIPE#{recipe_id}")));
+        m
+    }
+
+    fn recipe_image(
+        recipe_id: &str,
+        family_id: &str,
+        name: &str,
+    ) -> HashMap<String, AttributeValue> {
+        let mut m = HashMap::new();
+        m.insert("id".to_string(), s(recipe_id));
+        m.insert("family_id".to_string(), s(family_id));
+        m.insert("name".to_string(), s(name));
+        m.insert("created_at".to_string(), s("2025-01-01T00:00:00Z"));
+        m.insert("updated_at".to_string(), s("2025-01-01T00:00:00Z"));
+        m
+    }
+
+    fn mirrored_recipe_image(
+        recipe_id: &str,
+        family_id: &str,
+        name: &str,
+    ) -> HashMap<String, AttributeValue> {
+        let mut m = recipe_image(recipe_id, family_id, name);
+        m.insert("share_id".to_string(), s("share-123"));
+        m.insert(
+            "permission_scope".to_string(),
+            s(r#"{"actions":["dependent_read","dependent_write"]}"#),
+        );
+        m
+    }
+
+    // -------------------------------------------------------------------
+    // Critical bug regression tests: recipe deletes must not trigger write-back
+    // -------------------------------------------------------------------
+
+    #[test]
+    fn test_delete_original_recipe_classified_as_resource_changed_not_writeback() {
+        // When a recipe is deleted from the ORIGINAL partition (PK = FAMILY#{fid}),
+        // the old image contains share_id (because it was shared). This MUST be
+        // classified as ResourceChanged (propagate_to_mirrors), NOT as a mirrored
+        // resource write-back.
+        let fid = uuid::Uuid::new_v4().to_string();
+        let rid = uuid::Uuid::new_v4().to_string();
+        let keys = recipe_keys(&fid, &rid);
+        let old_img = mirrored_recipe_image(&rid, &fid, "Test Recipe");
+
+        let record = make_event_record("REMOVE", keys, old_img, HashMap::new());
+        let change = classify_record(&record);
+
+        match change {
+            RecordChange::ResourceChanged(ResourceChange {
+                pk,
+                operation: ChangeOperation::Remove,
+                ..
+            }) => {
+                // PK must be the FAMILY partition, NOT an OWNER partition
+                assert!(
+                    pk.starts_with("FAMILY#"),
+                    "Original recipe delete PK must be FAMILY#{fid}, got {pk}"
+                );
+                assert!(
+                    !pk.starts_with("OWNER#"),
+                    "Original recipe delete PK must NOT be OWNER#, got {pk}"
+                );
+            }
+            other => panic!("Expected ResourceChanged with Remove, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_delete_mirrored_recipe_classified_as_resource_changed() {
+        // When a recipe is deleted from a MIRRORED partition (PK = OWNER#{accepter_id}),
+        // it should also be ResourceChanged, but the PK will be OWNER#{accepter_id}.
+        // The is_mirrored_resource check in handle_resource_changed will route this
+        // to propagate_writeback (which is correct for mirrored records).
+        let accepter_id = uuid::Uuid::new_v4().to_string();
+        let fid = uuid::Uuid::new_v4().to_string();
+        let rid = uuid::Uuid::new_v4().to_string();
+        let keys = mirrored_recipe_keys(&accepter_id, &rid);
+        let old_img = mirrored_recipe_image(&rid, &fid, "Test Recipe");
+
+        let record = make_event_record("REMOVE", keys, old_img, HashMap::new());
+        let change = classify_record(&record);
+
+        match change {
+            RecordChange::ResourceChanged(ResourceChange { pk, .. }) => {
+                assert!(
+                    pk.starts_with("OWNER#"),
+                    "Mirrored recipe delete PK must be OWNER#{accepter_id}, got {pk}"
+                );
+            }
+            other => panic!("Expected ResourceChanged, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_delete_original_family_with_share_id_not_mirrored() {
+        // Regression: a Family record in the original OWNER partition with share_id
+        // is the accepter's mirrored copy, NOT the original. But a Family record in
+        // the original owner's partition (OWNER#{owner_id}) with share_id is the
+        // mirrored copy that was created by the share activation.
+        let fid = uuid::Uuid::new_v4().to_string();
+        let mut keys = HashMap::new();
+        keys.insert("PK".to_string(), s("OWNER#original-owner"));
+        keys.insert("SK".to_string(), s(&format!("FAMILY#{fid}")));
+        let old_img = {
+            let mut m = HashMap::new();
+            m.insert("id".to_string(), s(&fid));
+            m.insert("name".to_string(), s("Test Family"));
+            m.insert("owner_id".to_string(), s("original-owner"));
+            m.insert("share_id".to_string(), s("share-123"));
+            m
+        };
+
+        let record = make_event_record("REMOVE", keys, old_img, HashMap::new());
+        let change = classify_record(&record);
+
+        match change {
+            RecordChange::ResourceChanged(ResourceChange { pk, .. }) => {
+                // The PK is OWNER#{original-owner} which is the accepter's mirrored copy
+                assert!(pk.starts_with("OWNER#"));
+            }
+            other => panic!("Expected ResourceChanged, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_delete_recipe_without_share_id_from_family_partition_not_mirrored() {
+        // A recipe in the FAMILY partition without share_id is clearly not mirrored.
+        let fid = uuid::Uuid::new_v4().to_string();
+        let rid = uuid::Uuid::new_v4().to_string();
+        let keys = recipe_keys(&fid, &rid);
+        let old_img = recipe_image(&rid, &fid, "Test Recipe");
+
+        let record = make_event_record("REMOVE", keys, old_img, HashMap::new());
+        let change = classify_record(&record);
+
+        match change {
+            RecordChange::ResourceChanged(ResourceChange { pk, .. }) => {
+                assert_eq!(pk, format!("FAMILY#{fid}"));
+            }
+            other => panic!("Expected ResourceChanged, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_insert_recipe_from_family_partition_not_mirrored() {
+        // A recipe INSERT from the FAMILY partition is always the original.
+        let fid = uuid::Uuid::new_v4().to_string();
+        let rid = uuid::Uuid::new_v4().to_string();
+        let keys = recipe_keys(&fid, &rid);
+        let new_img = recipe_image(&rid, &fid, "New Recipe");
+
+        let record = make_event_record("INSERT", keys, HashMap::new(), new_img);
+        let change = classify_record(&record);
+
+        match change {
+            RecordChange::ResourceChanged(ResourceChange { pk, operation, .. }) => {
+                assert_eq!(pk, format!("FAMILY#{fid}"));
+                assert_eq!(operation, ChangeOperation::Insert);
+            }
+            other => panic!("Expected ResourceChanged, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_modify_recipe_from_family_partition_not_mirrored() {
+        // A recipe MODIFY from the FAMILY partition is always the original.
+        let fid = uuid::Uuid::new_v4().to_string();
+        let rid = uuid::Uuid::new_v4().to_string();
+        let keys = recipe_keys(&fid, &rid);
+        let old_img = recipe_image(&rid, &fid, "Old Recipe");
+        let mut new_img = recipe_image(&rid, &fid, "New Recipe");
+        new_img.insert("name".to_string(), s("New Recipe"));
+
+        let record = make_event_record("MODIFY", keys, old_img, new_img);
+        let change = classify_record(&record);
+
+        match change {
+            RecordChange::ResourceChanged(ResourceChange { pk, operation, .. }) => {
+                assert_eq!(pk, format!("FAMILY#{fid}"));
+                assert_eq!(operation, ChangeOperation::Modify);
+            }
+            other => panic!("Expected ResourceChanged, got {:?}", other),
+        }
+    }
 }
