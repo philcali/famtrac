@@ -145,7 +145,12 @@ export function MealPlanPage() {
 
   const handleSelectRecipe = async (recipe: RecipeResponse) => {
     if (editingSlot) {
-      const response = await updateSlotMutation({ recipe_id: recipe.id });
+      const response = await updateSlotMutation({
+        day: editingSlot.day,
+        time: editFormTime,
+        recipe_id: recipe.id,
+        notes: editFormNotes || undefined,
+      });
       if (!response.error) {
         setSuccessMessage('Meal slot updated');
         setEditingSlot(undefined);
@@ -229,6 +234,29 @@ export function MealPlanPage() {
     const local = new Date(y, m - 1, d, h, min, 0);
     const timestamp = toISOWithOffset(local);
 
+    // Look up the recipe name and reaction label for the activity notes
+    const activityRecipe = recipes.find((r) => r.id === data.recipe_id);
+    const mealSlotRecipe = feedingSlot.recipe_id
+      ? recipeMap[feedingSlot.recipe_id]
+      : undefined;
+    const recipeName = activityRecipe?.name ?? mealSlotRecipe?.name;
+
+    const reactionLabel: Record<string, string> = {
+      tasted: 'Tasted',
+      some: 'Ate some',
+      most: 'Ate most',
+      all: 'Ate all',
+      refused: 'Refused',
+    };
+    const label = reactionLabel[data.reaction] ?? data.reaction;
+
+    // Build activity notes that reference the meal slot recipe when available
+    const activityNotes = recipeName
+      ? data.notes
+        ? `${label} ${recipeName}: ${data.notes}`
+        : `${label} ${recipeName}`
+      : data.notes;
+
     // Create feeding activity so data flows into reports/analytics
     const activityResponse = await createActivityMutation({
       family_id: familyId ?? 'NA',
@@ -237,7 +265,7 @@ export function MealPlanPage() {
       timestamp,
       feeding_type: 'solid',
       volume_ml: reactionToVolume[data.reaction] ?? data.amount,
-      notes: data.notes || undefined,
+      notes: activityNotes || undefined,
     });
     if (activityResponse.error) {
       setSuccessMessage('Feeding logged but activity creation failed — please retry');
