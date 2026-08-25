@@ -198,6 +198,9 @@ export function ActivityForm({
       if (feedingType === 'bottle') {
         data.volume_ml = parseInt(volumeMl, 10);
       }
+      if (notes.trim()) {
+        data.notes = notes.trim();
+      }
     } else if (activityType === 'diaper_change') {
       data.contents = contents;
     } else if (isStopwatchType(activityType)) {
@@ -426,19 +429,29 @@ export function ActivityForm({
 
       {/* Medicine added flag for feeding */}
       {activityType === 'feeding' && (
-        <div className="mb-3">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              id="medicine-added-toggle"
-              checked={medicineAdded}
-              onChange={(e) => setMedicineAdded(e.target.checked)}
-              disabled={loading}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <span className="text-sm font-medium text-gray-700">Medicine Added</span>
-          </label>
-        </div>
+        <>
+          <Input
+            label="Notes"
+            type="text"
+            value={notes}
+            onChange={setNotes}
+            placeholder="What did they eat?"
+            disabled={loading}
+          />
+          <div className="mb-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                id="medicine-added-toggle"
+                checked={medicineAdded}
+                onChange={(e) => setMedicineAdded(e.target.checked)}
+                disabled={loading}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm font-medium text-gray-700">Medicine Added</span>
+            </label>
+          </div>
+        </>
       )}
 
       {/* Pumping-specific fields */}

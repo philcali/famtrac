@@ -96,9 +96,7 @@ export class ApiClient {
   }
 
   private async buildHeaders(hasBody: boolean): Promise<Record<string, string>> {
-    const headers: Record<string, string> = {
-      'Cache-Control': 'no-cache',
-    };
+    const headers: Record<string, string> = {};
 
     // Add Authorization header with token
     const token = await this.getAuthToken();

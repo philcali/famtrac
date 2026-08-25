@@ -105,6 +105,12 @@ export const renderActivityDetails = (activity: ActivityResponse) => {
               <strong>Medicine:</strong> Yes
             </>
           )}
+          {activity.notes && (
+            <>
+              <br />
+              <strong>Notes:</strong> {activity.notes}
+            </>
+          )}
           {isBottleExpired(activity) && (
             <>
               <br />
