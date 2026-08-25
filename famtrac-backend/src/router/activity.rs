@@ -64,6 +64,7 @@ pub async fn handle_activities_collection(
                             feeding_type: FeedingType::Breast,
                             volume_ml: None,
                             medicine_added: None,
+                            notes: None,
                         }),
                         "diaper_change" => Some(ActivityType::DiaperChange {
                             contents: DiaperContents::Wet,

@@ -91,6 +91,7 @@ pub fn validate_activity_type(activity_type: &ActivityType) -> Result<(), Valida
             feeding_type: _,
             volume_ml,
             medicine_added: _,
+            notes: _,
         } => {
             // feeding_type is required by the enum structure
             // Validate volume_ml if present
@@ -356,6 +357,7 @@ mod tests {
             feeding_type: FeedingType::Bottle,
             volume_ml: Some(120),
             medicine_added: None,
+            notes: None,
         };
         assert!(validate_activity_type(&activity).is_ok());
 
@@ -363,6 +365,7 @@ mod tests {
             feeding_type: FeedingType::Breast,
             volume_ml: None,
             medicine_added: None,
+            notes: None,
         };
         assert!(validate_activity_type(&activity_no_volume).is_ok());
     }
@@ -373,6 +376,7 @@ mod tests {
             feeding_type: FeedingType::Bottle,
             volume_ml: Some(0),
             medicine_added: None,
+            notes: None,
         };
         let result = validate_activity_type(&activity);
         assert!(result.is_err());
