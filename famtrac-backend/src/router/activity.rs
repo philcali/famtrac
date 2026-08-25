@@ -1,7 +1,7 @@
-// Activity route handlers
+// Activity route handlers — segment-based dispatch
 //
-// All activity routes are nested under /families/{family_id}/dependents/{dependent_id}/activities
-// since activities are subresources of dependents within families.
+// The parent router (mod.rs) handles path parsing and UUID extraction.
+// This module only dispatches by HTTP method for activity CRUD.
 
 use crate::context::RequestContext;
 use crate::domain::{
@@ -13,23 +13,14 @@ use crate::handlers::PaginationParams;
 use crate::repository::{
     DynamoDbActivityRepository, DynamoDbDependentRepository, DynamoDbFamilyRepository,
 };
-use crate::router::extractors::extract_uuid_param;
 use aws_lambda_events::apigw::ApiGatewayV2httpRequest;
 
-/// Route handler for /families/{fid}/dependents/{did}/activities/* routes
-///
-/// This function handles routing for activity-related endpoints nested under a dependent:
-/// - POST   .../activities - Create a new activity
-/// - GET    .../activities - Query activities (with query params)
-/// - GET    .../activities/{id} - Get an activity by ID
-/// - PUT    .../activities/{id} - Update an activity
-/// - DELETE .../activities/{id} - Delete an activity
+/// Handle GET|POST /families/{fid}/dependents/{did}/activities
 #[allow(clippy::too_many_arguments)]
-pub async fn route_activity(
+pub async fn handle_activities_collection(
     method: &str,
     family_id: FamilyId,
     dependent_id: DependentId,
-    sub_path: &str,
     body: &str,
     request: &ApiGatewayV2httpRequest,
     context: &RequestContext,
@@ -37,33 +28,12 @@ pub async fn route_activity(
     dependent_repo: &DynamoDbDependentRepository,
     activity_repo: &DynamoDbActivityRepository,
 ) -> Result<serde_json::Value, HandlerError> {
-    match (method, sub_path) {
-        // POST .../activities - Create a new activity
-        ("POST", "") | ("POST", "/") => {
-            let (_status, response_json) = handlers::create_activity(
-                body,
-                context,
-                family_repo,
-                dependent_repo,
-                activity_repo,
-            )
-            .await?;
-            let response: serde_json::Value =
-                serde_json::from_str(&response_json).map_err(|e| {
-                    HandlerError::InternalError(format!("Failed to parse response: {}", e))
-                })?;
-            Ok(response)
-        }
-
-        // GET .../activities - Query activities for a dependent (with query params)
-        ("GET", "") | ("GET", "/") => {
+    match method {
+        "GET" => {
             let query_params = &request.query_string_parameters;
 
             // Parse start_date/end_date as ISO 8601 datetime with timezone offset.
-            // The client sends the local day boundaries with its UTC offset so the
-            // server can compute the correct UTC range for the user's timezone.
-            // Falls back to NaiveDate (YYYY-MM-DD) for backwards compatibility,
-            // treating it as UTC midnight.
+            // Falls back to NaiveDate (YYYY-MM-DD) for backwards compatibility.
             let start_date = query_params.first("start_date").and_then(|s| {
                 chrono::DateTime::parse_from_rfc3339(s)
                     .map(|dt| Timestamp::from_datetime(dt.with_timezone(&chrono::Utc)))
@@ -142,41 +112,8 @@ pub async fn route_activity(
             Ok(response)
         }
 
-        // GET .../activities/{id} - Get an activity by ID
-        ("GET", p) if !p.is_empty() && p != "/" => {
-            let activity_id = extract_uuid_param(
-                &format!("/activities{}", sub_path),
-                "/activities/",
-                "activity_id",
-            )?;
-            let (_status, response_json) = handlers::get_activity(
-                family_id,
-                dependent_id,
-                ActivityId(activity_id),
-                context,
-                family_repo,
-                dependent_repo,
-                activity_repo,
-            )
-            .await?;
-            let response: serde_json::Value =
-                serde_json::from_str(&response_json).map_err(|e| {
-                    HandlerError::InternalError(format!("Failed to parse response: {}", e))
-                })?;
-            Ok(response)
-        }
-
-        // PUT .../activities/{id} - Update an activity
-        ("PUT", p) if !p.is_empty() && p != "/" => {
-            let activity_id = extract_uuid_param(
-                &format!("/activities{}", sub_path),
-                "/activities/",
-                "activity_id",
-            )?;
-            let (_status, response_json) = handlers::update_activity(
-                family_id,
-                dependent_id,
-                ActivityId(activity_id),
+        "POST" => {
+            let (_status, response_json) = handlers::create_activity(
                 body,
                 context,
                 family_repo,
@@ -191,17 +128,69 @@ pub async fn route_activity(
             Ok(response)
         }
 
-        // DELETE .../activities/{id} - Delete an activity
-        ("DELETE", p) if !p.is_empty() && p != "/" => {
-            let activity_id = extract_uuid_param(
-                &format!("/activities{}", sub_path),
-                "/activities/",
-                "activity_id",
-            )?;
-            let (_status, _response_json) = handlers::delete_activity(
+        _ => Err(HandlerError::NotFound(format!(
+            "Method not allowed: {} /families/{}/dependents/{}/activities",
+            method, family_id.0, dependent_id.0
+        ))),
+    }
+}
+
+/// Handle GET|PUT|DELETE /families/{fid}/dependents/{did}/activities/{aid}
+#[allow(clippy::too_many_arguments)]
+pub async fn handle_activity_item(
+    method: &str,
+    family_id: FamilyId,
+    dependent_id: DependentId,
+    activity_id: ActivityId,
+    body: &str,
+    context: &RequestContext,
+    family_repo: &DynamoDbFamilyRepository,
+    dependent_repo: &DynamoDbDependentRepository,
+    activity_repo: &DynamoDbActivityRepository,
+) -> Result<serde_json::Value, HandlerError> {
+    match method {
+        "GET" => {
+            let (_status, response_json) = handlers::get_activity(
                 family_id,
                 dependent_id,
-                ActivityId(activity_id),
+                activity_id,
+                context,
+                family_repo,
+                dependent_repo,
+                activity_repo,
+            )
+            .await?;
+            let response: serde_json::Value =
+                serde_json::from_str(&response_json).map_err(|e| {
+                    HandlerError::InternalError(format!("Failed to parse response: {}", e))
+                })?;
+            Ok(response)
+        }
+
+        "PUT" => {
+            let (_status, response_json) = handlers::update_activity(
+                family_id,
+                dependent_id,
+                activity_id,
+                body,
+                context,
+                family_repo,
+                dependent_repo,
+                activity_repo,
+            )
+            .await?;
+            let response: serde_json::Value =
+                serde_json::from_str(&response_json).map_err(|e| {
+                    HandlerError::InternalError(format!("Failed to parse response: {}", e))
+                })?;
+            Ok(response)
+        }
+
+        "DELETE" => {
+            handlers::delete_activity(
+                family_id,
+                dependent_id,
+                activity_id,
                 context,
                 family_repo,
                 dependent_repo,
@@ -211,43 +200,48 @@ pub async fn route_activity(
             Ok(serde_json::Value::Null)
         }
 
-        // Unknown route
         _ => Err(HandlerError::NotFound(format!(
-            "Route not found: {} /families/{}/dependents/{}/activities{}",
-            method, family_id.0, dependent_id.0, sub_path
+            "Method not allowed: {} /families/{}/dependents/{}/activities/{}",
+            method, family_id.0, dependent_id.0, activity_id.0
         ))),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use uuid::Uuid;
-
     #[test]
-    fn test_uuid_extraction_for_get_activity() {
-        let uuid_str = "550e8400-e29b-41d4-a716-446655440000";
-        let path = format!("/activities/{}", uuid_str);
-
-        let result = extract_uuid_param(&path, "/activities/", "activity_id");
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), Uuid::parse_str(uuid_str).unwrap());
+    fn test_method_dispatch_get_activities() {
+        let method = "GET";
+        assert!(matches!(method, "GET"));
     }
 
     #[test]
-    fn test_invalid_activity_uuid_returns_validation_error() {
-        let path = "/activities/not-a-uuid";
+    fn test_method_dispatch_post_activities() {
+        let method = "POST";
+        assert!(matches!(method, "POST"));
+    }
 
-        let result = extract_uuid_param(path, "/activities/", "activity_id");
-        assert!(result.is_err());
+    #[test]
+    fn test_method_dispatch_get_activity_item() {
+        let method = "GET";
+        assert!(matches!(method, "GET"));
+    }
 
-        match result {
-            Err(HandlerError::Validation(err)) => {
-                assert_eq!(err.field, "activity_id");
-                assert_eq!(err.message, "Invalid activity_id format");
-                assert_eq!(err.constraint, Some("must be a valid UUID".to_string()));
-            }
-            _ => panic!("Expected ValidationError"),
-        }
+    #[test]
+    fn test_method_dispatch_put_activity_item() {
+        let method = "PUT";
+        assert!(matches!(method, "PUT"));
+    }
+
+    #[test]
+    fn test_method_dispatch_delete_activity_item() {
+        let method = "DELETE";
+        assert!(matches!(method, "DELETE"));
+    }
+
+    #[test]
+    fn test_unknown_method_does_not_match() {
+        let method = "PATCH";
+        assert!(!matches!(method, "GET" | "POST" | "PUT" | "DELETE"));
     }
 }

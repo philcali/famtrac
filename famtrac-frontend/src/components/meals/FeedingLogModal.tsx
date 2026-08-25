@@ -21,7 +21,7 @@ interface FeedingLogModalProps {
 }
 
 const AMOUNT_OPTIONS = [
-  { value: 0, label: '🤷 Tasted', reaction: 'tasted' },
+  { value: 10, label: '🤷 Tasted', reaction: 'tasted' },
   { value: 30, label: '😋 Ate some', reaction: 'some' },
   { value: 60, label: '😋 Ate most', reaction: 'most' },
   { value: 90, label: '😋 Ate all', reaction: 'all' },

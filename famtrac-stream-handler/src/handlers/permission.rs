@@ -50,11 +50,13 @@ pub async fn handle_permission_updated(
     )
     .await?;
 
-    // 2. Update all mirrored Recipe records for this family
+    // 2. Update all mirrored Recipe records for this family.
+    //    Mirrored recipes are rekeyed into OWNER#{accepter_id} by the mirror handler,
+    //    so we query the accepter's partition (not FAMILY#{family_id}).
     let recipes = query_items(
         client,
         table_name,
-        &format!("FAMILY#{}", share.family_id.0),
+        &format!("OWNER#{}", accepter_id.0),
         "RECIPE#",
     )
     .await?;
@@ -68,7 +70,7 @@ pub async fn handle_permission_updated(
         conditional_update_permission(
             client,
             table_name,
-            &format!("FAMILY#{}", share.family_id.0),
+            &format!("OWNER#{}", accepter_id.0),
             &recipe_sk,
             &share_id_str,
             &scope_json,

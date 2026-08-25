@@ -53,6 +53,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(null);
   }, [cancelRefreshTimer]);
 
+  const scheduleRefreshRef = useRef<(expiresIn: number) => void>(() => {});
+
   const scheduleRefresh = useCallback(
     (expiresIn: number) => {
       cancelRefreshTimer();
@@ -81,7 +83,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           }
           const userData = parseUserFromIdToken(tokens.id_token);
           setUser(userData);
-          scheduleRefresh(tokens.expires_in);
+          scheduleRefreshRef.current(tokens.expires_in);
         } else {
           handleSessionExpired();
           window.location.href = await buildLoginUrl();
@@ -90,6 +92,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     },
     [cancelRefreshTimer, handleSessionExpired, parseUserFromIdToken]
   );
+
+  // Keep the ref in sync with the latest scheduleRefresh
+  useEffect(() => {
+    scheduleRefreshRef.current = scheduleRefresh;
+  }, [scheduleRefresh]);
 
   // Initialize authentication state
   useEffect(() => {

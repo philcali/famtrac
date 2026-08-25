@@ -1,17 +1,12 @@
-pub mod classify;
-pub mod dynamo_util;
-pub mod handlers;
-pub mod parser;
-pub mod router;
+use famtrac_stream_handler::classify::{classify_record, ChangeKind, RecordChange};
+use famtrac_stream_handler::handlers;
+use famtrac_stream_handler::router::Router;
 
 use aws_lambda_events::event::dynamodb::Event as DynamoDbEvent;
 use aws_sdk_dynamodb::Client;
 use lambda_runtime::{service_fn, Error, LambdaEvent};
 use serde::Serialize;
 use std::sync::Arc;
-
-use classify::{classify_record, ChangeKind, RecordChange};
-use router::Router;
 
 /// A single failed record identifier for `ReportBatchItemFailures`.
 #[derive(Debug, Serialize)]

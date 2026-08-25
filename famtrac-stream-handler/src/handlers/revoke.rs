@@ -44,11 +44,12 @@ pub async fn handle_share_revoked(
     .await?;
 
     // 1b. Delete all mirrored Recipe records for this family.
-    //     Query recipes under FAMILY#{family_id} and delete those matching share_id.
+    //     Mirrored recipes are rekeyed into OWNER#{accepter_id} by the mirror handler,
+    //     so we query the accepter's partition (not FAMILY#{family_id}).
     let recipes = query_items(
         client,
         table_name,
-        &format!("FAMILY#{}", family_id.0),
+        &format!("OWNER#{}", accepter_id.0),
         "RECIPE#",
     )
     .await?;

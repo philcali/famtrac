@@ -1,5 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Button } from '../common/Button';
+import type { ApiClient } from '../../api/client';
+import { getDependents } from '../../api/dependents';
+import { createRecipe } from '../../api/recipes';
+import { createActivity } from '../../api/activities';
 import type {
   LittleEaterExport,
   LittleEaterRecipe,
@@ -103,6 +107,7 @@ type ImportStep = 'preview' | 'importRecipes' | 'importFeedingLogs' | 'results';
 
 interface ImportModalProps {
   familyId: string;
+  apiClient: ApiClient;
   onClose: () => void;
   onRecipesImported: (count: number) => void;
   onFeedingLogsImported: (count: number) => void;
@@ -125,6 +130,7 @@ interface DependentOption {
  */
 export function ImportModal({
   familyId,
+  apiClient,
   onClose,
   onRecipesImported,
   onFeedingLogsImported,
@@ -147,11 +153,10 @@ export function ImportModal({
   // Fetch dependents for the family
   useEffect(() => {
     let cancelled = false;
-    fetch(`/families/${familyId}/dependents`)
-      .then((res) => res.json())
-      .then((data: { dependents: { id: string; name: string }[] }) => {
+    getDependents(apiClient, familyId)
+      .then((res) => {
         if (!cancelled) {
-          setDependents(data.dependents);
+          setDependents(res.data?.dependents.map((d) => ({ id: d.id, name: d.name })) ?? []);
         }
       })
       .catch(() => {
@@ -160,7 +165,7 @@ export function ImportModal({
     return () => {
       cancelled = true;
     };
-  }, [familyId]);
+  }, [apiClient, familyId]);
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -287,13 +292,9 @@ export function ImportModal({
 
     for (const recipe of exportData.recipes) {
       try {
-        const response = await fetch(`/families/${familyId}/recipes`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(mapRecipeToCreateRequest(recipe)),
-        });
+        const response = await createRecipe(apiClient, familyId, mapRecipeToCreateRequest(recipe));
 
-        if (response.ok) {
+        if (response.data) {
           success++;
         } else {
           failed++;
@@ -312,7 +313,7 @@ export function ImportModal({
     } else {
       setStep('results');
     }
-  }, [exportData, familyId, mapRecipeToCreateRequest]);
+  }, [apiClient, exportData, familyId, mapRecipeToCreateRequest]);
 
   const handleImportFeedingLogs = useCallback(async () => {
     if (!exportData || !selectedDependentId) return;
@@ -325,24 +326,17 @@ export function ImportModal({
 
     for (const log of exportData.feeding_logs) {
       try {
-        const response = await fetch(
-          `/families/${familyId}/dependents/${selectedDependentId}/activities`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              family_id: familyId,
-              dependent_id: selectedDependentId,
-              type: 'feeding',
-              timestamp: `${log.date}T${log.time}:00`,
-              feeding_type: 'solid',
-              volume_ml: reactionToVolume(log.reaction),
-              notes: log.notes,
-            }),
-          }
-        );
+        const response = await createActivity(apiClient, familyId, selectedDependentId, {
+          family_id: familyId,
+          dependent_id: selectedDependentId,
+          type: 'feeding',
+          timestamp: `${log.date}T${log.time}:00`,
+          feeding_type: 'solid',
+          volume_ml: reactionToVolume(log.reaction),
+          notes: log.notes,
+        });
 
-        if (response.ok) {
+        if (response.data) {
           success++;
         } else {
           failed++;
@@ -355,7 +349,7 @@ export function ImportModal({
     setImporting(false);
     setFeedingLogImportResult({ success, failed });
     setStep('results');
-  }, [exportData, familyId, reactionToVolume, selectedDependentId]);
+  }, [apiClient, exportData, familyId, reactionToVolume, selectedDependentId]);
 
   const handleDone = useCallback(() => {
     onRecipesImported(recipeImportResult?.success ?? 0);

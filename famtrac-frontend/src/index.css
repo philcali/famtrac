@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @layer base {
   * {
@@ -52,16 +52,28 @@
 }
 
 @keyframes skeleton-loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* Responsive visibility */
-.mobile-only { display: block; }
-.desktop-only { display: none; }
+.mobile-only {
+  display: block;
+}
+.desktop-only {
+  display: none;
+}
 @media (min-width: 768px) {
-  .mobile-only { display: none; }
-  .desktop-only { display: block; }
+  .mobile-only {
+    display: none;
+  }
+  .desktop-only {
+    display: block;
+  }
 }
 
 /* Focus */
