@@ -256,13 +256,17 @@ export function MealPlanPage() {
       : data.notes;
 
     // Create feeding activity so data flows into reports/analytics
+    // The backend rejects volume_ml == 0 ("Feeding volume must be greater than
+    // zero"), so a refused feeding (0 ml) omits the field entirely — the
+    // refusal is preserved in the notes and in the FeedingLog record.
+    const volumeMl = reactionToVolume[data.reaction] ?? data.amount;
     const activityResponse = await createActivityMutation({
       family_id: familyId ?? 'NA',
       dependent_id: dependentId ?? 'NA',
       type: 'feeding',
       timestamp,
       feeding_type: 'solid',
-      volume_ml: reactionToVolume[data.reaction] ?? data.amount,
+      volume_ml: volumeMl > 0 ? volumeMl : undefined,
       notes: activityNotes || undefined,
     });
     if (activityResponse.error) {

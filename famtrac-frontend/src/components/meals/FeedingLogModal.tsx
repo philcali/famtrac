@@ -31,6 +31,10 @@ const AMOUNT_OPTIONS = [
 /**
  * Modal for logging a feeding from a meal slot.
  */
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const toDateStr = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const toTimeStr = (d: Date) => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+
 export function FeedingLogModal({
   show,
   slotDate,
@@ -41,12 +45,22 @@ export function FeedingLogModal({
   onSubmit,
   loading,
 }: FeedingLogModalProps) {
-  const [date, setDate] = useState(slotDate);
-  const [time, setTime] = useState(slotTime);
+  // The backend rejects feeding activities with future timestamps, so when the
+  // slot is in the future (the usual case for a meal plan) we prefill with
+  // today/now instead of the slot's date/time.
+  const now = new Date();
+  const initialDate = slotDate > toDateStr(now) ? toDateStr(now) : slotDate;
+  const initialTime =
+    initialDate >= toDateStr(now) && slotTime > toTimeStr(now) ? toTimeStr(now) : slotTime;
+
+  const [date, setDate] = useState(initialDate);
+  const [time, setTime] = useState(initialTime);
   const [selectedRecipeId, setSelectedRecipeId] = useState(recipeId ?? '');
   const [amount, setAmount] = useState(0);
   const [reaction, setReaction] = useState('');
   const [notes, setNotes] = useState('');
+
+  const isFuture = date && time ? new Date(`${date}T${time}:00`) > new Date() : false;
 
   const handleSubmit = () => {
     onSubmit({
@@ -168,11 +182,16 @@ export function FeedingLogModal({
             className="flex-1"
             onClick={handleSubmit}
             loading={loading}
-            disabled={!date || !time || !selectedRecipeId || !reaction}
+            disabled={!date || !time || !selectedRecipeId || !reaction || isFuture}
           >
             Log Feeding
           </Button>
         </div>
+        {isFuture && (
+          <p className="px-4 pb-3 -mt-2 text-xs text-red-600">
+            Feeding time can't be in the future — pick an earlier date or time.
+          </p>
+        )}
       </div>
     </div>
   );
