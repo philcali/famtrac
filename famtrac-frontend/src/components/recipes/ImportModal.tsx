@@ -326,13 +326,16 @@ export function ImportModal({
 
     for (const log of exportData.feeding_logs) {
       try {
+        // The backend rejects volume_ml == 0, so refused/no-reaction logs
+        // omit the field (refusal is preserved in the notes).
+        const volumeMl = reactionToVolume(log.reaction);
         const response = await createActivity(apiClient, familyId, selectedDependentId, {
           family_id: familyId,
           dependent_id: selectedDependentId,
           type: 'feeding',
           timestamp: `${log.date}T${log.time}:00`,
           feeding_type: 'solid',
-          volume_ml: reactionToVolume(log.reaction),
+          volume_ml: volumeMl > 0 ? volumeMl : undefined,
           notes: log.notes,
         });
 
